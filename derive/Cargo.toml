@@ -1,0 +1,20 @@
+[package]
+name = "modtype_derive"
+version = "0.1.0"
+authors = ["Ryo Yamashita <qryxip@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Macros that implement modular arithmetic integer types"
+repository = "https://github.com/qryxip/modtype"
+documentation = "https://docs.rs/modtype_derive"
+keywords = ["math"]
+categories = ["algorithms"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+if_chain = "1.0.0"
+proc-macro2 = "0.4.30"
+quote = "0.6.12"
+syn = { version = "0.15.36", features = ["full", "extra-traits"] }

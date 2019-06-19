@@ -1,0 +1,19 @@
+[package]
+name = "modtype"
+version = "0.1.0"
+authors = ["Ryo Yamashita <qryxip@gmail.com>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Macros that implement modular arithmetic integer types"
+repository = "https://github.com/qryxip/modtype"
+documentation = "https://docs.rs/modtype"
+readme = "README.md"
+keywords = ["math"]
+categories = ["algorithms"]
+
+[workspace]
+members = ["./derive"]
+
+[dependencies]
+modtype_derive = { version = "0.1.0", path = "./derive" }
+num = "0.2.0"

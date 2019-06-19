@@ -1,0 +1,57 @@
+language: rust
+
+env:
+  global:
+    - RUST_BACKTRACE=full
+
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      rust: stable
+      env: RUSTUP_HOST=x86_64-unknown-linux-gnu
+    - os: osx
+      rust: stable
+      env: RUSTUP_HOST=x86_64-apple-darwin
+    - os: windows
+      rust: stable
+      env: RUSTUP_HOST=x86_64-pc-windows-msvc
+    - os: linux
+      dist: trusty
+      rust: 1.34.2
+      env: RUSTUP_HOST=x86_64-unknown-linux-gnu
+    - os: osx
+      rust: 1.34.2
+      env: RUSTUP_HOST=x86_64-apple-darwin
+    - os: windows
+      rust: 1.34.2
+      env: RUSTUP_HOST=x86_64-pc-windows-msvc
+
+install:
+  - rustup self update
+  - rustup set default-host "$RUSTUP_HOST"
+  - rustup update "$TRAVIS_RUST_VERSION"
+  - rustup component add clippy rustfmt
+  - rustc --version --verbose
+  - cargo --version --verbose
+  - cargo clippy --version
+  - rustfmt --version
+  - |
+    if [ "$TRAVIS_RUST_VERSION" = stable -a "$TRAVIS_RUST_VERSION" = stable -a  "$RUSTUP_HOST" = x86_64-unknown-linux-gnu -a "$TRAVIS_BRANCH" = master -a "$TRAVIS_PULL_REQUEST" = false ]; then
+      cargo install cargo-kcov &&
+      travis_retry bash -c 'cargo kcov --print-install-kcov-sh | sh' &&
+      travis_retry bash -c 'cargo kcov --print-install-kcov-sh | sh' &&
+      kcov --version &&
+      cargo-kcov --version
+    fi
+
+script:
+  - cargo fmt --all -- --check
+  - cargo clippy --all --all-targets -- -D warnings
+  - |
+    if [ -f ~/.cargo/bin/cargo-kcov ]; then
+      travis_retry cargo kcov --all &&
+      travis_retry bash -c 'bash <(curl -s https://codecov.io/bash)'
+    else
+      cargo test --all
+    fi
