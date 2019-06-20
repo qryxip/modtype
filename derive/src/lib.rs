@@ -503,6 +503,88 @@ pub fn bounded(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+#[proc_macro_derive(CheckedAdd, attributes(modtype))]
+pub fn checked_add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    checked_bin(
+        input,
+        parse_quote!(CheckedAdd),
+        parse_quote!(checked_add),
+        false,
+        parse_quote!(+),
+    )
+}
+
+#[proc_macro_derive(CheckedSub, attributes(modtype))]
+pub fn checked_sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    checked_bin(
+        input,
+        parse_quote!(CheckedSub),
+        parse_quote!(checked_sub),
+        false,
+        parse_quote!(-),
+    )
+}
+
+#[proc_macro_derive(CheckedMul, attributes(modtype))]
+pub fn checked_mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    checked_bin(
+        input,
+        parse_quote!(CheckedMul),
+        parse_quote!(checked_mul),
+        false,
+        parse_quote!(*),
+    )
+}
+
+#[proc_macro_derive(CheckedDiv, attributes(modtype))]
+pub fn checked_div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    checked_bin(
+        input,
+        parse_quote!(CheckedDiv),
+        parse_quote!(checked_div),
+        true,
+        parse_quote!(/),
+    )
+}
+
+#[proc_macro_derive(CheckedRem, attributes(modtype))]
+pub fn checked_rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    checked_bin(
+        input,
+        parse_quote!(CheckedRem),
+        parse_quote!(checked_rem),
+        true,
+        parse_quote!(%),
+    )
+}
+
+#[proc_macro_derive(CheckedNeg, attributes(modtype))]
+pub fn checked_neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let Input {
+        std,
+        num_traits,
+        struct_ident,
+        generics,
+        ..
+    } = try_syn!(Input::try_from(input));
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    quote!(
+        impl#impl_generics #num_traits::CheckedNeg for #struct_ident#ty_generics
+            #where_clause
+        {
+            #[inline]
+            fn checked_neg(&self) -> #std::option::Option<Self> {
+                fn static_assert_copy<T: #std::marker::Copy>() {}
+                static_assert_copy::<Self>();
+                Some(-*self)
+            }
+        }
+    )
+    .into()
+}
+
 #[proc_macro_derive(Inv, attributes(modtype))]
 pub fn inv(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -1034,6 +1116,50 @@ fn identity(
             #[inline]
             fn #is(&self) -> bool {
                 <#field_ty as #num_traits::#trait_ident>::#is(&self.#field_ident)
+            }
+        }
+    )
+    .into()
+}
+
+fn checked_bin(
+    input: proc_macro::TokenStream,
+    trait_ident: Ident,
+    fn_ident: Ident,
+    return_none_if_rhs_is_zero: bool,
+    op: BinOp,
+) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let Input {
+        std,
+        num_traits,
+        struct_ident,
+        generics,
+        ..
+    } = try_syn!(Input::try_from(input));
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let expr: Expr = if return_none_if_rhs_is_zero {
+        parse_quote! {
+            if <Self as #num_traits::Zero>::is_zero(rhs) {
+                None
+            } else {
+                Some(*self #op *rhs)
+            }
+        }
+    } else {
+        parse_quote!(Some(*self #op *rhs))
+    };
+
+    quote!(
+        impl#impl_generics #num_traits::#trait_ident for #struct_ident#ty_generics
+            #where_clause
+        {
+            #[inline]
+            fn #fn_ident(&self, rhs: &Self) -> #std::option::Option<Self> {
+                fn static_assert_copy<T: #std::marker::Copy>() {}
+                static_assert_copy::<Self>();
+                #expr
             }
         }
     )

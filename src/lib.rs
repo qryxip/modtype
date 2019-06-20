@@ -28,10 +28,11 @@
 //! | `const_value`        | `const_value = #LitInt` where `#LitInt` has a suffix | No        |
 
 pub use modtype_derive::{
-    get, new, Add, AddAssign, Bounded, ConstValue, DebugTransparent, DebugTransparent as Debug,
-    Deref, Display, Div, DivAssign, From, FromPrimitive, FromStr, Integer, Into, Inv, Mul,
-    MulAssign, Neg, Num, One, Pow_u16, Pow_u32, Pow_u8, Pow_usize, Rem, RemAssign, Sub, SubAssign,
-    ToBigInt, ToBigUint, ToPrimitive, Unsigned, Zero,
+    get, new, Add, AddAssign, Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedRem,
+    CheckedSub, ConstValue, DebugTransparent, DebugTransparent as Debug, Deref, Display, Div,
+    DivAssign, From, FromPrimitive, FromStr, Integer, Into, Inv, Mul, MulAssign, Neg, Num, One,
+    Pow_u16, Pow_u32, Pow_u8, Pow_usize, Rem, RemAssign, Sub, SubAssign, ToBigInt, ToBigUint,
+    ToPrimitive, Unsigned, Zero,
 };
 
 use std::fmt;
@@ -94,7 +95,8 @@ pub mod preset {
         /// use modtype::ConstValue;
         /// use num::bigint::{ToBigInt as _, ToBigUint as _};
         /// use num::pow::Pow as _;
-        /// use num::{FromPrimitive as _, Integer as _, Num as _, One as _, ToPrimitive as _, Unsigned, Zero as _};
+        /// use num::traits::{CheckedNeg as _, CheckedRem as _};
+        /// use num::{Bounded as _, CheckedDiv as _, CheckedMul as _, CheckedSub as _, FromPrimitive as _, Integer as _, Num as _, One as _, ToPrimitive as _, Unsigned, Zero as _};
         ///
         /// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
         /// #[modtype(const_value = 7u64)]
@@ -117,8 +119,15 @@ pub mod preset {
         /// assert_eq!(F::zero(), F::from(0));
         /// assert_eq!(F::one(), F::from(1));
         /// assert_eq!(F::from_str_radix("111", 2), Ok(F::from(0)));
-        /// static_assert_unsigned::<F>();
+        /// assert_eq!((F::min_value(), F::max_value()), (F::from(0), F::from(6)));
+        /// assert_eq!(num::range_step(F::from(0), F::from(6), F::from(2)).map(|x| *x).collect::<Vec<_>>(), &[0, 2, 4]);
+        /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F::from(x).checked_sub(&F::from(y)).is_some())));
+        /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F::from(x).checked_mul(&F::from(y)).is_some())));
+        /// (0..=6).for_each(|x| assert!(F::from(x).checked_div(&F::from(0)).is_none()));
+        /// (0..=6).for_each(|x| assert!(F::from(x).checked_rem(&F::from(0)).is_none()));
+        /// (0..=6).for_each(|x| assert!(F::from(x).checked_neg().is_some()));
         /// assert_eq!(F::from_i64(-1), None);
+        /// static_assert_unsigned::<F>();
         /// assert_eq!(F::from(3).to_i64(), Some(3i64));
         /// assert_eq!(F::from(3).pow(2u8), F::from(2));
         /// assert_eq!(F::from(3).pow(2u16), F::from(2));
@@ -159,6 +168,12 @@ pub mod preset {
             crate::One,
             crate::Num,
             crate::Bounded,
+            crate::CheckedAdd,
+            crate::CheckedSub,
+            crate::CheckedMul,
+            crate::CheckedDiv,
+            crate::CheckedRem,
+            crate::CheckedNeg,
             crate::Inv,
             crate::Unsigned,
             crate::FromPrimitive,
@@ -195,7 +210,8 @@ pub mod preset {
         /// use modtype::ConstValue;
         /// use num::bigint::{ToBigInt as _, ToBigUint as _};
         /// use num::pow::Pow as _;
-        /// use num::{FromPrimitive as _, One as _, ToPrimitive as _, Zero as _};
+        /// use num::traits::{CheckedNeg as _};
+        /// use num::{Bounded as _, CheckedMul as _, CheckedSub as _, FromPrimitive as _, One as _, ToPrimitive as _, Zero as _};
         ///
         /// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
         /// #[modtype(const_value = 7u64)]
@@ -213,6 +229,11 @@ pub mod preset {
         /// assert_eq!(Z::from(3) * Z::from(4), Z::from(5));
         /// assert_eq!(Z::zero(), Z::from(0));
         /// assert_eq!(Z::one(), Z::from(1));
+        /// assert_eq!((Z::min_value(), Z::max_value()), (Z::from(0), Z::from(6)));
+        /// assert_eq!(num::range_step(Z::from(0), Z::from(6), Z::from(2)).map(|x| *x).collect::<Vec<_>>(), &[0, 2, 4]);
+        /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z::from(x).checked_sub(&Z::from(y)).is_some())));
+        /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z::from(x).checked_mul(&Z::from(y)).is_some())));
+        /// (0..=6).for_each(|x| assert!(Z::from(x).checked_neg().is_some()));
         /// assert_eq!(Z::from_i64(-1), None);
         /// assert_eq!(Z::from(3).to_i64(), Some(3i64));
         /// assert_eq!(Z::from(3).pow(2u8), Z::from(2));
@@ -248,6 +269,10 @@ pub mod preset {
             crate::Zero,
             crate::One,
             crate::Bounded,
+            crate::CheckedAdd,
+            crate::CheckedSub,
+            crate::CheckedMul,
+            crate::CheckedNeg,
             crate::FromPrimitive,
             crate::ToPrimitive,
             crate::Pow_u8,

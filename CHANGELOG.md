@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `modtype::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv, CheckedRem, CheckedNeg}`.
+
 ### Changed
 
 - `modtype::AddAssign` requires `Add<Self, Output = Self> + Copy`.
