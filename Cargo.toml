@@ -1,6 +1,6 @@
 [package]
 name = "modtype"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Ryo Yamashita <qryxip@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -15,5 +15,5 @@ categories = ["algorithms"]
 members = ["./derive"]
 
 [dependencies]
-modtype_derive = { version = "0.1.0", path = "./derive" }
+modtype_derive = { version = "0.2.0", path = "./derive" }
 num = "0.2.0"
