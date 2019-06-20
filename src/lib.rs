@@ -28,11 +28,10 @@
 //! | `const_value`        | `const_value = #LitInt` where `#LitInt` has a suffix | No        |
 
 pub use modtype_derive::{
-    get, new, Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign,
-    Bounded, ConstValue, DebugTransparent, DebugTransparent as Debug, Deref, Display, Div,
-    DivAssign, From, FromPrimitive, FromStr, Integer, Into, Inv, Mul, MulAssign, Neg, Num, One,
-    Pow_u16, Pow_u32, Pow_u8, Pow_usize, Rem, RemAssign, Sub, SubAssign, ToBigInt, ToBigUint,
-    ToPrimitive, Unsigned, Zero,
+    get, new, Add, AddAssign, Bounded, ConstValue, DebugTransparent, DebugTransparent as Debug,
+    Deref, Display, Div, DivAssign, From, FromPrimitive, FromStr, Integer, Into, Inv, Mul,
+    MulAssign, Neg, Num, One, Pow_u16, Pow_u32, Pow_u8, Pow_usize, Rem, RemAssign, Sub, SubAssign,
+    ToBigInt, ToBigUint, ToPrimitive, Unsigned, Zero,
 };
 
 use std::fmt;
@@ -115,9 +114,6 @@ pub mod preset {
         /// assert_eq!(F::from(3) * F::from(4), F::from(5));
         /// assert_eq!(F::from(3) / F::from(4), F::from(6));
         /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert_eq!(F::from(x) % F::from(y), F::from(0))));
-        /// assert_eq!(F::from(3) & F::from(4), F::from(0));
-        /// assert_eq!(F::from(3) | F::from(4), F::from(0));
-        /// assert_eq!(F::from(3) ^ F::from(4), F::from(0));
         /// assert_eq!(F::zero(), F::from(0));
         /// assert_eq!(F::one(), F::from(1));
         /// assert_eq!(F::from_str_radix("111", 2), Ok(F::from(0)));
@@ -159,12 +155,6 @@ pub mod preset {
             crate::DivAssign,
             crate::Rem,
             crate::RemAssign,
-            crate::BitAnd,
-            crate::BitAndAssign,
-            crate::BitOr,
-            crate::BitOrAssign,
-            crate::BitXor,
-            crate::BitXorAssign,
             crate::Zero,
             crate::One,
             crate::Num,
@@ -221,9 +211,6 @@ pub mod preset {
         /// assert_eq!(Z::from(6) + Z::from(2), Z::from(1));
         /// assert_eq!(Z::from(0) - Z::from(1), Z::from(6));
         /// assert_eq!(Z::from(3) * Z::from(4), Z::from(5));
-        /// assert_eq!(Z::from(3) & Z::from(4), Z::from(0));
-        /// assert_eq!(Z::from(3) | Z::from(4), Z::from(0));
-        /// assert_eq!(Z::from(3) ^ Z::from(4), Z::from(0));
         /// assert_eq!(Z::zero(), Z::from(0));
         /// assert_eq!(Z::one(), Z::from(1));
         /// assert_eq!(Z::from_i64(-1), None);
@@ -258,12 +245,6 @@ pub mod preset {
             crate::SubAssign,
             crate::Mul,
             crate::MulAssign,
-            crate::BitAnd,
-            crate::BitAndAssign,
-            crate::BitOr,
-            crate::BitOrAssign,
-            crate::BitXor,
-            crate::BitXorAssign,
             crate::Zero,
             crate::One,
             crate::Bounded,

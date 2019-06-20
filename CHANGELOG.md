@@ -12,6 +12,10 @@
 - `modtype::BitOrAssign` requires `BigOr<Self, Output = Self> + Copy`.
 - `modtype::BitXorAssign` requires `BigXor<Self, Output = Self> + Copy`.
 
+### Removed
+
+- `modtype::{BitAnd, BitAndassign, BitOr, BitOrassign, BitXor, BitXorassign}`.
+
 ## [0.1.1] - 2019-06-20Z
 
 ### Added

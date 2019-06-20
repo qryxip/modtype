@@ -420,66 +420,6 @@ pub fn rem_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
-#[proc_macro_derive(BitAnd, attributes(modtype))]
-pub fn bit_and(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_almost_transparent(
-        input,
-        parse_quote!(BitAnd),
-        parse_quote!(bitand),
-        |l, r, _| parse_quote!(#l & #r),
-    )
-}
-
-#[proc_macro_derive(BitAndAssign, attributes(modtype))]
-pub fn bit_and_assgin(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign(
-        input,
-        parse_quote!(BitAndAssign),
-        parse_quote!(bitand_assign),
-        parse_quote!(&),
-    )
-}
-
-#[proc_macro_derive(BitOr, attributes(modtype))]
-pub fn bit_or(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_almost_transparent(
-        input,
-        parse_quote!(BitOr),
-        parse_quote!(bitor),
-        |l, r, _| parse_quote!(#l | #r),
-    )
-}
-
-#[proc_macro_derive(BitOrAssign, attributes(modtype))]
-pub fn bit_or_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign(
-        input,
-        parse_quote!(BitOrAssign),
-        parse_quote!(bitor_assign),
-        parse_quote!(|),
-    )
-}
-
-#[proc_macro_derive(BitXor, attributes(modtype))]
-pub fn bit_xor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_almost_transparent(
-        input,
-        parse_quote!(BitXor),
-        parse_quote!(bitxor),
-        |l, r, _| parse_quote!(#l ^ #r),
-    )
-}
-
-#[proc_macro_derive(BitXorAssign, attributes(modtype))]
-pub fn bit_xor_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign(
-        input,
-        parse_quote!(BitXorAssign),
-        parse_quote!(bitxor_assign),
-        parse_quote!(^),
-    )
-}
-
 #[proc_macro_derive(Zero, attributes(modtype))]
 pub fn zero(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     identity(
