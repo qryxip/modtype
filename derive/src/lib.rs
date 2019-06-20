@@ -7,9 +7,9 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, parse_quote, Attribute, Data, DataEnum, DataStruct, DataUnion, DeriveInput,
-    Expr, ExprStruct, Field, Fields, FieldsNamed, Generics, Ident, ImplGenerics, IntSuffix, ItemFn,
-    Lit, Meta, MetaList, MetaNameValue, NestedMeta, Path, Stmt, Type, Visibility,
+    parse_macro_input, parse_quote, Attribute, BinOp, Data, DataEnum, DataStruct, DataUnion,
+    DeriveInput, Expr, ExprStruct, Field, Fields, FieldsNamed, Generics, Ident, ImplGenerics,
+    IntSuffix, ItemFn, Lit, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type, Visibility,
 };
 
 use std::convert::TryFrom;
@@ -271,12 +271,11 @@ pub fn add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 #[proc_macro_derive(AddAssign, attributes(modtype))]
 pub fn add_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign_almost_transparent(
+    bin_assign(
         input,
         parse_quote!(AddAssign),
         parse_quote!(add_assign),
-        None,
-        |l, r, _| parse_quote!(#l += #r;),
+        parse_quote!(+),
     )
 }
 
@@ -292,12 +291,11 @@ pub fn sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 #[proc_macro_derive(SubAssign, attributes(modtype))]
 pub fn sub_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign_almost_transparent(
+    bin_assign(
         input,
         parse_quote!(SubAssign),
         parse_quote!(sub_assign),
-        Some(parse_quote!(#[allow(clippy::suspicious_op_assign_impl)])),
-        |l, r, m| parse_quote!(#l -= #m + #r;),
+        parse_quote!(-),
     )
 }
 
@@ -313,12 +311,11 @@ pub fn mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 #[proc_macro_derive(MulAssign, attributes(modtype))]
 pub fn mul_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign_almost_transparent(
+    bin_assign(
         input,
         parse_quote!(MulAssign),
         parse_quote!(mul_assign),
-        None,
-        |l, r, _| parse_quote!(#l *= #r;),
+        parse_quote!(*),
     )
 }
 
@@ -377,17 +374,12 @@ pub fn div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 #[proc_macro_derive(DivAssign, attributes(modtype))]
 pub fn div_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign(input, parse_quote!(DivAssign), |input, rhs_ty| {
-        let Input { std, .. } = input;
-        parse_quote! {
-            #[inline]
-            fn div_assign(&mut self, rhs: #rhs_ty) {
-                fn static_assert_copy<T: #std::marker::Copy>() {}
-                static_assert_copy::<Self>();
-                *self = *self / rhs;
-            }
-        }
-    })
+    bin_assign(
+        input,
+        parse_quote!(DivAssign),
+        parse_quote!(div_assign),
+        parse_quote!(/),
+    )
 }
 
 #[proc_macro_derive(Rem, attributes(modtype))]
@@ -420,18 +412,12 @@ pub fn rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 #[proc_macro_derive(RemAssign, attributes(modtype))]
 pub fn rem_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign(input, parse_quote!(RemAssign), |input, rhs_ty| {
-        let Input { std, .. } = input;
-
-        parse_quote! {
-            #[inline]
-            fn rem_assign(&mut self, rhs: #rhs_ty) {
-                fn static_assert_copy<T: #std::marker::Copy>() {}
-                static_assert_copy::<Self>();
-                *self = *self % rhs;
-            }
-        }
-    })
+    bin_assign(
+        input,
+        parse_quote!(RemAssign),
+        parse_quote!(rem_assign),
+        parse_quote!(%),
+    )
 }
 
 #[proc_macro_derive(BitAnd, attributes(modtype))]
@@ -446,12 +432,11 @@ pub fn bit_and(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 #[proc_macro_derive(BitAndAssign, attributes(modtype))]
 pub fn bit_and_assgin(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign_almost_transparent(
+    bin_assign(
         input,
         parse_quote!(BitAndAssign),
         parse_quote!(bitand_assign),
-        None,
-        |l, r, _| parse_quote!(#l &= #r;),
+        parse_quote!(&),
     )
 }
 
@@ -467,12 +452,11 @@ pub fn bit_or(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 #[proc_macro_derive(BitOrAssign, attributes(modtype))]
 pub fn bit_or_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign_almost_transparent(
+    bin_assign(
         input,
         parse_quote!(BitOrAssign),
         parse_quote!(bitor_assign),
-        None,
-        |l, r, _| parse_quote!(#l |= #r;),
+        parse_quote!(|),
     )
 }
 
@@ -488,12 +472,11 @@ pub fn bit_xor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 #[proc_macro_derive(BitXorAssign, attributes(modtype))]
 pub fn bit_xor_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign_almost_transparent(
+    bin_assign(
         input,
         parse_quote!(BitXorAssign),
         parse_quote!(bitxor_assign),
-        None,
-        |l, r, _| parse_quote!(#l ^= #r;),
+        parse_quote!(^),
     )
 }
 
@@ -1036,42 +1019,11 @@ fn bin(
     ret.into()
 }
 
-fn bin_assign_almost_transparent(
-    input: proc_macro::TokenStream,
-    trait_ident: Ident,
-    fn_ident: Ident,
-    attr: Option<Attribute>,
-    op: fn(&Expr, &Expr, &Expr) -> Stmt,
-) -> proc_macro::TokenStream {
-    bin_assign(input, trait_ident, |input, rhs_ty| {
-        let Input {
-            modulus,
-            field_ident,
-            ..
-        } = input;
-
-        let stmt = op(
-            &parse_quote!(self.#field_ident),
-            &parse_quote!(rhs.#field_ident),
-            &modulus,
-        );
-        parse_quote! {
-            #attr
-            #[inline]
-            fn #fn_ident(&mut self, rhs: #rhs_ty) {
-                #stmt
-                if self.#field_ident >= #modulus {
-                    self.#field_ident %= #modulus;
-                }
-            }
-        }
-    })
-}
-
 fn bin_assign(
     input: proc_macro::TokenStream,
     trait_ident: Ident,
-    derive_fn: impl Fn(&Input, &Type) -> ItemFn,
+    fn_ident: Ident,
+    bin_op: BinOp,
 ) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let input = try_syn!(Input::try_from(input));
@@ -1084,27 +1036,26 @@ fn bin_assign(
     } = &input;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let derive = |impl_generics: &ImplGenerics, rhs_ty: Type| -> _ {
-        let item_fn = derive_fn(&input, &rhs_ty);
+    let derive = |rhs_ty: Type, rhs_deref: bool| -> _ {
+        let star_token = if rhs_deref { quote!(*) } else { quote!() };
         quote! {
             impl#impl_generics #std::ops::#trait_ident<#rhs_ty> for #struct_ident#ty_generics
             #where_clause
             {
-                #item_fn
+                #[inline]
+                fn #fn_ident(&mut self, rhs: #rhs_ty) {
+                    fn static_assert_copy<T: #std::marker::Copy>() {}
+                    static_assert_copy::<Self>();
+                    *self = *self #bin_op #star_token rhs;
+                }
             }
         }
     };
 
-    let mut ret = derive(&impl_generics, parse_quote!(#struct_ident#ty_generics));
-
+    let mut ret = derive(parse_quote!(Self), false);
     if *moving_ops_for_ref {
-        let (impl_generics, _, _) = generics.split_for_impl();
-        ret.extend(derive(
-            &impl_generics,
-            parse_quote!(&'_ #struct_ident#ty_generics),
-        ));
+        ret.extend(derive(parse_quote!(&'_ Self), true));
     }
-
     ret.into()
 }
 
