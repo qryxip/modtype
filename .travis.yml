@@ -72,11 +72,11 @@ install:
 
 script:
   - |
-    if [ -f ~/.cargo/bin/cargo-fmt ]; then
+    if [ "RUSTFMT" = true ]; then
       cargo fmt --all -- --check
     fi
   - |
-    if [ -f ~/.cargo/bin/cargo-clippy ]; then
+    if [ "$CLIPPY" = true ]; then
       cargo clippy --all --all-targets -- -D warnings
     else
       cargo check --all --all-targets
@@ -88,3 +88,12 @@ script:
     else
       cargo test --all
     fi
+
+notifications:
+  email:
+    on_success: always
+    on_failure: always
+
+branches:
+  only:
+    - master
