@@ -224,6 +224,41 @@ pub fn deref(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+#[proc_macro_derive(Neg, attributes(modtype))]
+pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let input = try_syn!(Input::try_from(input));
+    let Input {
+        modulus,
+        std,
+        struct_ident,
+        generics,
+        field_ident,
+        ..
+    } = &input;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let value_expr = parse_quote!(#modulus - self.#field_ident);
+    let struct_expr = input.construct_self(true, Some(value_expr));
+    quote!(
+        impl#impl_generics #std::ops::Neg for #struct_ident#ty_generics
+        #where_clause
+        {
+            type Output = Self;
+
+            #[inline]
+            fn neg(self) -> Self {
+                fn static_assert_add<T: #std::ops::Add<T, Output = T>>() {}
+                fn static_assert_sub<T: #std::ops::Sub<T, Output = T>>() {}
+                static_assert_add::<Self>();
+                static_assert_sub::<Self>();
+                #struct_expr
+            }
+        }
+    )
+    .into()
+}
+
 #[proc_macro_derive(Add, attributes(modtype))]
 pub fn add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin_almost_transparent(

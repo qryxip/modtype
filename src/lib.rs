@@ -30,9 +30,9 @@
 pub use modtype_derive::{
     get, new, Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign,
     Bounded, ConstValue, DebugTransparent, DebugTransparent as Debug, Deref, Display, Div,
-    DivAssign, From, FromPrimitive, FromStr, Integer, Into, Inv, Mul, MulAssign, Num, One, Pow_u16,
-    Pow_u32, Pow_u8, Pow_usize, Rem, RemAssign, Sub, SubAssign, ToBigInt, ToBigUint, ToPrimitive,
-    Unsigned, Zero,
+    DivAssign, From, FromPrimitive, FromStr, Integer, Into, Inv, Mul, MulAssign, Neg, Num, One,
+    Pow_u16, Pow_u32, Pow_u8, Pow_usize, Rem, RemAssign, Sub, SubAssign, ToBigInt, ToBigUint,
+    ToPrimitive, Unsigned, Zero,
 };
 
 use std::fmt;
@@ -108,7 +108,8 @@ pub mod preset {
         /// assert_eq!(u64::from(F::from(3)), 3);
         /// assert_eq!(F::from(3).to_string(), "3");
         /// assert_eq!(format!("{:?}", F::from(3)), "3");
-        /// assert_eq!(*(F::from(3)), 3);
+        /// assert_eq!(*F::from(3), 3);
+        /// assert_eq!(-F::from(1), F::from(6));
         /// assert_eq!(F::from(6) + F::from(2), F::from(1));
         /// assert_eq!(F::from(0) - F::from(1), F::from(6));
         /// assert_eq!(F::from(3) * F::from(4), F::from(5));
@@ -147,6 +148,7 @@ pub mod preset {
             crate::Display,
             crate::Debug,
             crate::Deref,
+            crate::Neg,
             crate::Add,
             crate::AddAssign,
             crate::Sub,
@@ -214,7 +216,8 @@ pub mod preset {
         /// assert_eq!(u64::from(Z::from(3)), 3);
         /// assert_eq!(Z::from(3).to_string(), "3");
         /// assert_eq!(format!("{:?}", Z::from(3)), "3");
-        /// assert_eq!(*(Z::from(3)), 3);
+        /// assert_eq!(*Z::from(3), 3);
+        /// assert_eq!(-Z::from(1), Z::from(6));
         /// assert_eq!(Z::from(6) + Z::from(2), Z::from(1));
         /// assert_eq!(Z::from(0) - Z::from(1), Z::from(6));
         /// assert_eq!(Z::from(3) * Z::from(4), Z::from(5));
@@ -248,6 +251,7 @@ pub mod preset {
             crate::Display,
             crate::Debug,
             crate::Deref,
+            crate::Neg,
             crate::Add,
             crate::AddAssign,
             crate::Sub,
