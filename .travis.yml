@@ -65,10 +65,9 @@ install:
     if [ "$TRAVIS_RUST_VERSION" = stable -a "$RUSTUP_HOST" = x86_64-unknown-linux-gnu -a "$TRAVIS_BRANCH" = master -a "$TRAVIS_PULL_REQUEST" = false ]; then
       cargo install cargo-kcov &&
       travis_retry bash -c 'cargo kcov --print-install-kcov-sh | sh' &&
-      travis_retry bash -c 'cargo kcov --print-install-kcov-sh | sh' &&
       kcov --version &&
       cargo-kcov --version
-    fi
+    fi || true
 
 script:
   - |
@@ -83,8 +82,8 @@ script:
     fi
   - |
     if [ -f ~/.cargo/bin/cargo-kcov ]; then
-      travis_retry cargo kcov --all &&
-      travis_retry bash -c 'bash <(curl -s https://codecov.io/bash)'
+      travis_retry cargo kcov --all && travis_retry bash -c 'bash <(curl -s https://codecov.io/bash)' ||
+      cargo test --all
     else
       cargo test --all
     fi
