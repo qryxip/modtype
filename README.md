@@ -27,6 +27,7 @@ type F = F_<Const17U32>;
     modtype::Display,
     modtype::Debug,
     modtype::Deref,
+    modtype::Neg,
     modtype::Add,
     modtype::AddAssign,
     modtype::Sub,
