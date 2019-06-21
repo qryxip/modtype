@@ -27,13 +27,87 @@
 //! | :------------------- | :----------------------------------------------------| --------- |
 //! | `const_value`        | `const_value = #LitInt` where `#LitInt` has a suffix | No        |
 
-pub use modtype_derive::{
-    get, new, Add, AddAssign, Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedRem,
-    CheckedSub, ConstValue, DebugTransparent, DebugTransparent as Debug, Deref, Display, Div,
-    DivAssign, From, FromPrimitive, FromStr, Integer, Into, Inv, Mul, MulAssign, Neg, Num, One,
-    Pow_u16, Pow_u32, Pow_u8, Pow_usize, Rem, RemAssign, Sub, SubAssign, ToBigInt, ToBigUint,
-    ToPrimitive, Unsigned, Zero,
-};
+pub use modtype_derive::ConstValue;
+
+pub use modtype_derive::Into;
+
+pub use modtype_derive::From;
+
+pub use modtype_derive::FromStr;
+
+pub use modtype_derive::Display;
+
+pub use modtype_derive::{DebugTransparent, DebugTransparent as Debug};
+
+pub use modtype_derive::Deref;
+
+pub use modtype_derive::Neg;
+
+pub use modtype_derive::Add;
+
+pub use modtype_derive::AddAssign;
+
+pub use modtype_derive::Sub;
+
+pub use modtype_derive::SubAssign;
+
+pub use modtype_derive::Mul;
+
+pub use modtype_derive::MulAssign;
+
+pub use modtype_derive::Div;
+
+pub use modtype_derive::DivAssign;
+
+pub use modtype_derive::Rem;
+
+pub use modtype_derive::RemAssign;
+
+pub use modtype_derive::Zero;
+
+pub use modtype_derive::One;
+
+pub use modtype_derive::Num;
+
+pub use modtype_derive::Bounded;
+
+pub use modtype_derive::CheckedAdd;
+
+pub use modtype_derive::CheckedSub;
+
+pub use modtype_derive::CheckedMul;
+
+pub use modtype_derive::CheckedDiv;
+
+pub use modtype_derive::CheckedRem;
+
+pub use modtype_derive::CheckedNeg;
+
+pub use modtype_derive::Inv;
+
+pub use modtype_derive::Unsigned;
+
+pub use modtype_derive::FromPrimitive;
+
+pub use modtype_derive::ToPrimitive;
+
+pub use modtype_derive::Pow_u8;
+
+pub use modtype_derive::Pow_u16;
+
+pub use modtype_derive::Pow_u32;
+
+pub use modtype_derive::Pow_usize;
+
+pub use modtype_derive::Integer;
+
+pub use modtype_derive::ToBigUint;
+
+pub use modtype_derive::ToBigInt;
+
+pub use modtype_derive::new;
+
+pub use modtype_derive::get;
 
 use std::fmt;
 
