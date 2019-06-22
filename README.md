@@ -9,6 +9,7 @@ This crate provides:
 - Preset types
     - [`modtype::preset::u64::F`]
     - [`modtype::preset::u64::Z`]
+    - [`modtype::preset::u64::thread_local::F`]
     - [`modtype::preset::u64::mod1000000007::F`]
     - [`modtype::preset::u64::mod1000000007::Z`]
 
@@ -139,5 +140,6 @@ use modtype::preset::u64::mod1000000007::{F, Z};
 [`ConstValue`]: https://docs.rs/modtype_derive/0.2/modtype_derive/derive.ConstValue.html
 [`modtype::preset::u64::F`]: https://docs.rs/modtype/0.2/modtype/preset/u64/struct.F.html
 [`modtype::preset::u64::Z`]: https://docs.rs/modtype/0.2/modtype/preset/u64/struct.Z.html
+[`modtype::preset::u64::thread_local::F`]: https://docs.rs/modtype/0.2/modtype/preset/u64/thread_local/struct.F.html
 [`modtype::preset::u64::mod1000000007::F`]: https://docs.rs/modtype/0.2/modtype/preset/u64/mod1000000007/type.F.html
 [`modtype::preset::u64::mod1000000007::Z`]: https://docs.rs/modtype/0.2/modtype/preset/u64/mod1000000007/type.Z.html

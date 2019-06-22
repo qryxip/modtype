@@ -3,6 +3,7 @@
 //! - Preset types
 //!     - [`modtype::preset::u64::F`]
 //!     - [`modtype::preset::u64::Z`]
+//!     - [`modtype::preset::u64::thread_local::F`]
 //!     - [`modtype::preset::u64::mod1000000007::F`]
 //!     - [`modtype::preset::u64::mod1000000007::Z`]
 //!
@@ -58,6 +59,7 @@
 //! [`ConstValue`]: https://docs.rs/modtype_derive/0.2/modtype_derive/derive.ConstValue.html
 //! [`modtype::preset::u64::F`]: ./preset/u64/struct.F.html
 //! [`modtype::preset::u64::Z`]: ./preset/u64/struct.Z.html
+//! [`modtype::preset::u64::thread_local::F`]: ./preset/u64/thread_local/struct.F.html
 //! [`modtype::preset::u64::mod1000000007::F`]: ./preset/u64/mod1000000007/type.F.html
 //! [`modtype::preset::u64::mod1000000007::Z`]: ./preset/u64/mod1000000007/type.Z.html
 
@@ -176,6 +178,105 @@ pub trait ConstValue: Copy + Ord + fmt::Debug {
 pub mod preset {
     /// Preset tyeps that the inner types are `u64`.
     pub mod u64 {
+        pub mod thread_local {
+            use std::cell::UnsafeCell;
+
+            /// Set a modulus and execute a closure.
+            ///
+            /// # Example
+            ///
+            /// ```
+            /// use modtype::preset::u64::thread_local::{with_modulus, F};
+            ///
+            /// with_modulus(7, || {
+            ///     assert_eq!(F::from(6) + F::from(1), F::from(0));
+            /// });
+            /// ```
+            pub fn with_modulus<T, F: FnOnce() -> T>(modulus: u64, f: F) -> T {
+                unsafe { set_modulus(modulus) };
+                f()
+            }
+
+            #[inline]
+            unsafe fn modulus() -> u64 {
+                MODULUS.with(|m| *m.get())
+            }
+
+            unsafe fn set_modulus(modulus: u64) {
+                MODULUS.with(|m| *m.get() = modulus)
+            }
+
+            thread_local! {
+                static MODULUS: UnsafeCell<u64> = UnsafeCell::new(0);
+            }
+
+            /// A modular arithmetic integer type.
+            ///
+            /// # Example
+            ///
+            /// ```
+            /// use modtype::preset::u64::thread_local::{with_modulus, F};
+            ///
+            /// with_modulus(7, || {
+            ///     assert_eq!(F::from(6) + F::from(1), F::from(0));
+            /// });
+            /// ```
+            #[derive(
+                Default,
+                Clone,
+                Copy,
+                PartialEq,
+                Eq,
+                PartialOrd,
+                Ord,
+                crate::From,
+                crate::Into,
+                crate::FromStr,
+                crate::Display,
+                crate::Debug,
+                crate::Deref,
+                crate::Neg,
+                crate::Add,
+                crate::AddAssign,
+                crate::Sub,
+                crate::SubAssign,
+                crate::Mul,
+                crate::MulAssign,
+                crate::Div,
+                crate::DivAssign,
+                crate::Rem,
+                crate::RemAssign,
+                crate::Zero,
+                crate::One,
+                crate::Num,
+                crate::Bounded,
+                crate::CheckedAdd,
+                crate::CheckedSub,
+                crate::CheckedMul,
+                crate::CheckedDiv,
+                crate::CheckedRem,
+                crate::CheckedNeg,
+                crate::Inv,
+                crate::Unsigned,
+                crate::FromPrimitive,
+                crate::ToPrimitive,
+                crate::Pow_u8,
+                crate::Pow_u16,
+                crate::Pow_u32,
+                crate::Pow_usize,
+                crate::Integer,
+                crate::ToBigUint,
+                crate::ToBigInt,
+                crate::new,
+                crate::get,
+            )]
+            #[modtype(modulus = "unsafe { modulus() }")]
+            pub struct F {
+                #[modtype(value)]
+                __value: u64,
+            }
+        }
+
         pub mod mod1000000007 {
             use crate::ConstValue;
 
