@@ -26,7 +26,7 @@
 //! | `num_traits`         | `num_traits = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
 //! | `num_integer`        | `num_integer = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
 //! | `num_bigint`         | `num_bigint = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
-//! | `moving_ops_for_ref` | `moving_ops_for_ref`                                                     | Yes                              |
+//! | `no_impl_for_ref`    | `no_impl_for_ref`                                                        | Yes                              |
 //!
 //! ## Field
 //!
@@ -302,14 +302,7 @@ pub mod preset {
             crate::new,
             crate::get,
         )]
-        #[modtype(
-            modulus = "M::VALUE",
-            std = "std",
-            num_traits = "num::traits",
-            num_integer = "num::integer",
-            num_bigint = "num::bigint",
-            moving_ops_for_ref
-        )]
+        #[modtype(modulus = "M::VALUE")]
         pub struct F<M: ConstValue<Value = u64>> {
             #[modtype(value)]
             __value: u64,
@@ -398,14 +391,7 @@ pub mod preset {
             crate::new,
             crate::get,
         )]
-        #[modtype(
-            modulus = "M::VALUE",
-            std = "std",
-            num_traits = "num::traits",
-            num_integer = "num::integer",
-            num_bigint = "num::bigint",
-            moving_ops_for_ref
-        )]
+        #[modtype(modulus = "M::VALUE")]
         pub struct Z<M: ConstValue<Value = u64>> {
             #[modtype(value)]
             __value: u64,

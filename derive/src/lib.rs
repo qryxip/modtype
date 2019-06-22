@@ -280,7 +280,7 @@ pub fn deref(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
-/// Derives [`Neg`]`<Output = Self>`.
+/// Derives [`Neg`]`.
 ///
 /// # Requirements
 ///
@@ -327,7 +327,7 @@ pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
-/// Derives [`Add`]`<Self, Output = Self>`.
+/// Derives [`Add`].
 ///
 /// # Requirements
 ///
@@ -345,7 +345,7 @@ pub fn add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
-/// Derives [`AddAssign`]`<Self>`.
+/// Derives [`AddAssign`]`.
 ///
 /// # Requirements
 ///
@@ -365,7 +365,7 @@ pub fn add_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
-/// Derives [`Sub`]`<Self, Output = Self>`.
+/// Derives [`Sub`]`.
 ///
 /// # Requirements
 ///
@@ -383,7 +383,7 @@ pub fn sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
-/// Derives [`SubAssign`]`<Self>`.
+/// Derives [`SubAssign`]`.
 ///
 /// # Requirements
 ///
@@ -403,7 +403,7 @@ pub fn sub_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
-/// Derives [`Mul`]`<Self, Output = Self>`.
+/// Derives [`Mul`]`.
 ///
 /// # Requirements
 ///
@@ -421,7 +421,7 @@ pub fn mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
-/// Derives [`MulAssign`]`<Self>`.
+/// Derives [`MulAssign`]`.
 ///
 /// # Requirements
 ///
@@ -441,7 +441,7 @@ pub fn mul_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
-/// Derives [`Div`]`<Self, Output = Self>`.
+/// Derives [`Div`]`.
 ///
 /// # Requirements
 ///
@@ -507,7 +507,7 @@ pub fn div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     })
 }
 
-/// Derives [`DivAssign`]`<Self>`.
+/// Derives [`DivAssign`]`.
 ///
 /// # Requirements
 ///
@@ -527,7 +527,7 @@ pub fn div_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
-/// Derives [`Rem`]`<Self, Output = Self>`.
+/// Derives [`Rem`]`.
 ///
 /// # Requirements
 ///
@@ -565,7 +565,7 @@ pub fn rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     })
 }
 
-/// Derives [`RemAssign`]`<Self>`.
+/// Derives [`RemAssign`]`.
 ///
 /// # Requirements
 ///
@@ -871,7 +871,7 @@ pub fn inv(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let Input {
         num_traits,
-        moving_ops_for_ref,
+        no_impl_for_ref,
         struct_ident,
         generics,
         ..
@@ -894,7 +894,7 @@ pub fn inv(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
 
     let mut ret = derive(parse_quote!(#struct_ident#ty_generics));
-    if moving_ops_for_ref {
+    if !no_impl_for_ref {
         ret.extend(derive(parse_quote!(&'_ #struct_ident#ty_generics)));
     }
     ret.into()
@@ -1042,7 +1042,7 @@ pub fn to_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
-/// Derives [`Pow`]`<u8>`.
+/// Derives [`Pow`]`<u8>`, [`Pow`]`<&'_ u8>` for `Self`, `&'_ Self`.
 ///
 /// # Requirements
 ///
@@ -1055,7 +1055,7 @@ pub fn pow_u8(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     pow(input, parse_quote!(u8))
 }
 
-/// Derives [`Pow`]`<u16>`.
+/// Derives [`Pow`]`<u16>`, [`Pow`]`<&'_ u16>` for `Self`, `&'_ Self`.
 ///
 /// # Requirements
 ///
@@ -1068,7 +1068,7 @@ pub fn pow_u16(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     pow(input, parse_quote!(u16))
 }
 
-/// Derives [`Pow`]`<u32>`.
+/// Derives [`Pow`]`<u32>`, [`Pow`]`<&'_ u32>` for `Self`, `&'_ Self`.
 ///
 /// # Requirements
 ///
@@ -1081,7 +1081,7 @@ pub fn pow_u32(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     pow(input, parse_quote!(u32))
 }
 
-/// Derives [`Pow`]`<usize>`.
+/// Derives [`Pow`]`<usize>`, [`Pow`]`<&'_ usize>` for `Self`, `&'_ Self`.
 ///
 /// # Requirements
 ///
@@ -1372,7 +1372,7 @@ fn bin(
     let input = try_syn!(Input::try_from(input));
     let Input {
         std,
-        moving_ops_for_ref,
+        no_impl_for_ref,
         struct_ident,
         generics,
         ..
@@ -1398,7 +1398,7 @@ fn bin(
         parse_quote!(#struct_ident#ty_generics),
     );
 
-    if *moving_ops_for_ref {
+    if !no_impl_for_ref {
         ret.extend(derive(
             &impl_generics,
             parse_quote!(&'_ #struct_ident#ty_generics),
@@ -1431,7 +1431,7 @@ fn bin_assign(
     let input = try_syn!(Input::try_from(input));
     let Input {
         std,
-        moving_ops_for_ref,
+        no_impl_for_ref,
         struct_ident,
         generics,
         ..
@@ -1455,7 +1455,7 @@ fn bin_assign(
     };
 
     let mut ret = derive(parse_quote!(Self), false);
-    if *moving_ops_for_ref {
+    if !no_impl_for_ref {
         ret.extend(derive(parse_quote!(&'_ Self), true));
     }
     ret.into()
@@ -1551,7 +1551,7 @@ fn pow(input: proc_macro::TokenStream, rhs_ty: Type) -> proc_macro::TokenStream 
     let Input {
         std,
         num_traits,
-        moving_ops_for_ref,
+        no_impl_for_ref,
         struct_ident,
         generics,
         field_ident,
@@ -1577,7 +1577,7 @@ fn pow(input: proc_macro::TokenStream, rhs_ty: Type) -> proc_macro::TokenStream 
     };
 
     let mut ret = derive(&parse_quote!(#struct_ident#ty_generics), &rhs_ty);
-    if moving_ops_for_ref {
+    if !no_impl_for_ref {
         ret.extend(derive(
             &parse_quote!(#struct_ident#ty_generics),
             &parse_quote!(&'_ #rhs_ty),
@@ -1632,7 +1632,7 @@ struct Input {
     num_traits: Path,
     num_integer: Path,
     num_bigint: Path,
-    moving_ops_for_ref: bool,
+    no_impl_for_ref: bool,
     struct_vis: Visibility,
     struct_ident: Ident,
     generics: Generics,
@@ -1769,7 +1769,7 @@ impl TryFrom<DeriveInput> for Input {
         let mut num_traits = None;
         let mut num_integer = None;
         let mut num_bigint = None;
-        let mut moving_ops_for_ref = false;
+        let mut no_impl_for_ref = false;
 
         let mut put_expr_or_path = |name_value: &MetaNameValue| -> syn::Result<_> {
             let span = name_value.span();
@@ -1784,8 +1784,8 @@ impl TryFrom<DeriveInput> for Input {
                 put_path_for(ident.span(), lit, &mut num_integer)
             } else if ident == "num_bigint" {
                 put_path_for(ident.span(), lit, &mut num_bigint)
-            } else if ident == "moving_ops_for_ref" {
-                Err(syn::Error::new(span, "expected `moving_ops_for_ref(..)`"))
+            } else if ident == "no_impl_for_ref" {
+                Err(syn::Error::new(span, "expected `no_impl_for_ref`"))
             } else {
                 Err(syn::Error::new(span, "unknown identifier"))
             }
@@ -1796,8 +1796,8 @@ impl TryFrom<DeriveInput> for Input {
                 .contains(&word.to_string().as_str())
             {
                 Err(word.to_error(format!("expected `{} = #LitStr`", word)))
-            } else if word == "moving_ops_for_ref" {
-                put_true_for(word.span(), &mut moving_ops_for_ref)
+            } else if word == "no_impl_for_ref" {
+                put_true_for(word.span(), &mut no_impl_for_ref)
             } else {
                 Err(word.to_error("unknown identifier"))
             }
@@ -1893,7 +1893,7 @@ impl TryFrom<DeriveInput> for Input {
             num_traits,
             num_integer,
             num_bigint,
-            moving_ops_for_ref,
+            no_impl_for_ref,
             struct_vis,
             struct_ident,
             generics,

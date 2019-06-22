@@ -72,7 +72,7 @@ type F = F_<Const17U32>;
     num_traits = "num::traits",
     num_integer = "num::integer",
     num_bigint = "num::bigint",
-    moving_ops_for_ref
+    no_impl_for_ref
 )]
 struct F_<M: ConstValue<Value = u32>> {
     #[modtype(value)]
@@ -107,7 +107,7 @@ use modtype::preset::u64::mod1000000007::{F, Z};
 | `num_traits`         | `num_traits = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
 | `num_integer`        | `num_integer = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
 | `num_bigint`         | `num_bigint = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
-| `moving_ops_for_ref` | `moving_ops_for_ref`                                                     | Yes                              |
+| `no_impl_for_ref`    | `no_impl_for_ref`                                                        | Yes                              |
 
 ### Field
 
