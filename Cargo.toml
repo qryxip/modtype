@@ -11,6 +11,10 @@ readme = "README.md"
 keywords = ["math"]
 categories = ["algorithms"]
 
+[badges]
+travis-ci = { repository = "qryxip/modtype" }
+codecov = { repository = "qryxip/modtype" }
+
 [workspace]
 members = ["./derive"]
 

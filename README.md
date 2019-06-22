@@ -1,6 +1,6 @@
 # modtype
 
-[![Build Status](https://img.shields.io/travis/qryxip/modtype.svg?branch=master&label=windows%20%26%20macos%20%26%20linux)](https://travis-ci.com/qryxip/modtype)
+[![Build Status](https://img.shields.io/travis/com/qryxip/modtype/master.svg?label=windows%20%26%20macos%20%26%20linux)](https://travis-ci.com/qryxip/modtype)
 [![codecov](https://codecov.io/gh/qryxip/modtype/branch/master/graph/badge.svg)](https://codecov.io/gh/qryxip/modtype)
 [![Crates.io](https://img.shields.io/crates/v/modtype.svg)](https://crates.io/crates/modtype)
 
