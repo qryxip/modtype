@@ -24,6 +24,18 @@ macro_rules! try_syn {
     };
 }
 
+/// Derives [`ConstValue`].
+///
+/// # Attributes
+///
+/// ## Struct
+///
+/// | Name                 | Format                                                       | Optional  |
+/// | :------------------- | :----------------------------------------------------------- | :-------- |
+/// | `const_value`        | `const_value = #`[`LitInt`] where `#`[`LitInt`] has a suffix | No        |
+///
+/// [`ConstValue`]: https://docs.rs/modtype/0.3/modtype/trait.ConstValue.html
+/// [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
 #[proc_macro_derive(ConstValue, attributes(modtype))]
 pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     fn compile_error(span: Span, msg: &str) -> proc_macro::TokenStream {
@@ -103,6 +115,14 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`From`]`<#InnerValue>`.
+///
+/// # Requirements
+///
+/// - The fields are [`Default`] except `#InnerValue`.
+///
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(From, attributes(modtype))]
 pub fn from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -132,6 +152,13 @@ pub fn from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`From`]`<Self> for #InnerValue`.
+///
+/// # Requirements
+///
+/// - `#InnerValue` is not a type parameter.
+///
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Into, attributes(modtype))]
 pub fn into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -158,6 +185,14 @@ pub fn into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`FromStr`]`<Err = #InnerValue::Err>`.
+///
+/// # Requirements
+///
+/// - `Self: `[`From`]`<#InnerValue>`.
+///
+/// [`FromStr`]: https://doc.rust-lang.org/nightly/core/str/trait.FromStr.html
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(FromStr, attributes(modtype))]
 pub fn from_str(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -186,16 +221,37 @@ pub fn from_str(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`Display`].
+///
+/// # Requirements
+///
+/// - `#InnerValue: `[`Display`].
+///
+/// [`Display`]: https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html
 #[proc_macro_derive(Display, attributes(modtype))]
 pub fn display(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     fmt(input, parse_quote!(Display))
 }
 
+/// Derives [`Debug`].
+///
+/// # Requirements
+///
+/// - `#InnerValue: `[`Debug`].
+///
+/// [`Debug`]: https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html
 #[proc_macro_derive(DebugTransparent, attributes(modtype))]
 pub fn debug_transparent(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     fmt(input, parse_quote!(Debug))
 }
 
+/// Derives [`Deref`]`<Target = #InnerValue>`.
+///
+/// # Requirements
+///
+/// Nothing.
+///
+/// [`Deref`]: https://doc.rust-lang.org/nightly/core/ops/deref/trait.Deref.html
 #[proc_macro_derive(Deref, attributes(modtype))]
 pub fn deref(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -224,6 +280,18 @@ pub fn deref(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`Neg`]`.
+///
+/// # Requirements
+///
+/// - `Self: `[`Add`]`<Self, Output = Self>`
+/// - `Self: `[`Sub`]`<Self, Output = Self>`
+/// - The fields are [`Default`] except `#InnerValue`.
+///
+/// [`Neg`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Neg.html
+/// [`Add`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Add.html
+/// [`Sub`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Sub.html
+/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(Neg, attributes(modtype))]
 pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -231,6 +299,7 @@ pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let Input {
         modulus,
         std,
+        no_impl_for_ref,
         struct_ident,
         generics,
         field_ident,
@@ -239,26 +308,42 @@ pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let value_expr = parse_quote!(#modulus - self.#field_ident);
-    let struct_expr = input.construct_self(true, Some(value_expr));
-    quote!(
-        impl#impl_generics #std::ops::Neg for #struct_ident#ty_generics
-        #where_clause
-        {
-            type Output = Self;
+    let struct_expr = input.construct_self(false, Some(value_expr));
 
-            #[inline]
-            fn neg(self) -> Self {
-                fn static_assert_add<T: #std::ops::Add<T, Output = T>>() {}
-                fn static_assert_sub<T: #std::ops::Sub<T, Output = T>>() {}
-                static_assert_add::<Self>();
-                static_assert_sub::<Self>();
-                #struct_expr
+    let derive = |lhs_ty: Type| {
+        quote! {
+            impl#impl_generics #std::ops::Neg for #lhs_ty
+            #where_clause
+            {
+                type Output = #struct_ident#ty_generics;
+
+                #[inline]
+                fn neg(self) -> #struct_ident#ty_generics {
+                    fn static_assert_add<O, L: #std::ops::Add<L, Output = O>>() {}
+                    fn static_assert_sub<O, L: #std::ops::Sub<L, Output = O>>() {}
+                    static_assert_add::<#struct_ident#ty_generics, Self>();
+                    static_assert_sub::<#struct_ident#ty_generics, Self>();
+                    #struct_expr
+                }
             }
         }
-    )
-    .into()
+    };
+
+    let mut ret = derive(parse_quote!(#struct_ident#ty_generics));
+    if !no_impl_for_ref {
+        ret.extend(derive(parse_quote!(&'_ #struct_ident#ty_generics)))
+    }
+    ret.into()
 }
 
+/// Derives [`Add`].
+///
+/// # Requirements
+///
+/// - The fields are [`Default`] except `#InnerValue`.
+///
+/// [`Add`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Add.html
+/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(Add, attributes(modtype))]
 pub fn add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin_almost_transparent(
@@ -269,6 +354,16 @@ pub fn add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`AddAssign`]`.
+///
+/// # Requirements
+///
+/// - `Self: `[`Add`]`<Self, Output = Self>`.
+/// - `Self: Copy`.
+///
+/// [`AddAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.AddAssign.html
+/// [`Add`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Add.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(AddAssign, attributes(modtype))]
 pub fn add_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin_assign(
@@ -279,6 +374,14 @@ pub fn add_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`Sub`]`.
+///
+/// # Requirements
+///
+/// - The fields are [`Default`] except `#InnerValue`.
+///
+/// [`Sub`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Sub.html
+/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(Sub, attributes(modtype))]
 pub fn sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin_almost_transparent(
@@ -289,6 +392,16 @@ pub fn sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`SubAssign`]`.
+///
+/// # Requirements
+///
+/// - `Self: `[`Sub`]`<Self, Output = Self>`
+/// - `Self: `[`Copy`]
+///
+/// [`SubAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.SubAssign.html
+/// [`Sub`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Sub.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(SubAssign, attributes(modtype))]
 pub fn sub_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin_assign(
@@ -299,6 +412,14 @@ pub fn sub_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`Mul`]`.
+///
+/// # Requirements
+///
+/// - The fields are [`Default`] except `#InnerValue`.
+///
+/// [`Mul`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Mul.html
+/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(Mul, attributes(modtype))]
 pub fn mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin_almost_transparent(
@@ -309,6 +430,16 @@ pub fn mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`MulAssign`]`.
+///
+/// # Requirements
+///
+/// - `Self: `[`Mul`]`<Self, Output = Self>`.
+/// - `Self: `[`Copy`].
+///
+/// [`MulAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.MulAssign.html
+/// [`Mul`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Mul.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(MulAssign, attributes(modtype))]
 pub fn mul_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin_assign(
@@ -319,6 +450,19 @@ pub fn mul_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`Div`]`.
+///
+/// # Requirements
+///
+/// - `<#InnerValue as `[`ToPrimitive`]`>::`[`to_i128`] always return [`Some`] for values in [0, `#modulus`).
+/// - `#modulus` is a prime.
+/// - The fields are [`Default`] except `#InnerValue`.
+///
+/// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
+/// [`ToPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.ToPrimitive.html
+/// [`to_i128`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.ToPrimitive.html#method.to_i128
+/// [`Some`]: https://doc.rust-lang.org/nightly/core/option/enum.Option.html#variant.Some
+/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(Div, attributes(modtype))]
 pub fn div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin(input, parse_quote!(Div), |input, rhs_ty| {
@@ -372,6 +516,16 @@ pub fn div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     })
 }
 
+/// Derives [`DivAssign`]`.
+///
+/// # Requirements
+///
+/// - `Self: `[`Div`]`<Self, Output = Self>`.
+/// - `Self: `[`Copy`].
+///
+/// [`DivAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.DivAssign.html
+/// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(DivAssign, attributes(modtype))]
 pub fn div_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin_assign(
@@ -382,6 +536,16 @@ pub fn div_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`Rem`]`.
+///
+/// # Requirements
+///
+/// - `Self: `[`Div`]`<Self, Output = Self>`.
+/// - `Self: `[`Zero`].
+///
+/// [`Rem`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Rem.html
+/// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
+/// [`Zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html
 #[proc_macro_derive(Rem, attributes(modtype))]
 pub fn rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin(input, parse_quote!(Rem), |input, rhs_ty| {
@@ -410,6 +574,16 @@ pub fn rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     })
 }
 
+/// Derives [`RemAssign`]`.
+///
+/// # Requirements
+///
+/// - `Self: `[`Rem`]`<Self, Output = Self>`.
+/// - `Self: `[`Copy`].
+///
+/// [`RemAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.RemAssign.html
+/// [`Rem`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Rem.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(RemAssign, attributes(modtype))]
 pub fn rem_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     bin_assign(
@@ -420,6 +594,16 @@ pub fn rem_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`Zero`].
+///
+/// # Requirements
+///
+/// - The fields are [`Default`] except `#InnerValue`.
+/// - `Self: `[`Add`]`<Self, Output = Self>`. (required by [`Zero`] itself)
+///
+/// [`Zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html
+/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
+/// [`Add`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Add.html
 #[proc_macro_derive(Zero, attributes(modtype))]
 pub fn zero(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     identity(
@@ -430,6 +614,18 @@ pub fn zero(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`One`].
+///
+/// # Requirements
+///
+/// - The fields are [`Default`] except `#InnerValue`.
+/// - `Self: `[`Mul`]`<Self, Output = Self>`. (required by [`One`] itself)
+/// - `Self: `[`PartialEq`]`<Self>`. (required by `One::is_one`)
+///
+/// [`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
+/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
+/// [`Mul`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Mul.html
+/// [`PartialEq`]: https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html
 #[proc_macro_derive(One, attributes(modtype))]
 pub fn one(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     identity(
@@ -440,6 +636,22 @@ pub fn one(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`Num`].
+///
+/// # Requirements
+///
+/// - `Self: `[`From`]`<#InnerValue>`.
+/// - `Self: `[`Zero`]. (required by [`Num`] itself)
+/// - `Self: `[`One`]. (required by [`Num`] itself)
+/// - `Self: `[`NumOps`]`<Self, Self>`. (required by [`Num`] itself)
+/// - `Self: `[`PartialEq`]`<Self>`. (required by [`Num`] itself)
+///
+/// [`Num`]: https://docs.rs/num-traits/0.2/num_traits/trait.Num.html
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+/// [`Zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html
+/// [`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
+/// [`NumOps`]: https://docs.rs/num-traits/0.2/num_traits/trait.NumOps.html
+/// [`PartialEq`]: https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html
 #[proc_macro_derive(Num, attributes(modtype))]
 pub fn num(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -469,6 +681,14 @@ pub fn num(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`Bounded`].
+///
+/// # Requirements
+///
+/// - `Self: `[`From`]`<#InnerValue>`.
+///
+/// [`Bounded`]: https://docs.rs/num-traits/0.2/num_traits/bounds/trait.Bounded.html
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Bounded, attributes(modtype))]
 pub fn bounded(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -503,6 +723,16 @@ pub fn bounded(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`CheckedAdd`].
+///
+/// # Requirements
+///
+/// - `Self: `[`Copy`].
+/// - `Self: `[`Add`]`<Self, Output = Self>`. (required by [`CheckedAdd`] itself)
+///
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
+/// [`Add`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Add.html
+/// [`CheckedAdd`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedAdd.html
 #[proc_macro_derive(CheckedAdd, attributes(modtype))]
 pub fn checked_add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     checked_bin(
@@ -514,6 +744,16 @@ pub fn checked_add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives `CheckedSub`.
+///
+/// # Requirements
+///
+/// - `Self: `[`Copy`].
+/// - `Self: `[`Sub`]`<Self, Output = Self>`. (required by [`CheckedSub`] itself)
+///
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
+/// [`Sub`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Sub.html
+/// [`CheckedAdd`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedAdd.html
 #[proc_macro_derive(CheckedSub, attributes(modtype))]
 pub fn checked_sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     checked_bin(
@@ -525,6 +765,16 @@ pub fn checked_sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`CheckedMul`].
+///
+/// # Requirements
+///
+/// - `Self: `[`Copy`].
+/// - `Self: `[`Mul`]`<Self, Output = Self>`. (required by [`CheckedMul`] itself)
+///
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
+/// [`Mul`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Mul.html
+/// [`CheckedMul`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedMul.html
 #[proc_macro_derive(CheckedMul, attributes(modtype))]
 pub fn checked_mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     checked_bin(
@@ -536,6 +786,16 @@ pub fn checked_mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`CheckedDiv`].
+///
+/// # Requirements
+///
+/// - `Self: `[`Copy`].
+/// - `Self: `[`Div`]`<Self, Output = Self>`. (required by [`CheckedDiv`] itself)
+///
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
+/// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
+/// [`CheckedDiv`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedDiv.html
 #[proc_macro_derive(CheckedDiv, attributes(modtype))]
 pub fn checked_div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     checked_bin(
@@ -547,6 +807,16 @@ pub fn checked_div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`CheckedRem`].
+///
+/// # Requirements
+///
+/// - `Self: `[`Copy`].
+/// - `Self: `[`Rem`]`<Self, Output = Self>`. (required by [`CheckedRem`] itself)
+///
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
+/// [`Rem`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Rem.html
+/// [`CheckedRem`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedRem.html
 #[proc_macro_derive(CheckedRem, attributes(modtype))]
 pub fn checked_rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     checked_bin(
@@ -558,6 +828,16 @@ pub fn checked_rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`CheckedNeg`].
+///
+/// # Requirements
+///
+/// - `Self: `[`Copy`].
+/// - `Self: `[`Neg`]`<Output = Self>`.
+///
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
+/// [`Neg`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Neg.html
+/// [`CheckedNeg`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedNeg.html
 #[proc_macro_derive(CheckedNeg, attributes(modtype))]
 pub fn checked_neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -585,12 +865,22 @@ pub fn checked_neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`Inv`].
+///
+/// # Requirements
+///
+/// - `Self: `[`One`].
+/// - `Self: `[`Div`]`<Self, Output = Self>`.
+///
+/// [`Inv`]: https://docs.rs/num-traits/0.2/num_traits/ops/inv/trait.Inv.html
+/// [`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
+/// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
 #[proc_macro_derive(Inv, attributes(modtype))]
 pub fn inv(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let Input {
         num_traits,
-        moving_ops_for_ref,
+        no_impl_for_ref,
         struct_ident,
         generics,
         ..
@@ -613,12 +903,20 @@ pub fn inv(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
 
     let mut ret = derive(parse_quote!(#struct_ident#ty_generics));
-    if moving_ops_for_ref {
+    if !no_impl_for_ref {
         ret.extend(derive(parse_quote!(&'_ #struct_ident#ty_generics)));
     }
     ret.into()
 }
 
+/// Derives [`Unsigned`].
+///
+/// # Requirements
+///
+/// - `Self: `[`Num`]. (required by [`Unsigned`] itself)
+///
+/// [`Unsigned`]: https://docs.rs/num-traits/0.2/num_traits/sign/trait.Unsigned.html
+/// [`Num`]: https://docs.rs/num-traits/0.2/num_traits/trait.Num.html
 #[proc_macro_derive(Unsigned, attributes(modtype))]
 pub fn unsigned(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -637,6 +935,14 @@ pub fn unsigned(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`FromPrimitive`].
+///
+/// # Requirements
+///
+/// - `Self: `[`From`]`<#InnerValue>`.
+///
+/// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(FromPrimitive, attributes(modtype))]
 pub fn from_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -688,6 +994,13 @@ pub fn from_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     .into()
 }
 
+/// Derives [`ToPrimitive`].
+///
+/// # Requirements
+///
+/// Nothing.
+///
+/// [`ToPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.ToPrimitive.html
 #[proc_macro_derive(ToPrimitive, attributes(modtype))]
 pub fn to_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -738,26 +1051,74 @@ pub fn to_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`Pow`]`<u8>`, [`Pow`]`<&'_ u8>` for `Self`, `&'_ Self`.
+///
+/// # Requirements
+///
+/// - `Self: `[`From`]`<#InnerValue>`.
+///
+/// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Pow_u8, attributes(modtype))]
 pub fn pow_u8(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     pow(input, parse_quote!(u8))
 }
 
+/// Derives [`Pow`]`<u16>`, [`Pow`]`<&'_ u16>` for `Self`, `&'_ Self`.
+///
+/// # Requirements
+///
+/// - `Self: `[`From`]`<#InnerValue>`.
+///
+/// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Pow_u16, attributes(modtype))]
 pub fn pow_u16(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     pow(input, parse_quote!(u16))
 }
 
+/// Derives [`Pow`]`<u32>`, [`Pow`]`<&'_ u32>` for `Self`, `&'_ Self`.
+///
+/// # Requirements
+///
+/// - `Self: `[`From`]`<#InnerValue>`.
+///
+/// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Pow_u32, attributes(modtype))]
 pub fn pow_u32(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     pow(input, parse_quote!(u32))
 }
 
+/// Derives [`Pow`]`<usize>`, [`Pow`]`<&'_ usize>` for `Self`, `&'_ Self`.
+///
+/// # Requirements
+///
+/// - `Self: `[`From`]`<#InnerValue>`.
+///
+/// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Pow_usize, attributes(modtype))]
 pub fn pow_usize(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     pow(input, parse_quote!(usize))
 }
 
+/// Derives [`Integer`].
+///
+/// # Requirements
+///
+/// - `Self: `[`From`]`<#InnerValue>`.
+/// - `Self: `[`Copy`].
+/// - `Self: `[`Zero`].
+/// - `Self: `[`Ord`]. (required by [`Integer`] itself)
+/// - `Self: `[`Num`]. (required by [`Integer`] itself)
+///
+/// [`Integer`]: https://docs.rs/num-integer/0.1/num_integer/trait.Integer.html
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
+/// [`Zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html
+/// [`Ord`]: https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html
+/// [`Num`]: https://docs.rs/num-traits/0.2/num_traits/trait.Num.html
 #[proc_macro_derive(Integer, attributes(modtype))]
 pub fn integer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -835,6 +1196,13 @@ pub fn integer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
+/// Derives [`ToBigUint`].
+///
+/// # Requirements
+///
+/// Nothing.
+///
+/// [`ToBigUint`]: https://docs.rs/num-bigint/0.2/num_bigint/biguint/trait.ToBigUint.html
 #[proc_macro_derive(ToBigUint, attributes(modtype))]
 pub fn to_big_uint(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     ref_unary_transparent(
@@ -847,6 +1215,13 @@ pub fn to_big_uint(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Derives [`ToBigInt`].
+///
+/// # Requirements
+///
+/// Nothing.
+///
+/// [`ToBigInt`]: https://docs.rs/num-bigint/0.2/num_bigint/biguint/trait.ToBigInt.html
 #[proc_macro_derive(ToBigInt, attributes(modtype))]
 pub fn to_big_int(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     ref_unary_transparent(
@@ -859,6 +1234,13 @@ pub fn to_big_int(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     )
 }
 
+/// Implement `Self::new: fn(#InnerValue) -> Self`.
+///
+/// # Requirements
+///
+/// - `Self: From<#InnerValue>`.
+///
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(new, attributes(modtype))]
 pub fn new(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     struct_method(input, |input| {
@@ -880,6 +1262,13 @@ pub fn new(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     })
 }
 
+/// Derives `Self::get: fn(Self) -> #InnerValue`.
+///
+/// # Requirements
+///
+/// Nothing.
+///
+/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(get, attributes(modtype))]
 pub fn get(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     struct_method(input, |input| {
@@ -992,7 +1381,7 @@ fn bin(
     let input = try_syn!(Input::try_from(input));
     let Input {
         std,
-        moving_ops_for_ref,
+        no_impl_for_ref,
         struct_ident,
         generics,
         ..
@@ -1018,7 +1407,7 @@ fn bin(
         parse_quote!(#struct_ident#ty_generics),
     );
 
-    if *moving_ops_for_ref {
+    if !no_impl_for_ref {
         ret.extend(derive(
             &impl_generics,
             parse_quote!(&'_ #struct_ident#ty_generics),
@@ -1051,7 +1440,7 @@ fn bin_assign(
     let input = try_syn!(Input::try_from(input));
     let Input {
         std,
-        moving_ops_for_ref,
+        no_impl_for_ref,
         struct_ident,
         generics,
         ..
@@ -1075,7 +1464,7 @@ fn bin_assign(
     };
 
     let mut ret = derive(parse_quote!(Self), false);
-    if *moving_ops_for_ref {
+    if !no_impl_for_ref {
         ret.extend(derive(parse_quote!(&'_ Self), true));
     }
     ret.into()
@@ -1171,7 +1560,7 @@ fn pow(input: proc_macro::TokenStream, rhs_ty: Type) -> proc_macro::TokenStream 
     let Input {
         std,
         num_traits,
-        moving_ops_for_ref,
+        no_impl_for_ref,
         struct_ident,
         generics,
         field_ident,
@@ -1197,7 +1586,7 @@ fn pow(input: proc_macro::TokenStream, rhs_ty: Type) -> proc_macro::TokenStream 
     };
 
     let mut ret = derive(&parse_quote!(#struct_ident#ty_generics), &rhs_ty);
-    if moving_ops_for_ref {
+    if !no_impl_for_ref {
         ret.extend(derive(
             &parse_quote!(#struct_ident#ty_generics),
             &parse_quote!(&'_ #rhs_ty),
@@ -1252,7 +1641,7 @@ struct Input {
     num_traits: Path,
     num_integer: Path,
     num_bigint: Path,
-    moving_ops_for_ref: bool,
+    no_impl_for_ref: bool,
     struct_vis: Visibility,
     struct_ident: Ident,
     generics: Generics,
@@ -1389,7 +1778,7 @@ impl TryFrom<DeriveInput> for Input {
         let mut num_traits = None;
         let mut num_integer = None;
         let mut num_bigint = None;
-        let mut moving_ops_for_ref = false;
+        let mut no_impl_for_ref = false;
 
         let mut put_expr_or_path = |name_value: &MetaNameValue| -> syn::Result<_> {
             let span = name_value.span();
@@ -1404,8 +1793,8 @@ impl TryFrom<DeriveInput> for Input {
                 put_path_for(ident.span(), lit, &mut num_integer)
             } else if ident == "num_bigint" {
                 put_path_for(ident.span(), lit, &mut num_bigint)
-            } else if ident == "moving_ops_for_ref" {
-                Err(syn::Error::new(span, "expected `moving_ops_for_ref(..)`"))
+            } else if ident == "no_impl_for_ref" {
+                Err(syn::Error::new(span, "expected `no_impl_for_ref`"))
             } else {
                 Err(syn::Error::new(span, "unknown identifier"))
             }
@@ -1416,8 +1805,8 @@ impl TryFrom<DeriveInput> for Input {
                 .contains(&word.to_string().as_str())
             {
                 Err(word.to_error(format!("expected `{} = #LitStr`", word)))
-            } else if word == "moving_ops_for_ref" {
-                put_true_for(word.span(), &mut moving_ops_for_ref)
+            } else if word == "no_impl_for_ref" {
+                put_true_for(word.span(), &mut no_impl_for_ref)
             } else {
                 Err(word.to_error("unknown identifier"))
             }
@@ -1513,7 +1902,7 @@ impl TryFrom<DeriveInput> for Input {
             num_traits,
             num_integer,
             num_bigint,
-            moving_ops_for_ref,
+            no_impl_for_ref,
             struct_vis,
             struct_ident,
             generics,

@@ -68,7 +68,7 @@ type F = F_<Const17U32>;
     num_traits = "num::traits",
     num_integer = "num::integer",
     num_bigint = "num::bigint",
-    moving_ops_for_ref
+    no_impl_for_ref
 )]
 struct F_<M: ConstValue<Value = u32>> {
     #[modtype(value)]

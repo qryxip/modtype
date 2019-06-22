@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0] - 2019-06-22Z
+
+### Added
+
+- `modtype::preset::u64::thread_local::{with_modulus, F}`.
+
+### Changed
+
+- `moving_ops_for_ref` to `no_impl_for_ref`.
+
+### Fixed
+
+- `modtype` implementes `Neg for &'_ _`.
+
 ## [0.2.0] - 2019-06-20Z
 
 ### Added
