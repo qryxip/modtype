@@ -6,7 +6,11 @@
 
 This crate provides:
 - Macros that implement modular arithmetic integer types
-- Preset types (`modtype::preset::u64{, ::mod1000000007}::{F, Z}`)
+- Preset types
+    - [`modtype::preset::u64::F`]
+    - [`modtype::preset::u64::Z`]
+    - [`modtype::preset::u64::mod1000000007::F`]
+    - [`modtype::preset::u64::mod1000000007::Z`]
 
 ## Usage
 
@@ -85,28 +89,55 @@ enum Const17U32 {}
 use modtype::preset::u64::mod1000000007::{F, Z};
 ```
 
-## Attributes
+## Requirements
+
+- The inner value is [`u8`], [`u16`], [`u32`], [`u64`], [`u128`], or [`usize`].
+- The inner value and the modulus are of a same type.
+- The modulus is immutable.
+- The inner value is always smaller than the modulus.
+    - If the modular arithmetic type implements [`One`], The modulus is larger than `1`.
+- If the modular arithmetic type implements [`Div`], the modulus is a prime.
 
 ### Struct
 
-| Name                 | Format                                                         | Optional                         |
-| :------------------- | :------------------------------------------------------------- | -------------------------------- |
-| `modulus`            | `modulus = #Lit` where `#Lit` is converted/parsed to an `Expr` | No                               |
-| `std`                | `std = #LitStr` where `#LitStr` is parsed to a `Path`          | Yes (default = `::std`)          |
-| `num_traits`         | `num_traits = #LitStr` where `#LitStr` is parsed to a `Path`   | Yes (default = `::num::traits`)  |
-| `num_integer`        | `num_integer = #LitStr` where `#LitStr` is parsed to a `Path`  | Yes (default = `::num::integer`) |
-| `num_bigint`         | `num_bigint = #LitStr` where `#LitStr` is parsed to a `Path`   | Yes (default = `::num::bigint`)  |
-| `moving_ops_for_ref` | `moving_ops_for_ref`                                           | Yes                              |
+| Name                 | Format                                                                   | Optional                         |
+| :------------------- | :----------------------------------------------------------------------- | :------------------------------- |
+| `modulus`            | `modulus = #`[`Lit`] where `#`[`Lit`] is converted/parsed to an [`Expr`] | No                               |
+| `std`                | `std = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]          | Yes (default = `::std`)          |
+| `num_traits`         | `num_traits = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
+| `num_integer`        | `num_integer = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
+| `num_bigint`         | `num_bigint = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
+| `moving_ops_for_ref` | `moving_ops_for_ref`                                                     | Yes                              |
 
 ### Field
 
 | Name                 | Format  | Optional |
-| :------------------- | :------ | -------- |
+| :------------------- | :------ | :------- |
 | `value`              | `value` | No       |
 
+### [`ConstValue`]
 
-### `ConstValue`
+#### Struct
 
-| Name                 | Format                                               | Optional  |
-| :------------------- | :----------------------------------------------------| --------- |
-| `const_value`        | `const_value = #LitInt` where `#LitInt` has a suffix | No        |
+| Name                 | Format                                                       | Optional  |
+| :------------------- | :----------------------------------------------------------- | :-------- |
+| `const_value`        | `const_value = #`[`LitInt`] where `#`[`LitInt`] has a suffix | No        |
+
+[`u8`]: https://doc.rust-lang.org/nightly/std/primitive.u8.html
+[`u16`]: https://doc.rust-lang.org/nightly/std/primitive.u16.html
+[`u32`]: https://doc.rust-lang.org/nightly/std/primitive.u32.html
+[`u64`]: https://doc.rust-lang.org/nightly/std/primitive.u64.html
+[`u128`]: https://doc.rust-lang.org/nightly/std/primitive.u128.html
+[`usize`]: https://doc.rust-lang.org/nightly/std/primitive.usize.html
+[`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
+[`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
+[`Lit`]: https://docs.rs/syn/0.15/syn/enum.Lit.html
+[`LitStr`]: https://docs.rs/syn/0.15/syn/struct.LitStr.html
+[`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
+[`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
+[`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
+[`ConstValue`]: https://docs.rs/modtype_derive/0.2/modtype_derive/derive.ConstValue.html
+[`modtype::preset::u64::F`]: https://docs.rs/modtype/0.2/modtype/preset/u64/struct.F.html
+[`modtype::preset::u64::Z`]: https://docs.rs/modtype/0.2/modtype/preset/u64/struct.Z.html
+[`modtype::preset::u64::mod1000000007::F`]: https://docs.rs/modtype/0.2/modtype/preset/u64/mod1000000007/type.F.html
+[`modtype::preset::u64::mod1000000007::Z`]: https://docs.rs/modtype/0.2/modtype/preset/u64/mod1000000007/type.Z.html
