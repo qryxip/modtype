@@ -299,6 +299,7 @@ pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let Input {
         modulus,
         std,
+        no_impl_for_ref,
         struct_ident,
         generics,
         field_ident,
@@ -307,24 +308,32 @@ pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let value_expr = parse_quote!(#modulus - self.#field_ident);
-    let struct_expr = input.construct_self(true, Some(value_expr));
-    quote!(
-        impl#impl_generics #std::ops::Neg for #struct_ident#ty_generics
-        #where_clause
-        {
-            type Output = Self;
+    let struct_expr = input.construct_self(false, Some(value_expr));
 
-            #[inline]
-            fn neg(self) -> Self {
-                fn static_assert_add<T: #std::ops::Add<T, Output = T>>() {}
-                fn static_assert_sub<T: #std::ops::Sub<T, Output = T>>() {}
-                static_assert_add::<Self>();
-                static_assert_sub::<Self>();
-                #struct_expr
+    let derive = |lhs_ty: Type| {
+        quote! {
+            impl#impl_generics #std::ops::Neg for #lhs_ty
+            #where_clause
+            {
+                type Output = #struct_ident#ty_generics;
+
+                #[inline]
+                fn neg(self) -> #struct_ident#ty_generics {
+                    fn static_assert_add<O, L: #std::ops::Add<L, Output = O>>() {}
+                    fn static_assert_sub<O, L: #std::ops::Sub<L, Output = O>>() {}
+                    static_assert_add::<#struct_ident#ty_generics, Self>();
+                    static_assert_sub::<#struct_ident#ty_generics, Self>();
+                    #struct_expr
+                }
             }
         }
-    )
-    .into()
+    };
+
+    let mut ret = derive(parse_quote!(#struct_ident#ty_generics));
+    if !no_impl_for_ref {
+        ret.extend(derive(parse_quote!(&'_ #struct_ident#ty_generics)))
+    }
+    ret.into()
 }
 
 /// Derives [`Add`].
