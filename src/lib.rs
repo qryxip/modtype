@@ -56,7 +56,7 @@
 //! [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
 //! [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
 //! [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
-//! [`ConstValue`]: https://docs.rs/modtype_derive/0.2/modtype_derive/derive.ConstValue.html
+//! [`ConstValue`]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html
 //! [`modtype::preset::u64::F`]: ./preset/u64/struct.F.html
 //! [`modtype::preset::u64::Z`]: ./preset/u64/struct.Z.html
 //! [`modtype::preset::u64::thread_local::F`]: ./preset/u64/thread_local/struct.F.html
@@ -168,7 +168,7 @@ use std::fmt;
 /// [`Ord`]: https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html
 /// [`Debug`]: https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html
 /// [`#26925`]: https://github.com/rust-lang/rust/issues/26925
-/// [the derive macro]: https://docs.rs/modtype_derive/0.2/modtype_derive/derive.ConstValue.html
+/// [the derive macro]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html
 pub trait ConstValue: Copy + Ord + fmt::Debug {
     type Value: Copy;
     const VALUE: Self::Value;

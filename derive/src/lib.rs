@@ -34,7 +34,7 @@ macro_rules! try_syn {
 /// | :------------------- | :----------------------------------------------------------- | :-------- |
 /// | `const_value`        | `const_value = #`[`LitInt`] where `#`[`LitInt`] has a suffix | No        |
 ///
-/// [`ConstValue`]: https://docs.rs/modtype/0.2/modtype/trait.ConstValue.html
+/// [`ConstValue`]: https://docs.rs/modtype/0.3/modtype/trait.ConstValue.html
 /// [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
 #[proc_macro_derive(ConstValue, attributes(modtype))]
 pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

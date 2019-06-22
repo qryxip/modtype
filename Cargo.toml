@@ -1,6 +1,6 @@
 [package]
 name = "modtype"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Ryo Yamashita <qryxip@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -19,5 +19,5 @@ codecov = { repository = "qryxip/modtype" }
 members = ["./derive"]
 
 [dependencies]
-modtype_derive = { version = "0.2.0", path = "./derive" }
+modtype_derive = { version = "0.3.0", path = "./derive" }
 num = "0.2.0"
