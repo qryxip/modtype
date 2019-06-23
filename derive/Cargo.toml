@@ -17,4 +17,4 @@ proc-macro = true
 if_chain = "1.0.0"
 proc-macro2 = "0.4.30"
 quote = "0.6.12"
-syn = { version = "0.15.36", features = ["full", "extra-traits"] }
+syn = { version = "0.15.37", features = ["full", "extra-traits"] }

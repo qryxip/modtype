@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `modtype::{Pow_u64, Pow_u128}`.
+
+### Fixed
+
+- `modtype::Pow_{u8, u16, u32, usize}`.
+
 ## [0.3.0] - 2019-06-22Z
 
 ### Added
@@ -13,6 +23,7 @@
 ### Fixed
 
 - `modtype` implementes `Neg for &'_ _`.
+- `modtype::Pow_{..}` produces appropriate code.
 
 ## [0.2.0] - 2019-06-20Z
 

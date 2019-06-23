@@ -55,6 +55,8 @@ type F = F_<Const17U32>;
     modtype::Pow_u8,
     modtype::Pow_u16,
     modtype::Pow_u32,
+    modtype::Pow_u64,
+    modtype::Pow_u128,
     modtype::Pow_usize,
     modtype::Integer,
     modtype::ToBigInt,

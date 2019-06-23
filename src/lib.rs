@@ -133,6 +133,10 @@ pub use modtype_derive::Pow_u16;
 
 pub use modtype_derive::Pow_u32;
 
+pub use modtype_derive::Pow_u64;
+
+pub use modtype_derive::Pow_u128;
+
 pub use modtype_derive::Pow_usize;
 
 pub use modtype_derive::Integer;
@@ -263,6 +267,8 @@ pub mod preset {
                 crate::Pow_u8,
                 crate::Pow_u16,
                 crate::Pow_u32,
+                crate::Pow_u64,
+                crate::Pow_u128,
                 crate::Pow_usize,
                 crate::Integer,
                 crate::ToBigUint,
@@ -347,6 +353,8 @@ pub mod preset {
         /// assert_eq!(F::from(3).pow(2u8), F::from(2));
         /// assert_eq!(F::from(3).pow(2u16), F::from(2));
         /// assert_eq!(F::from(3).pow(2u32), F::from(2));
+        /// assert_eq!(F::from(3).pow(2u64), F::from(2));
+        /// assert_eq!(F::from(3).pow(2u128), F::from(2));
         /// assert_eq!(F::from(3).pow(2usize), F::from(2));
         /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F::from(x).is_multiple_of(&F::from(y)))));
         /// assert_eq!(F::from(3).to_biguint(), 3u64.to_biguint());
@@ -396,6 +404,8 @@ pub mod preset {
             crate::Pow_u8,
             crate::Pow_u16,
             crate::Pow_u32,
+            crate::Pow_u64,
+            crate::Pow_u128,
             crate::Pow_usize,
             crate::Integer,
             crate::ToBigUint,
@@ -441,10 +451,6 @@ pub mod preset {
         /// (0..=6).for_each(|x| assert!(Z::from(x).checked_neg().is_some()));
         /// assert_eq!(Z::from_i64(-1), None);
         /// assert_eq!(Z::from(3).to_i64(), Some(3i64));
-        /// assert_eq!(Z::from(3).pow(2u8), Z::from(2));
-        /// assert_eq!(Z::from(3).pow(2u16), Z::from(2));
-        /// assert_eq!(Z::from(3).pow(2u32), Z::from(2));
-        /// assert_eq!(Z::from(3).pow(2usize), Z::from(2));
         /// assert_eq!(Z::from(3).to_biguint(), 3u64.to_biguint());
         /// assert_eq!(Z::from(3).to_bigint(), 3u64.to_bigint());
         /// assert_eq!(Z::new(3), Z::from(3));
@@ -476,10 +482,6 @@ pub mod preset {
             crate::CheckedNeg,
             crate::FromPrimitive,
             crate::ToPrimitive,
-            crate::Pow_u8,
-            crate::Pow_u16,
-            crate::Pow_u32,
-            crate::Pow_usize,
             crate::ToBigUint,
             crate::ToBigInt,
             crate::new,
