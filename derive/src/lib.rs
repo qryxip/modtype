@@ -46,11 +46,41 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         attrs,
         ident,
         generics,
+        data,
         ..
     } = parse_macro_input!(input as DeriveInput);
 
     if !generics.params.is_empty() {
         return compile_error(generics.span(), "The generics parameters must be empty");
+    }
+
+    let field_attrs = match data {
+        Data::Struct(data) => match data.fields {
+            Fields::Named(fields) => fields.named.into_iter().flat_map(|f| f.attrs).collect(),
+            Fields::Unnamed(fields) => fields.unnamed.into_iter().flat_map(|f| f.attrs).collect(),
+            Fields::Unit => vec![],
+        },
+        Data::Enum(data) => data.variants.into_iter().flat_map(|f| f.attrs).collect(),
+        Data::Union(data) => data
+            .fields
+            .named
+            .into_iter()
+            .flat_map(|f| f.attrs)
+            .collect(),
+    };
+    for attr in field_attrs {
+        if let Ok(meta) = attr.parse_meta() {
+            match &meta {
+                Meta::Word(ident)
+                | Meta::NameValue(MetaNameValue { ident, .. })
+                | Meta::List(MetaList { ident, .. })
+                    if ident == "modtype" =>
+                {
+                    return compile_error(ident.span(), "not allowed here");
+                }
+                _ => {}
+            }
+        }
     }
 
     static MSG: &str = "expected `modtype(const_value = #LitInt)` where the `LitInt` has a suffix";
@@ -1669,39 +1699,16 @@ impl TryFrom<DeriveInput> for Context {
     type Error = syn::Error;
 
     fn try_from(input: DeriveInput) -> syn::Result<Self> {
-        static TARGET_ATTR: &'static str = "modtype";
-
         fn error_on_target_attr(meta: &Meta) -> syn::Result<()> {
-            match find_target_attr(meta) {
-                None => Ok(()),
-                Some(span) => Err(syn::Error::new(
-                    span,
-                    format!("`{}` not allowed here", TARGET_ATTR),
-                )),
-            }
-        }
-
-        fn find_target_attr(meta: &Meta) -> Option<Span> {
             match meta {
                 Meta::Word(ident)
                 | Meta::NameValue(MetaNameValue { ident, .. })
                 | Meta::List(MetaList { ident, .. })
-                    if ident == TARGET_ATTR =>
+                    if ident == "modtype" =>
                 {
-                    Some(ident.span())
+                    Err(syn::Error::new(ident.span(), "`modtype` not allowed here"))
                 }
-                Meta::Word(_) | Meta::NameValue(_) => None,
-                Meta::List(list) => list
-                    .nested
-                    .iter()
-                    .flat_map(|m| match m {
-                        NestedMeta::Meta(m) => find_target_attr(m),
-                        NestedMeta::Literal(Lit::Str(s)) if s.value() == TARGET_ATTR => {
-                            Some(s.span())
-                        }
-                        NestedMeta::Literal(_) => None,
-                    })
-                    .next(),
+                _ => Ok(()),
             }
         }
 
@@ -1799,7 +1806,7 @@ impl TryFrom<DeriveInput> for Context {
             .try_for_each::<_, syn::Result<_>>(|meta| {
                 if_chain! {
                     if let Meta::List(MetaList { ident, nested, .. }) = &meta;
-                    if ident == TARGET_ATTR;
+                    if ident == "modtype";
                     then {
                         for nested in nested {
                             match nested {
@@ -1843,7 +1850,7 @@ impl TryFrom<DeriveInput> for Context {
                 if let Ok(meta) = attr.parse_meta() {
                     if_chain! {
                         if let Meta::List(MetaList { ident, nested, .. }) = &meta;
-                        if ident == TARGET_ATTR;
+                        if ident == "modtype";
                         then {
                             if ![parse_quote!(value), parse_quote!(value,)].contains(nested) {
                                 return Err(nested.to_error("expected `value` or `value,`"));
@@ -1864,9 +1871,8 @@ impl TryFrom<DeriveInput> for Context {
             ident,
             ty: field_ty,
             ..
-        } = value_field.ok_or_else(|| {
-            syn::Error::new(named_span, format!("`#[{}(value)]` not found", TARGET_ATTR))
-        })?;
+        } = value_field
+            .ok_or_else(|| syn::Error::new(named_span, "`#[modtype(value)]` not found"))?;
         let field_ident = ident.unwrap();
 
         if vis != Visibility::Inherited {
