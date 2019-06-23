@@ -126,18 +126,18 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(From, attributes(modtype))]
 pub fn from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let input = try_syn!(Input::try_from(input));
-    let Input {
+    let ctx = try_syn!(Context::try_from(input));
+    let Context {
         modulus,
         std,
         struct_ident,
         generics,
         field_ty,
         ..
-    } = &input;
+    } = &ctx;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let struct_expr = input.construct_self(true, Some(parse_quote!(from % #modulus)));
+    let struct_expr = ctx.struct_expr(true, Some(parse_quote!(from % #modulus)));
 
     quote!(
         impl #impl_generics #std::convert::From<#field_ty> for #struct_ident#ty_generics
@@ -162,14 +162,14 @@ pub fn from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(Into, attributes(modtype))]
 pub fn into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         std,
         struct_ident,
         generics,
         field_ident,
         field_ty,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(input));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote!(
@@ -196,13 +196,13 @@ pub fn into(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(FromStr, attributes(modtype))]
 pub fn from_str(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         std,
         struct_ident,
         generics,
         field_ty,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(input));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote!(
@@ -230,7 +230,8 @@ pub fn from_str(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Display`]: https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html
 #[proc_macro_derive(Display, attributes(modtype))]
 pub fn display(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    fmt(input, parse_quote!(Display))
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)))
+        .derive_fmt(parse_quote!(Display))
 }
 
 /// Derives [`Debug`].
@@ -242,7 +243,8 @@ pub fn display(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Debug`]: https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html
 #[proc_macro_derive(DebugTransparent, attributes(modtype))]
 pub fn debug_transparent(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    fmt(input, parse_quote!(Debug))
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)))
+        .derive_fmt(parse_quote!(Debug))
 }
 
 /// Derives [`Deref`]`<Target = #InnerValue>`.
@@ -255,14 +257,14 @@ pub fn debug_transparent(input: proc_macro::TokenStream) -> proc_macro::TokenStr
 #[proc_macro_derive(Deref, attributes(modtype))]
 pub fn deref(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         std,
         struct_ident,
         generics,
         field_ident,
         field_ty,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(input));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote!(
@@ -295,8 +297,8 @@ pub fn deref(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(Neg, attributes(modtype))]
 pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let input = try_syn!(Input::try_from(input));
-    let Input {
+    let ctx = try_syn!(Context::try_from(input));
+    let Context {
         modulus,
         std,
         no_impl_for_ref,
@@ -304,11 +306,11 @@ pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         generics,
         field_ident,
         ..
-    } = &input;
+    } = &ctx;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let value_expr = parse_quote!(#modulus - self.#field_ident);
-    let struct_expr = input.construct_self(false, Some(value_expr));
+    let struct_expr = ctx.struct_expr(false, Some(value_expr));
 
     let derive = |lhs_ty: Type| {
         quote! {
@@ -346,12 +348,12 @@ pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(Add, attributes(modtype))]
 pub fn add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_almost_transparent(
-        input,
-        parse_quote!(Add),
-        parse_quote!(add),
-        |l, r, _| parse_quote!(#l + #r),
-    )
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)))
+        .derive_bin_almost_transparent(
+            parse_quote!(Add),
+            parse_quote!(add),
+            |l, r, _| parse_quote!(#l + #r),
+        )
 }
 
 /// Derives [`AddAssign`]`.
@@ -366,8 +368,7 @@ pub fn add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(AddAssign, attributes(modtype))]
 pub fn add_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_bin_assign(
         parse_quote!(AddAssign),
         parse_quote!(add_assign),
         parse_quote!(+),
@@ -384,12 +385,12 @@ pub fn add_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(Sub, attributes(modtype))]
 pub fn sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_almost_transparent(
-        input,
-        parse_quote!(Sub),
-        parse_quote!(sub),
-        |l, r, m| parse_quote!(#m + #l - #r),
-    )
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)))
+        .derive_bin_almost_transparent(
+            parse_quote!(Sub),
+            parse_quote!(sub),
+            |l, r, m| parse_quote!(#m + #l - #r),
+        )
 }
 
 /// Derives [`SubAssign`]`.
@@ -404,8 +405,7 @@ pub fn sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(SubAssign, attributes(modtype))]
 pub fn sub_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_bin_assign(
         parse_quote!(SubAssign),
         parse_quote!(sub_assign),
         parse_quote!(-),
@@ -422,12 +422,12 @@ pub fn sub_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(Mul, attributes(modtype))]
 pub fn mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_almost_transparent(
-        input,
-        parse_quote!(Mul),
-        parse_quote!(mul),
-        |l, r, _| parse_quote!(#l * #r),
-    )
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)))
+        .derive_bin_almost_transparent(
+            parse_quote!(Mul),
+            parse_quote!(mul),
+            |l, r, _| parse_quote!(#l * #r),
+        )
 }
 
 /// Derives [`MulAssign`]`.
@@ -442,8 +442,7 @@ pub fn mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(MulAssign, attributes(modtype))]
 pub fn mul_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_bin_assign(
         parse_quote!(MulAssign),
         parse_quote!(mul_assign),
         parse_quote!(*),
@@ -465,21 +464,22 @@ pub fn mul_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(Div, attributes(modtype))]
 pub fn div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin(input, parse_quote!(Div), |input, rhs_ty| {
-        let Input {
-            modulus,
-            std,
-            num_traits,
-            struct_ident,
-            generics,
-            field_ident,
-            field_ty,
-            ..
-        } = input;
-        let (_, ty_generics, _) = generics.split_for_impl();
+    let ctx = try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)));
 
-        let struct_expr = input.construct_self(false, None);
+    let Context {
+        modulus,
+        std,
+        num_traits,
+        struct_ident,
+        generics,
+        field_ident,
+        field_ty,
+        ..
+    } = &ctx;
+    let (_, ty_generics, _) = generics.split_for_impl();
+    let struct_expr = ctx.struct_expr(false, None);
 
+    ctx.derive_bin(parse_quote!(Div), |rhs_ty| {
         parse_quote! {
             fn div(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
                 fn extended_gcd(a: i128, b: i128) -> (i128, i128, i128) {
@@ -508,7 +508,8 @@ pub fn div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 if #field_ident < 0 {
                     #field_ident += modulus;
                 }
-                let #field_ident = <#field_ty as #num_traits::FromPrimitive>::from_i128(#field_ident);
+                let #field_ident =
+                    <#field_ty as #num_traits::FromPrimitive>::from_i128(#field_ident);
                 let #field_ident = #std::option::Option::unwrap(#field_ident);
                 #struct_expr
             }
@@ -528,8 +529,7 @@ pub fn div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(DivAssign, attributes(modtype))]
 pub fn div_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_bin_assign(
         parse_quote!(DivAssign),
         parse_quote!(div_assign),
         parse_quote!(/),
@@ -548,16 +548,18 @@ pub fn div_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html
 #[proc_macro_derive(Rem, attributes(modtype))]
 pub fn rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin(input, parse_quote!(Rem), |input, rhs_ty| {
-        let Input {
-            std,
-            num_traits,
-            struct_ident,
-            generics,
-            ..
-        } = input;
-        let (_, ty_generics, _) = generics.split_for_impl();
+    let ctx = try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)));
 
+    let Context {
+        std,
+        num_traits,
+        struct_ident,
+        generics,
+        ..
+    } = &ctx;
+    let (_, ty_generics, _) = generics.split_for_impl();
+
+    ctx.derive_bin(parse_quote!(Rem), |rhs_ty| {
         parse_quote! {
             fn rem(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
                 fn static_assert_div<T: #std::ops::Div<T, Output = T>>() {}
@@ -586,8 +588,7 @@ pub fn rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(RemAssign, attributes(modtype))]
 pub fn rem_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    bin_assign(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_bin_assign(
         parse_quote!(RemAssign),
         parse_quote!(rem_assign),
         parse_quote!(%),
@@ -606,8 +607,7 @@ pub fn rem_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Add`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Add.html
 #[proc_macro_derive(Zero, attributes(modtype))]
 pub fn zero(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    identity(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_identity(
         parse_quote!(Zero),
         parse_quote!(zero),
         parse_quote!(is_zero),
@@ -628,8 +628,7 @@ pub fn zero(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`PartialEq`]: https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html
 #[proc_macro_derive(One, attributes(modtype))]
 pub fn one(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    identity(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_identity(
         parse_quote!(One),
         parse_quote!(one),
         parse_quote!(is_one),
@@ -654,15 +653,14 @@ pub fn one(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`PartialEq`]: https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html
 #[proc_macro_derive(Num, attributes(modtype))]
 pub fn num(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         std,
         num_traits,
         struct_ident,
         generics,
         field_ty,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote!(
@@ -691,8 +689,7 @@ pub fn num(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Bounded, attributes(modtype))]
 pub fn bounded(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         modulus,
         std,
         num_traits,
@@ -700,7 +697,7 @@ pub fn bounded(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         generics,
         field_ty,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote!(
@@ -735,8 +732,7 @@ pub fn bounded(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`CheckedAdd`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedAdd.html
 #[proc_macro_derive(CheckedAdd, attributes(modtype))]
 pub fn checked_add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    checked_bin(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_checked_bin(
         parse_quote!(CheckedAdd),
         parse_quote!(checked_add),
         false,
@@ -756,8 +752,7 @@ pub fn checked_add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`CheckedAdd`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedAdd.html
 #[proc_macro_derive(CheckedSub, attributes(modtype))]
 pub fn checked_sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    checked_bin(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_checked_bin(
         parse_quote!(CheckedSub),
         parse_quote!(checked_sub),
         false,
@@ -777,8 +772,7 @@ pub fn checked_sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`CheckedMul`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedMul.html
 #[proc_macro_derive(CheckedMul, attributes(modtype))]
 pub fn checked_mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    checked_bin(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_checked_bin(
         parse_quote!(CheckedMul),
         parse_quote!(checked_mul),
         false,
@@ -798,8 +792,7 @@ pub fn checked_mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`CheckedDiv`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedDiv.html
 #[proc_macro_derive(CheckedDiv, attributes(modtype))]
 pub fn checked_div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    checked_bin(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_checked_bin(
         parse_quote!(CheckedDiv),
         parse_quote!(checked_div),
         true,
@@ -819,8 +812,7 @@ pub fn checked_div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`CheckedRem`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedRem.html
 #[proc_macro_derive(CheckedRem, attributes(modtype))]
 pub fn checked_rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    checked_bin(
-        input,
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput))).derive_checked_bin(
         parse_quote!(CheckedRem),
         parse_quote!(checked_rem),
         true,
@@ -841,18 +833,18 @@ pub fn checked_rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(CheckedNeg, attributes(modtype))]
 pub fn checked_neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         std,
         num_traits,
         struct_ident,
         generics,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(input));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote!(
         impl#impl_generics #num_traits::CheckedNeg for #struct_ident#ty_generics
-            #where_clause
+        #where_clause
         {
             #[inline]
             fn checked_neg(&self) -> #std::option::Option<Self> {
@@ -878,13 +870,13 @@ pub fn checked_neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(Inv, attributes(modtype))]
 pub fn inv(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         num_traits,
         no_impl_for_ref,
         struct_ident,
         generics,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(input));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let derive = |ty: Type| -> _ {
@@ -920,12 +912,12 @@ pub fn inv(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(Unsigned, attributes(modtype))]
 pub fn unsigned(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         num_traits,
         struct_ident,
         generics,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(input));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote!(
@@ -946,14 +938,14 @@ pub fn unsigned(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(FromPrimitive, attributes(modtype))]
 pub fn from_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         std,
         num_traits,
         struct_ident,
         generics,
         field_ty,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(input));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let derive = |prim: Ident| -> ItemFn {
@@ -1004,14 +996,14 @@ pub fn from_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 #[proc_macro_derive(ToPrimitive, attributes(modtype))]
 pub fn to_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         num_traits,
         struct_ident,
         generics,
         field_ident,
         field_ty,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(input));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let derive = |prim: Ident| -> ItemFn {
@@ -1061,7 +1053,8 @@ pub fn to_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Pow_u8, attributes(modtype))]
 pub fn pow_u8(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    pow(input, parse_quote!(u8))
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)))
+        .derive_pow(parse_quote!(u8))
 }
 
 /// Derives [`Pow`]`<u16>`, [`Pow`]`<&'_ u16>` for `Self`, `&'_ Self`.
@@ -1074,7 +1067,8 @@ pub fn pow_u8(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Pow_u16, attributes(modtype))]
 pub fn pow_u16(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    pow(input, parse_quote!(u16))
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)))
+        .derive_pow(parse_quote!(u16))
 }
 
 /// Derives [`Pow`]`<u32>`, [`Pow`]`<&'_ u32>` for `Self`, `&'_ Self`.
@@ -1087,7 +1081,8 @@ pub fn pow_u16(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Pow_u32, attributes(modtype))]
 pub fn pow_u32(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    pow(input, parse_quote!(u32))
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)))
+        .derive_pow(parse_quote!(u32))
 }
 
 /// Derives [`Pow`]`<usize>`, [`Pow`]`<&'_ usize>` for `Self`, `&'_ Self`.
@@ -1100,7 +1095,8 @@ pub fn pow_u32(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(Pow_usize, attributes(modtype))]
 pub fn pow_usize(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    pow(input, parse_quote!(usize))
+    try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)))
+        .derive_pow(parse_quote!(usize))
 }
 
 /// Derives [`Integer`].
@@ -1122,7 +1118,7 @@ pub fn pow_usize(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(Integer, attributes(modtype))]
 pub fn integer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let Input {
+    let Context {
         modulus,
         std,
         num_traits,
@@ -1132,7 +1128,7 @@ pub fn integer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         field_ident,
         field_ty,
         ..
-    } = try_syn!(Input::try_from(input));
+    } = try_syn!(Context::try_from(input));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote!(
@@ -1205,13 +1201,14 @@ pub fn integer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`ToBigUint`]: https://docs.rs/num-bigint/0.2/num_bigint/biguint/trait.ToBigUint.html
 #[proc_macro_derive(ToBigUint, attributes(modtype))]
 pub fn to_big_uint(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    ref_unary_transparent(
-        input,
-        |Input { num_bigint, .. }| parse_quote!(#num_bigint::ToBigUint),
+    let ctx = try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)));
+    let Context {
+        std, num_bigint, ..
+    } = &ctx;
+    ctx.derive_ref_unary_transparent(
+        parse_quote!(#num_bigint::ToBigUint),
         parse_quote!(to_biguint),
-        |Input {
-             std, num_bigint, ..
-         }| parse_quote!(#std::option::Option<#num_bigint::BigUint>),
+        parse_quote!(#std::option::Option<#num_bigint::BigUint>),
     )
 }
 
@@ -1224,13 +1221,14 @@ pub fn to_big_uint(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`ToBigInt`]: https://docs.rs/num-bigint/0.2/num_bigint/biguint/trait.ToBigInt.html
 #[proc_macro_derive(ToBigInt, attributes(modtype))]
 pub fn to_big_int(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    ref_unary_transparent(
-        input,
-        |Input { num_bigint, .. }| parse_quote!(#num_bigint::ToBigInt),
+    let ctx = try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)));
+    let Context {
+        std, num_bigint, ..
+    } = &ctx;
+    ctx.derive_ref_unary_transparent(
+        parse_quote!(#num_bigint::ToBigInt),
         parse_quote!(to_bigint),
-        |Input {
-             std, num_bigint, ..
-         }| parse_quote!(#std::option::Option<#num_bigint::BigInt>),
+        parse_quote!(#std::option::Option<#num_bigint::BigInt>),
     )
 }
 
@@ -1243,21 +1241,22 @@ pub fn to_big_int(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(new, attributes(modtype))]
 pub fn new(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    struct_method(input, |input| {
-        let Input {
-            std,
-            struct_vis,
-            struct_ident,
-            field_ty,
-            ..
-        } = input;
-        let doc = format!("Constructs a new `{}`.", struct_ident);
-        parse_quote! {
-            #[doc = #doc]
-            #[inline]
-            #struct_vis fn new(value: #field_ty) -> Self {
-                <Self as #std::convert::From<#field_ty>>::from(value)
-            }
+    let ctx = try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)));
+    let Context {
+        std,
+        struct_vis,
+        struct_ident,
+        field_ty,
+        ..
+    } = &ctx;
+
+    let doc = format!("Constructs a new `{}`.", struct_ident);
+
+    ctx.derive_struct_method(parse_quote! {
+        #[doc = #doc]
+        #[inline]
+        #struct_vis fn new(value: #field_ty) -> Self {
+            <Self as #std::convert::From<#field_ty>>::from(value)
         }
     })
 }
@@ -1271,371 +1270,24 @@ pub fn new(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
 #[proc_macro_derive(get, attributes(modtype))]
 pub fn get(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    struct_method(input, |input| {
-        let Input {
-            struct_vis,
-            field_ident,
-            field_ty,
-            ..
-        } = input;
-        parse_quote! {
-            #[doc = "Gets the inner value."]
-            #[inline]
-            #struct_vis fn get(self) -> #field_ty {
-                self.#field_ident
-            }
+    let ctx = try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)));
+    let Context {
+        struct_vis,
+        field_ident,
+        field_ty,
+        ..
+    } = &ctx;
+
+    ctx.derive_struct_method(parse_quote! {
+        #[doc = "Gets the inner value."]
+        #[inline]
+        #struct_vis fn get(self) -> #field_ty {
+            self.#field_ident
         }
     })
 }
 
-fn struct_method(
-    input: proc_macro::TokenStream,
-    item_fn: fn(&Input) -> ItemFn,
-) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let input = try_syn!(Input::try_from(input));
-    let Input {
-        struct_ident,
-        generics,
-        ..
-    } = &input;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    let item_fn = item_fn(&input);
-    quote!(
-        impl#impl_generics #struct_ident#ty_generics
-        #where_clause
-        {
-            #item_fn
-        }
-    )
-    .into()
-}
-
-fn fmt(input: proc_macro::TokenStream, trait_ident: Ident) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let Input {
-        std,
-        struct_ident,
-        generics,
-        field_ident,
-        field_ty,
-        ..
-    } = try_syn!(Input::try_from(input));
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    quote!(
-        impl#impl_generics #std::fmt::#trait_ident for #struct_ident#ty_generics
-        #where_clause
-        {
-            #[inline]
-            fn fmt(&self, fmt: &mut #std::fmt::Formatter) -> #std::fmt::Result {
-                <#field_ty as #std::fmt::#trait_ident>::fmt(&self.#field_ident, fmt)
-            }
-        }
-    )
-    .into()
-}
-
-fn bin_almost_transparent(
-    input: proc_macro::TokenStream,
-    trait_ident: Ident,
-    fn_ident: Ident,
-    op: fn(&Expr, &Expr, &Expr) -> Expr,
-) -> proc_macro::TokenStream {
-    bin(input, trait_ident, |input, rhs_ty| {
-        let Input {
-            modulus,
-            struct_ident,
-            generics,
-            field_ident,
-            ..
-        } = input;
-        let (_, ty_generics, _) = generics.split_for_impl();
-
-        let expr = op(
-            &parse_quote!(self.#field_ident),
-            &parse_quote!(rhs.#field_ident),
-            &modulus,
-        );
-        let struct_expr = input.construct_self(false, None);
-        parse_quote! {
-            #[inline]
-            fn #fn_ident(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
-                let mut #field_ident = #expr;
-                if #field_ident >= #modulus {
-                    #field_ident %= #modulus;
-                }
-                #struct_expr
-            }
-        }
-    })
-}
-
-fn bin(
-    input: proc_macro::TokenStream,
-    trait_ident: Ident,
-    derive_fn: impl Fn(&Input, &Type) -> ItemFn,
-) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let input = try_syn!(Input::try_from(input));
-    let Input {
-        std,
-        no_impl_for_ref,
-        struct_ident,
-        generics,
-        ..
-    } = &input;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    let derive = |impl_generics: &ImplGenerics, lhs_ty: Type, rhs_ty: Type| -> _ {
-        let item_fn = derive_fn(&input, &rhs_ty);
-        quote! {
-            impl#impl_generics #std::ops::#trait_ident<#rhs_ty> for #lhs_ty
-            #where_clause
-            {
-                type Output = #struct_ident#ty_generics;
-
-                #item_fn
-            }
-        }
-    };
-
-    let mut ret = derive(
-        &impl_generics,
-        parse_quote!(#struct_ident#ty_generics),
-        parse_quote!(#struct_ident#ty_generics),
-    );
-
-    if !no_impl_for_ref {
-        ret.extend(derive(
-            &impl_generics,
-            parse_quote!(&'_ #struct_ident#ty_generics),
-            parse_quote!(#struct_ident#ty_generics),
-        ));
-
-        ret.extend(derive(
-            &impl_generics,
-            parse_quote!(#struct_ident#ty_generics),
-            parse_quote!(&'_ #struct_ident#ty_generics),
-        ));
-
-        ret.extend(derive(
-            &impl_generics,
-            parse_quote!(&'_ #struct_ident#ty_generics),
-            parse_quote!(&'_ #struct_ident#ty_generics),
-        ));
-    }
-
-    ret.into()
-}
-
-fn bin_assign(
-    input: proc_macro::TokenStream,
-    trait_ident: Ident,
-    fn_ident: Ident,
-    bin_op: BinOp,
-) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let input = try_syn!(Input::try_from(input));
-    let Input {
-        std,
-        no_impl_for_ref,
-        struct_ident,
-        generics,
-        ..
-    } = &input;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    let derive = |rhs_ty: Type, rhs_deref: bool| -> _ {
-        let star_token = if rhs_deref { quote!(*) } else { quote!() };
-        quote! {
-            impl#impl_generics #std::ops::#trait_ident<#rhs_ty> for #struct_ident#ty_generics
-            #where_clause
-            {
-                #[inline]
-                fn #fn_ident(&mut self, rhs: #rhs_ty) {
-                    fn static_assert_copy<T: #std::marker::Copy>() {}
-                    static_assert_copy::<Self>();
-                    *self = *self #bin_op #star_token rhs;
-                }
-            }
-        }
-    };
-
-    let mut ret = derive(parse_quote!(Self), false);
-    if !no_impl_for_ref {
-        ret.extend(derive(parse_quote!(&'_ Self), true));
-    }
-    ret.into()
-}
-
-fn identity(
-    input: proc_macro::TokenStream,
-    trait_ident: Ident,
-    value: Ident,
-    is: Ident,
-) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let input = try_syn!(Input::try_from(input));
-    let Input {
-        num_traits,
-        struct_ident,
-        generics,
-        field_ident,
-        field_ty,
-        ..
-    } = &input;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    let struct_expr = input.construct_self(
-        true,
-        Some(parse_quote!(<#field_ty as #num_traits::#trait_ident>::#value())),
-    );
-
-    quote!(
-        impl#impl_generics #num_traits::#trait_ident for #struct_ident#ty_generics
-        #where_clause
-        {
-            #[inline]
-            fn #value() -> Self {
-                #struct_expr
-            }
-
-            #[inline]
-            fn #is(&self) -> bool {
-                <#field_ty as #num_traits::#trait_ident>::#is(&self.#field_ident)
-            }
-        }
-    )
-    .into()
-}
-
-fn checked_bin(
-    input: proc_macro::TokenStream,
-    trait_ident: Ident,
-    fn_ident: Ident,
-    return_none_if_rhs_is_zero: bool,
-    op: BinOp,
-) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let Input {
-        std,
-        num_traits,
-        struct_ident,
-        generics,
-        ..
-    } = try_syn!(Input::try_from(input));
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    let expr: Expr = if return_none_if_rhs_is_zero {
-        parse_quote! {
-            if <Self as #num_traits::Zero>::is_zero(rhs) {
-                None
-            } else {
-                Some(*self #op *rhs)
-            }
-        }
-    } else {
-        parse_quote!(Some(*self #op *rhs))
-    };
-
-    quote!(
-        impl#impl_generics #num_traits::#trait_ident for #struct_ident#ty_generics
-            #where_clause
-        {
-            #[inline]
-            fn #fn_ident(&self, rhs: &Self) -> #std::option::Option<Self> {
-                fn static_assert_copy<T: #std::marker::Copy>() {}
-                static_assert_copy::<Self>();
-                #expr
-            }
-        }
-    )
-    .into()
-}
-
-fn pow(input: proc_macro::TokenStream, rhs_ty: Type) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let Input {
-        std,
-        num_traits,
-        no_impl_for_ref,
-        struct_ident,
-        generics,
-        field_ident,
-        field_ty,
-        ..
-    } = try_syn!(Input::try_from(input));
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    let derive = |lhs_ty: &Type, rhs_ty: &Type| -> _ {
-        quote! {
-            impl#impl_generics #num_traits::Pow<#rhs_ty> for #lhs_ty
-                #where_clause
-            {
-                type Output = #struct_ident#ty_generics;
-
-                #[inline]
-                fn pow(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
-                    let value = <#field_ty as #num_traits::Pow<#rhs_ty>>::pow(self.#field_ident, rhs);
-                    <#struct_ident#ty_generics as #std::convert::From<#field_ty>>::from(value)
-                }
-            }
-        }
-    };
-
-    let mut ret = derive(&parse_quote!(#struct_ident#ty_generics), &rhs_ty);
-    if !no_impl_for_ref {
-        ret.extend(derive(
-            &parse_quote!(#struct_ident#ty_generics),
-            &parse_quote!(&'_ #rhs_ty),
-        ));
-        ret.extend(derive(
-            &parse_quote!(&'_ #struct_ident#ty_generics),
-            &rhs_ty,
-        ));
-        ret.extend(derive(
-            &parse_quote!(&'_ #struct_ident#ty_generics),
-            &parse_quote!(&'_ #rhs_ty),
-        ));
-    }
-    ret.into()
-}
-
-fn ref_unary_transparent(
-    input: proc_macro::TokenStream,
-    trait_ty: fn(&Input) -> Type,
-    fn_ident: Ident,
-    output_ty: fn(&Input) -> Type,
-) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let input = try_syn!(Input::try_from(input));
-    let Input {
-        struct_ident,
-        generics,
-        field_ident,
-        field_ty,
-        ..
-    } = &input;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    let trait_ty = trait_ty(&input);
-    let output_ty = output_ty(&input);
-    quote!(
-        impl#impl_generics #trait_ty for #struct_ident#ty_generics
-        #where_clause
-        {
-            #[inline]
-            fn #fn_ident(&self) -> #output_ty {
-                <#field_ty as #trait_ty>::#fn_ident(&self.#field_ident)
-            }
-        }
-    )
-    .into()
-}
-
-struct Input {
+struct Context {
     modulus: Expr,
     std: Path,
     num_traits: Path,
@@ -1649,9 +1301,338 @@ struct Input {
     field_ty: Type,
     other_fields: Vec<(Ident, Type)>,
 }
+impl Context {
+    fn derive_fmt(&self, trait_ident: Ident) -> proc_macro::TokenStream {
+        let Context {
+            std,
+            struct_ident,
+            generics,
+            field_ident,
+            field_ty,
+            ..
+        } = self;
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-impl Input {
-    fn construct_self(&self, path_is_self: bool, value_expr: Option<Expr>) -> ExprStruct {
+        quote!(
+            impl#impl_generics #std::fmt::#trait_ident for #struct_ident#ty_generics
+                #where_clause
+            {
+                #[inline]
+                fn fmt(&self, fmt: &mut #std::fmt::Formatter) -> #std::fmt::Result {
+                    <#field_ty as #std::fmt::#trait_ident>::fmt(&self.#field_ident, fmt)
+                }
+            }
+        )
+        .into()
+    }
+
+    fn derive_bin_almost_transparent(
+        &self,
+        trait_ident: Ident,
+        fn_ident: Ident,
+        op: fn(&Expr, &Expr, &Expr) -> Expr,
+    ) -> proc_macro::TokenStream {
+        let Context {
+            modulus,
+            struct_ident,
+            generics,
+            field_ident,
+            ..
+        } = self;
+
+        let (_, ty_generics, _) = generics.split_for_impl();
+
+        let expr = op(
+            &parse_quote!(self.#field_ident),
+            &parse_quote!(rhs.#field_ident),
+            &modulus,
+        );
+        let struct_expr = self.struct_expr(false, None);
+
+        self.derive_bin(trait_ident, |rhs_ty| {
+            parse_quote! {
+                #[inline]
+                fn #fn_ident(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
+                    let mut #field_ident = #expr;
+                    if #field_ident >= #modulus {
+                        #field_ident %= #modulus;
+                    }
+                    #struct_expr
+                }
+            }
+        })
+    }
+
+    fn derive_bin(
+        &self,
+        trait_ident: Ident,
+        derive_fn: impl Fn(&Type) -> ItemFn,
+    ) -> proc_macro::TokenStream {
+        let Context {
+            std,
+            no_impl_for_ref,
+            struct_ident,
+            generics,
+            ..
+        } = self;
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        let derive = |impl_generics: &ImplGenerics, lhs_ty: Type, rhs_ty: Type| -> _ {
+            let item_fn = derive_fn(&rhs_ty);
+            quote! {
+                impl#impl_generics #std::ops::#trait_ident<#rhs_ty> for #lhs_ty
+                #where_clause
+                {
+                    type Output = #struct_ident#ty_generics;
+
+                    #item_fn
+                }
+            }
+        };
+
+        let mut ret = derive(
+            &impl_generics,
+            parse_quote!(#struct_ident#ty_generics),
+            parse_quote!(#struct_ident#ty_generics),
+        );
+
+        if !no_impl_for_ref {
+            ret.extend(derive(
+                &impl_generics,
+                parse_quote!(&'_ #struct_ident#ty_generics),
+                parse_quote!(#struct_ident#ty_generics),
+            ));
+
+            ret.extend(derive(
+                &impl_generics,
+                parse_quote!(#struct_ident#ty_generics),
+                parse_quote!(&'_ #struct_ident#ty_generics),
+            ));
+
+            ret.extend(derive(
+                &impl_generics,
+                parse_quote!(&'_ #struct_ident#ty_generics),
+                parse_quote!(&'_ #struct_ident#ty_generics),
+            ));
+        }
+
+        ret.into()
+    }
+
+    fn derive_bin_assign(
+        &self,
+        trait_ident: Ident,
+        fn_ident: Ident,
+        bin_op: BinOp,
+    ) -> proc_macro::TokenStream {
+        let Context {
+            std,
+            no_impl_for_ref,
+            struct_ident,
+            generics,
+            ..
+        } = &self;
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        let derive = |rhs_ty: Type, rhs_deref: bool| -> _ {
+            let star_token = if rhs_deref { quote!(*) } else { quote!() };
+            quote! {
+                impl#impl_generics #std::ops::#trait_ident<#rhs_ty> for #struct_ident#ty_generics
+                #where_clause
+                {
+                    #[inline]
+                    fn #fn_ident(&mut self, rhs: #rhs_ty) {
+                        fn static_assert_copy<T: #std::marker::Copy>() {}
+                        static_assert_copy::<Self>();
+                        *self = *self #bin_op #star_token rhs;
+                    }
+                }
+            }
+        };
+
+        let mut ret = derive(parse_quote!(Self), false);
+        if !no_impl_for_ref {
+            ret.extend(derive(parse_quote!(&'_ Self), true));
+        }
+        ret.into()
+    }
+
+    fn derive_identity(
+        &self,
+        trait_ident: Ident,
+        value: Ident,
+        is: Ident,
+    ) -> proc_macro::TokenStream {
+        let Context {
+            num_traits,
+            struct_ident,
+            generics,
+            field_ident,
+            field_ty,
+            ..
+        } = self;
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        let struct_expr = self.struct_expr(
+            true,
+            Some(parse_quote!(<#field_ty as #num_traits::#trait_ident>::#value())),
+        );
+
+        quote!(
+            impl#impl_generics #num_traits::#trait_ident for #struct_ident#ty_generics
+            #where_clause
+            {
+                #[inline]
+                fn #value() -> Self {
+                    #struct_expr
+                }
+
+                #[inline]
+                fn #is(&self) -> bool {
+                    <#field_ty as #num_traits::#trait_ident>::#is(&self.#field_ident)
+                }
+            }
+        )
+        .into()
+    }
+
+    fn derive_checked_bin(
+        &self,
+        trait_ident: Ident,
+        fn_ident: Ident,
+        return_none_if_rhs_is_zero: bool,
+        op: BinOp,
+    ) -> proc_macro::TokenStream {
+        let Context {
+            std,
+            num_traits,
+            struct_ident,
+            generics,
+            ..
+        } = self;
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        let expr: Expr = if return_none_if_rhs_is_zero {
+            parse_quote! {
+                if <Self as #num_traits::Zero>::is_zero(rhs) {
+                    None
+                } else {
+                    Some(*self #op *rhs)
+                }
+            }
+        } else {
+            parse_quote!(Some(*self #op *rhs))
+        };
+
+        quote!(
+            impl#impl_generics #num_traits::#trait_ident for #struct_ident#ty_generics
+                #where_clause
+            {
+                #[inline]
+                fn #fn_ident(&self, rhs: &Self) -> #std::option::Option<Self> {
+                    fn static_assert_copy<T: #std::marker::Copy>() {}
+                    static_assert_copy::<Self>();
+                    #expr
+                }
+            }
+        )
+        .into()
+    }
+
+    fn derive_pow(&self, rhs_ty: Type) -> proc_macro::TokenStream {
+        let Context {
+            std,
+            num_traits,
+            no_impl_for_ref,
+            struct_ident,
+            generics,
+            field_ident,
+            field_ty,
+            ..
+        } = self;
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        let derive = |lhs_ty: &Type, rhs_ty: &Type| -> _ {
+            quote! {
+                impl#impl_generics #num_traits::Pow<#rhs_ty> for #lhs_ty
+                    #where_clause
+                {
+                    type Output = #struct_ident#ty_generics;
+
+                    #[inline]
+                    fn pow(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
+                        let value = <#field_ty as #num_traits::Pow<#rhs_ty>>::pow(self.#field_ident, rhs);
+                        <#struct_ident#ty_generics as #std::convert::From<#field_ty>>::from(value)
+                    }
+                }
+            }
+        };
+
+        let mut ret = derive(&parse_quote!(#struct_ident#ty_generics), &rhs_ty);
+        if !no_impl_for_ref {
+            ret.extend(derive(
+                &parse_quote!(#struct_ident#ty_generics),
+                &parse_quote!(&'_ #rhs_ty),
+            ));
+            ret.extend(derive(
+                &parse_quote!(&'_ #struct_ident#ty_generics),
+                &rhs_ty,
+            ));
+            ret.extend(derive(
+                &parse_quote!(&'_ #struct_ident#ty_generics),
+                &parse_quote!(&'_ #rhs_ty),
+            ));
+        }
+        ret.into()
+    }
+
+    fn derive_ref_unary_transparent(
+        &self,
+        trait_ty: Type,
+        fn_ident: Ident,
+        output_ty: Type,
+    ) -> proc_macro::TokenStream {
+        let Context {
+            struct_ident,
+            generics,
+            field_ident,
+            field_ty,
+            ..
+        } = self;
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        quote!(
+            impl#impl_generics #trait_ty for #struct_ident#ty_generics
+            #where_clause
+            {
+                #[inline]
+                fn #fn_ident(&self) -> #output_ty {
+                    <#field_ty as #trait_ty>::#fn_ident(&self.#field_ident)
+                }
+            }
+        )
+        .into()
+    }
+
+    fn derive_struct_method(&self, item_fn: ItemFn) -> proc_macro::TokenStream {
+        let Context {
+            struct_ident,
+            generics,
+            ..
+        } = self;
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        quote!(
+            impl#impl_generics #struct_ident#ty_generics
+            #where_clause
+            {
+                #item_fn
+            }
+        )
+        .into()
+    }
+
+    fn struct_expr(&self, path_is_self: bool, value_expr: Option<Expr>) -> ExprStruct {
         let Self {
             std,
             struct_ident,
@@ -1684,7 +1665,7 @@ impl Input {
     }
 }
 
-impl TryFrom<DeriveInput> for Input {
+impl TryFrom<DeriveInput> for Context {
     type Error = syn::Error;
 
     fn try_from(input: DeriveInput) -> syn::Result<Self> {
