@@ -12,8 +12,8 @@ keywords = ["math"]
 categories = ["algorithms"]
 
 [badges]
-travis-ci = { repository = "qryxip/modtype" }
 codecov = { repository = "qryxip/modtype" }
+maintenance = { status = "actively-developed" }
 
 [workspace]
 members = ["./derive"]
