@@ -65,15 +65,19 @@
 
 pub use modtype_derive::ConstValue;
 
+pub use modtype_derive::new;
+
+pub use modtype_derive::get;
+
 pub use modtype_derive::From;
 
 pub use modtype_derive::Into;
 
-pub use modtype_derive::FromStr;
-
 pub use modtype_derive::Display;
 
 pub use modtype_derive::{DebugTransparent, DebugTransparent as Debug};
+
+pub use modtype_derive::FromStr;
 
 pub use modtype_derive::Deref;
 
@@ -99,13 +103,23 @@ pub use modtype_derive::Rem;
 
 pub use modtype_derive::RemAssign;
 
+pub use modtype_derive::Num;
+
+pub use modtype_derive::Unsigned;
+
+pub use modtype_derive::Bounded;
+
 pub use modtype_derive::Zero;
 
 pub use modtype_derive::One;
 
-pub use modtype_derive::Num;
+pub use modtype_derive::FromPrimitive;
 
-pub use modtype_derive::Bounded;
+pub use modtype_derive::ToPrimitive;
+
+pub use modtype_derive::Inv;
+
+pub use modtype_derive::CheckedNeg;
 
 pub use modtype_derive::CheckedAdd;
 
@@ -116,16 +130,6 @@ pub use modtype_derive::CheckedMul;
 pub use modtype_derive::CheckedDiv;
 
 pub use modtype_derive::CheckedRem;
-
-pub use modtype_derive::CheckedNeg;
-
-pub use modtype_derive::Inv;
-
-pub use modtype_derive::Unsigned;
-
-pub use modtype_derive::FromPrimitive;
-
-pub use modtype_derive::ToPrimitive;
 
 pub use modtype_derive::Pow_u8;
 
@@ -144,10 +148,6 @@ pub use modtype_derive::Integer;
 pub use modtype_derive::ToBigUint;
 
 pub use modtype_derive::ToBigInt;
-
-pub use modtype_derive::new;
-
-pub use modtype_derive::get;
 
 use std::fmt;
 
@@ -226,6 +226,8 @@ pub mod preset {
             /// });
             /// ```
             #[derive(
+                crate::new,
+                crate::get,
                 Default,
                 Clone,
                 Copy,
@@ -235,9 +237,9 @@ pub mod preset {
                 Ord,
                 crate::From,
                 crate::Into,
-                crate::FromStr,
                 crate::Display,
                 crate::Debug,
+                crate::FromStr,
                 crate::Deref,
                 crate::Neg,
                 crate::Add,
@@ -250,20 +252,20 @@ pub mod preset {
                 crate::DivAssign,
                 crate::Rem,
                 crate::RemAssign,
+                crate::Num,
+                crate::Unsigned,
+                crate::Bounded,
                 crate::Zero,
                 crate::One,
-                crate::Num,
-                crate::Bounded,
+                crate::FromPrimitive,
+                crate::ToPrimitive,
+                crate::Inv,
+                crate::CheckedNeg,
                 crate::CheckedAdd,
                 crate::CheckedSub,
                 crate::CheckedMul,
                 crate::CheckedDiv,
                 crate::CheckedRem,
-                crate::CheckedNeg,
-                crate::Inv,
-                crate::Unsigned,
-                crate::FromPrimitive,
-                crate::ToPrimitive,
                 crate::Pow_u8,
                 crate::Pow_u16,
                 crate::Pow_u32,
@@ -273,8 +275,6 @@ pub mod preset {
                 crate::Integer,
                 crate::ToBigUint,
                 crate::ToBigInt,
-                crate::new,
-                crate::get,
             )]
             #[modtype(modulus = "unsafe { modulus() }")]
             pub struct F {
@@ -363,6 +363,8 @@ pub mod preset {
         /// assert_eq!(F::new(3).get(), 3u64);
         /// ```
         #[derive(
+            crate::new,
+            crate::get,
             Default,
             Clone,
             Copy,
@@ -372,9 +374,9 @@ pub mod preset {
             Ord,
             crate::From,
             crate::Into,
-            crate::FromStr,
             crate::Display,
             crate::Debug,
+            crate::FromStr,
             crate::Deref,
             crate::Neg,
             crate::Add,
@@ -387,20 +389,20 @@ pub mod preset {
             crate::DivAssign,
             crate::Rem,
             crate::RemAssign,
+            crate::Num,
+            crate::Unsigned,
+            crate::Bounded,
             crate::Zero,
             crate::One,
-            crate::Num,
-            crate::Bounded,
+            crate::FromPrimitive,
+            crate::ToPrimitive,
+            crate::Inv,
+            crate::CheckedNeg,
             crate::CheckedAdd,
             crate::CheckedSub,
             crate::CheckedMul,
             crate::CheckedDiv,
             crate::CheckedRem,
-            crate::CheckedNeg,
-            crate::Inv,
-            crate::Unsigned,
-            crate::FromPrimitive,
-            crate::ToPrimitive,
             crate::Pow_u8,
             crate::Pow_u16,
             crate::Pow_u32,
@@ -410,8 +412,6 @@ pub mod preset {
             crate::Integer,
             crate::ToBigUint,
             crate::ToBigInt,
-            crate::new,
-            crate::get,
         )]
         #[modtype(modulus = "M::VALUE")]
         pub struct F<M: ConstValue<Value = u64>> {
@@ -457,6 +457,8 @@ pub mod preset {
         /// assert_eq!(Z::new(3).get(), 3u64);
         /// ```
         #[derive(
+            crate::new,
+            crate::get,
             Default,
             Clone,
             Copy,
@@ -466,26 +468,24 @@ pub mod preset {
             Ord,
             crate::From,
             crate::Into,
-            crate::FromStr,
             crate::Display,
             crate::Debug,
+            crate::FromStr,
             crate::Deref,
             crate::Neg,
             crate::Add,
             crate::AddAssign,
             crate::Sub,
             crate::SubAssign,
-            crate::Zero,
             crate::Bounded,
-            crate::CheckedAdd,
-            crate::CheckedSub,
-            crate::CheckedNeg,
+            crate::Zero,
             crate::FromPrimitive,
             crate::ToPrimitive,
+            crate::CheckedNeg,
+            crate::CheckedAdd,
+            crate::CheckedSub,
             crate::ToBigUint,
             crate::ToBigInt,
-            crate::new,
-            crate::get,
         )]
         #[modtype(modulus = "M::VALUE")]
         pub struct Z<M: ConstValue<Value = u64>> {
