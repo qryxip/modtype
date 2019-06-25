@@ -7,7 +7,7 @@ impl Context {
     pub(crate) fn derive_inv(&self) -> proc_macro::TokenStream {
         let Context {
             num_traits,
-            no_impl_for_ref,
+            inv,
             struct_ident,
             generics,
             ..
@@ -30,7 +30,7 @@ impl Context {
         };
 
         let mut ret = derive(parse_quote!(#struct_ident#ty_generics));
-        if !no_impl_for_ref {
+        if inv.for_ref {
             ret.extend(derive(parse_quote!(&'_ #struct_ident#ty_generics)));
         }
         ret.into()

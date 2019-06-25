@@ -3,15 +3,15 @@ use modtype::ConstValue;
 use std::marker::PhantomData;
 
 fn main() {
-    println!(
-        "{} / {} ≡ {}",
-        F::new(3),
-        F::new(4),
-        F::new(3) / F::new(4),
-    );
+    println!("{} / {} ≡ {}", F(3), F(4), F(3) / F(4));
 }
 
 type F = F_<Const17U32>;
+
+#[allow(non_snake_case)]
+fn F(value: u32) -> F {
+    F::from(value)
+}
 
 #[derive(
     modtype::new,
@@ -54,12 +54,7 @@ type F = F_<Const17U32>;
     modtype::CheckedMul,
     modtype::CheckedDiv,
     modtype::CheckedRem,
-    modtype::Pow_u8,
-    modtype::Pow_u16,
-    modtype::Pow_u32,
-    modtype::Pow_u64,
-    modtype::Pow_u128,
-    modtype::Pow_usize,
+    modtype::Pow,
     modtype::Integer,
     modtype::ToBigUint,
     modtype::ToBigInt,
@@ -70,7 +65,20 @@ type F = F_<Const17U32>;
     num_traits = "num::traits",
     num_integer = "num::integer",
     num_bigint = "num::bigint",
-    no_impl_for_ref
+    debug(SingleTuple),
+    neg(for_ref = true),
+    add(for_ref = true),
+    add_assign(for_ref = true),
+    sub(for_ref = true),
+    sub_assign(for_ref = true),
+    mul(for_ref = true),
+    mul_assign(for_ref = true),
+    div(for_ref = true),
+    div_assign(for_ref = true),
+    rem(for_ref = true),
+    rem_assign(for_ref = true),
+    inv(for_ref = true),
+    pow(for_ref = true)
 )]
 struct F_<M: ConstValue<Value = u32>> {
     #[modtype(value)]

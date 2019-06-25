@@ -1,5 +1,11 @@
 #![recursion_limit = "256"]
 
+macro_rules! bail {
+    ($span:expr, $fmt:literal $(, $arg:expr)* $(,)?) => {
+        return Err(syn::Error::new($span, format!($fmt $(, $arg)*)))
+    }
+}
+
 macro_rules! try_syn {
     ($expr:expr) => {
         match $expr {
@@ -127,9 +133,9 @@ pub fn display(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// - `#InnerValue: `[`Debug`].
 ///
 /// [`Debug`]: https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html
-#[proc_macro_derive(DebugTransparent, attributes(modtype))]
-pub fn debug_transparent(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive(input, Context::derive_debug_transparent)
+#[proc_macro_derive(ModtypeDebug, attributes(modtype))]
+pub fn debug(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    derive(input, Context::derive_debug)
 }
 
 /// Derives [`FromStr`]`<Err = #InnerValue::Err>`.
@@ -530,183 +536,7 @@ pub fn checked_rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_checked_rem)
 }
 
-/// Derives [`Pow`]`<u8>`, [`Pow`]`<&'_ u8>` for `Self`, `&'_ Self`.
-///
-/// # Requirements
-///
-/// - `Self: `[`Copy`].
-/// - `Self: `[`MulAssign`]`<Self>`.
-/// - `#modulus * #modulus` does not overflow.
-///
-/// # Generated Code
-///
-/// ```ignore
-/// impl #num_traits::Pow<u8> for #self_ty {
-///     type Output = F;
-///
-///     #[inline]
-///     fn pow(self, exp: u8) -> #self_ty {
-///         fn static_assert_copy<T: #std::marker::Copy>() {}
-///         static_assert_copy::<#self_ty>();
-///
-///         let mut base = self;
-///         let mut exp = exp;
-///         let mut acc = self;
-///         acc.__value = <#inner_value_ty as #num_traits::One>::one();
-///
-///         while exp > 0 {
-///             if (exp & 0x1) == 0x1 {
-///                 acc *= base;
-///             }
-///             exp /= 2;
-///             base *= base;
-///         }
-///         acc
-///     }
-/// }
-/// ```
-///
-/// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
-/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
-/// [`MulAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.MulAssign.html
-#[proc_macro_derive(Pow_u8, attributes(modtype))]
-pub fn pow_u8(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive(input, Context::derive_pow_u8)
-}
-
-/// Derives [`Pow`]`<u16>`, [`Pow`]`<&'_ u16>` for `Self`, `&'_ Self`.
-///
-/// # Requirements
-///
-/// - `Self: `[`Copy`].
-/// - `Self: `[`MulAssign`]`<Self>`.
-/// - `#modulus * #modulus` does not overflow.
-///
-/// # Generated Code
-///
-/// ```ignore
-/// impl #num_traits::Pow<u16> for #self_ty {
-///     type Output = F;
-///
-///     #[inline]
-///     fn pow(self, exp: u16) -> #self_ty {
-///         fn static_assert_copy<T: #std::marker::Copy>() {}
-///         static_assert_copy::<#self_ty>();
-///
-///         let mut base = self;
-///         let mut exp = exp;
-///         let mut acc = self;
-///         acc.__value = <#inner_value_ty as #num_traits::One>::one();
-///
-///         while exp > 0 {
-///             if (exp & 0x1) == 0x1 {
-///                 acc *= base;
-///             }
-///             exp /= 2;
-///             base *= base;
-///         }
-///         acc
-///     }
-/// }
-/// ```
-///
-/// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
-/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
-/// [`MulAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.MulAssign.html
-#[proc_macro_derive(Pow_u16, attributes(modtype))]
-pub fn pow_u16(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive(input, Context::derive_pow_u16)
-}
-
-/// Derives [`Pow`]`<u32>`, [`Pow`]`<&'_ u32>` for `Self`, `&'_ Self`.
-///
-/// # Requirements
-///
-/// - `Self: `[`Copy`].
-/// - `Self: `[`MulAssign`]`<Self>`.
-/// - `#modulus * #modulus` does not overflow.
-///
-/// # Generated Code
-///
-/// ```ignore
-/// impl #num_traits::Pow<u32> for #self_ty {
-///     type Output = F;
-///
-///     #[inline]
-///     fn pow(self, exp: u32) -> #self_ty {
-///         fn static_assert_copy<T: #std::marker::Copy>() {}
-///         static_assert_copy::<#self_ty>();
-///
-///         let mut base = self;
-///         let mut exp = exp;
-///         let mut acc = self;
-///         acc.__value = <#inner_value_ty as #num_traits::One>::one();
-///
-///         while exp > 0 {
-///             if (exp & 0x1) == 0x1 {
-///                 acc *= base;
-///             }
-///             exp /= 2;
-///             base *= base;
-///         }
-///         acc
-///     }
-/// }
-/// ```
-///
-/// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
-/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
-/// [`MulAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.MulAssign.html
-#[proc_macro_derive(Pow_u32, attributes(modtype))]
-pub fn pow_u32(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive(input, Context::derive_pow_u32)
-}
-
-/// Derives [`Pow`]`<u64>`, [`Pow`]`<&'_ u64>` for `Self`, `&'_ Self`.
-///
-/// # Requirements
-///
-/// - `Self: `[`Copy`].
-/// - `Self: `[`MulAssign`]`<Self>`.
-/// - `#modulus * #modulus` does not overflow.
-///
-/// # Generated Code
-///
-/// ```ignore
-/// impl #num_traits::Pow<u64> for #self_ty {
-///     type Output = F;
-///
-///     #[inline]
-///     fn pow(self, exp: u64) -> #self_ty {
-///         fn static_assert_copy<T: #std::marker::Copy>() {}
-///         static_assert_copy::<#self_ty>();
-///
-///         let mut base = self;
-///         let mut exp = exp;
-///         let mut acc = self;
-///         acc.__value = <#inner_value_ty as #num_traits::One>::one();
-///
-///         while exp > 0 {
-///             if (exp & 0x1) == 0x1 {
-///                 acc *= base;
-///             }
-///             exp /= 2;
-///             base *= base;
-///         }
-///         acc
-///     }
-/// }
-/// ```
-///
-/// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
-/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
-/// [`MulAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.MulAssign.html
-#[proc_macro_derive(Pow_u64, attributes(modtype))]
-pub fn pow_u64(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive(input, Context::derive_pow_u64)
-}
-
-/// Derives [`Pow`]`<u128>`, [`Pow`]`<&'_ u128>` for `Self`, `&'_ Self`.
+/// Derives [`Pow`] for primitive unsigned types.
 ///
 /// # Requirements
 ///
@@ -745,53 +575,9 @@ pub fn pow_u64(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
 /// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 /// [`MulAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.MulAssign.html
-#[proc_macro_derive(Pow_u128, attributes(modtype))]
-pub fn pow_u128(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive(input, Context::derive_pow_u128)
-}
-
-/// Derives [`Pow`]`<usize>`, [`Pow`]`<&'_ usize>` for `Self`, `&'_ Self`.
-///
-/// # Requirements
-///
-/// - `Self: `[`Copy`].
-/// - `Self: `[`MulAssign`]`<Self>`.
-/// - `#modulus * #modulus` does not overflow.
-///
-/// # Generated Code
-///
-/// ```ignore
-/// impl #num_traits::Pow<usize> for #self_ty {
-///     type Output = F;
-///
-///     #[inline]
-///     fn pow(self, exp: usize) -> #self_ty {
-///         fn static_assert_copy<T: #std::marker::Copy>() {}
-///         static_assert_copy::<#self_ty>();
-///
-///         let mut base = self;
-///         let mut exp = exp;
-///         let mut acc = self;
-///         acc.__value = <#inner_value_ty as #num_traits::One>::one();
-///
-///         while exp > 0 {
-///             if (exp & 0x1) == 0x1 {
-///                 acc *= base;
-///             }
-///             exp /= 2;
-///             base *= base;
-///         }
-///         acc
-///     }
-/// }
-/// ```
-///
-/// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
-/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
-/// [`MulAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.MulAssign.html
-#[proc_macro_derive(Pow_usize, attributes(modtype))]
-pub fn pow_usize(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive(input, Context::derive_pow_usize)
+#[proc_macro_derive(Pow, attributes(modtype))]
+pub fn pow(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    derive(input, Context::derive_pow)
 }
 
 /// Derives [`Integer`].

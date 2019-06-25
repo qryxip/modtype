@@ -1,4 +1,4 @@
-use crate::context::Context;
+use crate::context::{Context, OpOptions};
 
 use quote::quote;
 use syn::{parse_quote, BinOp, Expr, Ident, ImplGenerics, ItemFn, Type};
@@ -34,7 +34,7 @@ impl Context {
         let Context {
             modulus,
             std,
-            no_impl_for_ref,
+            neg,
             struct_ident,
             generics,
             field_ident,
@@ -65,7 +65,7 @@ impl Context {
         };
 
         let mut ret = derive(parse_quote!(#struct_ident#ty_generics));
-        if !no_impl_for_ref {
+        if neg.for_ref {
             ret.extend(derive(parse_quote!(&'_ #struct_ident#ty_generics)))
         }
         ret.into()
@@ -76,6 +76,7 @@ impl Context {
             parse_quote!(Add),
             parse_quote!(add),
             |l, r, _| parse_quote!(#l + #r),
+            self.add,
         )
     }
 
@@ -84,6 +85,7 @@ impl Context {
             parse_quote!(AddAssign),
             parse_quote!(add_assign),
             parse_quote!(+),
+            self.add_assign,
         )
     }
 
@@ -92,6 +94,7 @@ impl Context {
             parse_quote!(Sub),
             parse_quote!(sub),
             |l, r, m| parse_quote!(#m + #l - #r),
+            self.sub,
         )
     }
 
@@ -100,6 +103,7 @@ impl Context {
             parse_quote!(SubAssign),
             parse_quote!(sub_assign),
             parse_quote!(-),
+            self.sub_assign,
         )
     }
 
@@ -108,6 +112,7 @@ impl Context {
             parse_quote!(Mul),
             parse_quote!(mul),
             |l, r, _| parse_quote!(#l * #r),
+            self.mul,
         )
     }
 
@@ -116,6 +121,7 @@ impl Context {
             parse_quote!(MulAssign),
             parse_quote!(mul_assign),
             parse_quote!(*),
+            self.mul_assign,
         )
     }
 
@@ -124,6 +130,7 @@ impl Context {
             modulus,
             std,
             num_traits,
+            div,
             struct_ident,
             generics,
             field_ident,
@@ -133,7 +140,7 @@ impl Context {
         let (_, ty_generics, _) = generics.split_for_impl();
         let struct_expr = self.struct_expr(false, None);
 
-        self.derive_bin(parse_quote!(Div), |rhs_ty| {
+        self.derive_bin(parse_quote!(Div), *div, |rhs_ty| {
             parse_quote! {
                 fn div(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
                     fn extended_gcd(a: i128, b: i128) -> (i128, i128, i128) {
@@ -177,12 +184,14 @@ impl Context {
             parse_quote!(DivAssign),
             parse_quote!(div_assign),
             parse_quote!(/),
+            self.div_assign,
         )
     }
 
     pub(crate) fn derive_rem(&self) -> proc_macro::TokenStream {
         let Context {
             std,
+            rem,
             num_traits,
             struct_ident,
             generics,
@@ -190,7 +199,7 @@ impl Context {
         } = self;
         let (_, ty_generics, _) = generics.split_for_impl();
 
-        self.derive_bin(parse_quote!(Rem), |rhs_ty| {
+        self.derive_bin(parse_quote!(Rem), *rem, |rhs_ty| {
             parse_quote! {
                 fn rem(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
                     fn static_assert_div<T: #std::ops::Div<T, Output = T>>() {}
@@ -212,6 +221,7 @@ impl Context {
             parse_quote!(RemAssign),
             parse_quote!(rem_assign),
             parse_quote!(%),
+            self.rem_assign,
         )
     }
 
@@ -220,6 +230,7 @@ impl Context {
         trait_ident: Ident,
         fn_ident: Ident,
         op: fn(&Expr, &Expr, &Expr) -> Expr,
+        opts: OpOptions,
     ) -> proc_macro::TokenStream {
         let Context {
             modulus,
@@ -238,7 +249,7 @@ impl Context {
         );
         let struct_expr = self.struct_expr(false, None);
 
-        self.derive_bin(trait_ident, |rhs_ty| {
+        self.derive_bin(trait_ident, opts, |rhs_ty| {
             parse_quote! {
                 #[inline]
                 fn #fn_ident(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
@@ -255,11 +266,11 @@ impl Context {
     fn derive_bin(
         &self,
         trait_ident: Ident,
+        opts: OpOptions,
         derive_fn: impl Fn(&Type) -> ItemFn,
     ) -> proc_macro::TokenStream {
         let Context {
             std,
-            no_impl_for_ref,
             struct_ident,
             generics,
             ..
@@ -285,7 +296,7 @@ impl Context {
             parse_quote!(#struct_ident#ty_generics),
         );
 
-        if !no_impl_for_ref {
+        if opts.for_ref {
             ret.extend(derive(
                 &impl_generics,
                 parse_quote!(&'_ #struct_ident#ty_generics),
@@ -313,10 +324,10 @@ impl Context {
         trait_ident: Ident,
         fn_ident: Ident,
         bin_op: BinOp,
+        opts: OpOptions,
     ) -> proc_macro::TokenStream {
         let Context {
             std,
-            no_impl_for_ref,
             struct_ident,
             generics,
             ..
@@ -340,7 +351,7 @@ impl Context {
         };
 
         let mut ret = derive(parse_quote!(Self), false);
-        if !no_impl_for_ref {
+        if opts.for_ref {
             ret.extend(derive(parse_quote!(&'_ Self), true));
         }
         ret.into()

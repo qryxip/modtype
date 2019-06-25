@@ -23,7 +23,20 @@ pub(crate) struct Context {
     num_traits: Path,
     num_integer: Path,
     num_bigint: Path,
-    no_impl_for_ref: bool,
+    debug: DebugOptions,
+    neg: OpOptions,
+    add: OpOptions,
+    add_assign: OpOptions,
+    sub: OpOptions,
+    sub_assign: OpOptions,
+    mul: OpOptions,
+    mul_assign: OpOptions,
+    div: OpOptions,
+    div_assign: OpOptions,
+    rem: OpOptions,
+    rem_assign: OpOptions,
+    inv: OpOptions,
+    pow: OpOptions,
     struct_vis: Visibility,
     struct_ident: Ident,
     generics: Generics,
@@ -83,7 +96,7 @@ impl TryFrom<DeriveInput> for Context {
             }
         }
 
-        fn put_expr_for(lhs: Span, rhs: &Lit, dist: &mut Option<Expr>) -> syn::Result<()> {
+        fn put_expr(lhs: Span, rhs: &Lit, dist: &mut Option<Expr>) -> syn::Result<()> {
             let expr = match rhs {
                 Lit::Int(int) => Ok(parse_quote!(#int)),
                 Lit::Str(s) => s.parse(),
@@ -95,7 +108,7 @@ impl TryFrom<DeriveInput> for Context {
             }
         }
 
-        fn put_path_for(lhs: Span, rhs: &Lit, dist: &mut Option<Path>) -> syn::Result<()> {
+        fn put_path(lhs: Span, rhs: &Lit, dist: &mut Option<Path>) -> syn::Result<()> {
             let path = match rhs {
                 Lit::Str(s) => s.parse::<Path>(),
                 rhs => Err(rhs.to_error("expected string literal")),
@@ -106,12 +119,18 @@ impl TryFrom<DeriveInput> for Context {
             }
         }
 
-        fn put_true_for(word: Span, dist: &mut bool) -> syn::Result<()> {
-            if ::std::mem::replace(dist, true) {
-                Err(syn::Error::new(word, "multiple definitions"))
-            } else {
-                Ok(())
+        fn put_debug_opts(list: &MetaList, dist: &mut Option<DebugOptions>) -> syn::Result<()> {
+            if mem::replace(dist, Some(DebugOptions::try_from(list)?)).is_some() {
+                bail!(list.ident.span(), "multiple definitions");
             }
+            Ok(())
+        }
+
+        fn put_op_opts(list: &MetaList, dist: &mut Option<OpOptions>) -> syn::Result<()> {
+            if mem::replace(dist, Some(OpOptions::try_from(list)?)).is_some() {
+                bail!(list.ident.span(), "multiple definitions");
+            }
+            Ok(())
         }
 
         trait SpannedExt {
@@ -137,37 +156,79 @@ impl TryFrom<DeriveInput> for Context {
         let mut num_traits = None;
         let mut num_integer = None;
         let mut num_bigint = None;
-        let mut no_impl_for_ref = false;
+        let mut debug = None;
+        let mut neg = None;
+        let mut add = None;
+        let mut add_assign = None;
+        let mut sub = None;
+        let mut sub_assign = None;
+        let mut mul = None;
+        let mut mul_assign = None;
+        let mut div = None;
+        let mut div_assign = None;
+        let mut rem = None;
+        let mut rem_assign = None;
+        let mut inv = None;
+        let mut pow = None;
 
-        let mut put_expr_or_path = |name_value: &MetaNameValue| -> syn::Result<_> {
-            let span = name_value.span();
-            let MetaNameValue { ident, lit, .. } = name_value;
-            if ident == "modulus" {
-                put_expr_for(ident.span(), lit, &mut modulus)
-            } else if ident == "std" {
-                put_path_for(ident.span(), lit, &mut std)
-            } else if ident == "num_traits" {
-                put_path_for(ident.span(), lit, &mut num_traits)
-            } else if ident == "num_integer" {
-                put_path_for(ident.span(), lit, &mut num_integer)
-            } else if ident == "num_bigint" {
-                put_path_for(ident.span(), lit, &mut num_bigint)
-            } else if ident == "no_impl_for_ref" {
-                Err(syn::Error::new(span, "expected `no_impl_for_ref`"))
-            } else {
-                Err(syn::Error::new(span, "unknown identifier"))
+        fn error_on_ident(ident: &Ident) -> syn::Error {
+            match ident.to_string().as_ref() {
+                "modulus" => ident.to_error("expected `modulus = $LitStr`"),
+                "std" => ident.to_error("expected `std = $LitStr`"),
+                "num_traits" => ident.to_error("expected `num_traits = $LitStr`"),
+                "num_integer" => ident.to_error("expected `num_integer = $LitStr`"),
+                "num_bigint" => ident.to_error("expected `num_bigint = $LitStr`"),
+                "debug" => ident.to_error("expected `debug = $Ident`"),
+                "neg" => ident.to_error("expected `neg(..)`"),
+                "add" => ident.to_error("expected `add(..)`"),
+                "add_assign" => ident.to_error("expected `add_assign(..)`"),
+                "sub" => ident.to_error("expected `sub(..)`"),
+                "sub_assign" => ident.to_error("expected `sub_assign(..)`"),
+                "mul" => ident.to_error("expected `mul(..)`"),
+                "mul_assign" => ident.to_error("expected `mul_assign(..)`"),
+                "div" => ident.to_error("expected `div(..)`"),
+                "div_assign" => ident.to_error("expected `div_assign(..)`"),
+                "rem" => ident.to_error("expected `rem(..)`"),
+                "rem_assign" => ident.to_error("expected `rem_assign(..)`"),
+                "inv" => ident.to_error("expected `inv(..)`"),
+                "pow" => ident.to_error("expected `pow(..)`"),
+                _ => ident.to_error("unknown identifier"),
+            }
+        }
+
+        fn on_word(word: &Ident) -> syn::Result<()> {
+            Err(error_on_ident(word))
+        }
+
+        let mut on_list = |list: &MetaList| -> syn::Result<_> {
+            match list.ident.to_string().as_ref() {
+                "debug" => put_debug_opts(list, &mut debug),
+                "neg" => put_op_opts(list, &mut neg),
+                "add" => put_op_opts(list, &mut add),
+                "add_assign" => put_op_opts(list, &mut add_assign),
+                "sub" => put_op_opts(list, &mut sub),
+                "sub_assign" => put_op_opts(list, &mut sub_assign),
+                "mul" => put_op_opts(list, &mut mul),
+                "mul_assign" => put_op_opts(list, &mut mul_assign),
+                "div" => put_op_opts(list, &mut div),
+                "div_assign" => put_op_opts(list, &mut div_assign),
+                "rem" => put_op_opts(list, &mut rem),
+                "rem_assign" => put_op_opts(list, &mut rem_assign),
+                "inv" => put_op_opts(list, &mut inv),
+                "pow" => put_op_opts(list, &mut pow),
+                _ => Err(error_on_ident(&list.ident)),
             }
         };
 
-        let mut put_true = |word: &Ident| -> syn::Result<_> {
-            if ["modulus", "std", "num_traits", "num_integer", "num_bigint"]
-                .contains(&word.to_string().as_str())
-            {
-                Err(word.to_error(format!("expected `{} = #LitStr`", word)))
-            } else if word == "no_impl_for_ref" {
-                put_true_for(word.span(), &mut no_impl_for_ref)
-            } else {
-                Err(word.to_error("unknown identifier"))
+        let mut on_name_value = |name_value: &MetaNameValue| -> syn::Result<_> {
+            let MetaNameValue { ident, lit, .. } = name_value;
+            match ident.to_string().as_ref() {
+                "modulus" => put_expr(ident.span(), lit, &mut modulus),
+                "std" => put_path(ident.span(), lit, &mut std),
+                "num_traits" => put_path(ident.span(), lit, &mut num_traits),
+                "num_integer" => put_path(ident.span(), lit, &mut num_integer),
+                "num_bigint" => put_path(ident.span(), lit, &mut num_bigint),
+                _ => Err(error_on_ident(ident)),
             }
         };
 
@@ -181,9 +242,10 @@ impl TryFrom<DeriveInput> for Context {
                     then {
                         for nested in nested {
                             match nested {
-                                NestedMeta::Meta(Meta::Word(word)) => put_true(word)?,
-                                NestedMeta::Meta(Meta::NameValue(kv)) => put_expr_or_path(kv)?,
-                                _ => return Err(nested.to_error("expected `#Ident` or `#Ident = #Lit`")),
+                                NestedMeta::Meta(Meta::Word(word)) => on_word(word)?,
+                                NestedMeta::Meta(Meta::List(list)) => on_list(list)?,
+                                NestedMeta::Meta(Meta::NameValue(kv)) => on_name_value(kv)?,
+                                NestedMeta::Literal(_) => bail!(nested.span(), "expected `$Meta`"),
                             }
                         }
                         Ok(())
@@ -198,6 +260,20 @@ impl TryFrom<DeriveInput> for Context {
         let num_traits = num_traits.unwrap_or_else(|| parse_quote!(::num::traits));
         let num_integer = num_integer.unwrap_or_else(|| parse_quote!(::num::integer));
         let num_bigint = num_bigint.unwrap_or_else(|| parse_quote!(::num::bigint));
+        let debug = debug.unwrap_or_default();
+        let neg = neg.unwrap_or_default();
+        let add = add.unwrap_or_default();
+        let add_assign = add_assign.unwrap_or_default();
+        let sub = sub.unwrap_or_default();
+        let sub_assign = sub_assign.unwrap_or_default();
+        let mul = mul.unwrap_or_default();
+        let mul_assign = mul_assign.unwrap_or_default();
+        let div = div.unwrap_or_default();
+        let div_assign = div_assign.unwrap_or_default();
+        let rem = rem.unwrap_or_default();
+        let rem_assign = rem_assign.unwrap_or_default();
+        let inv = inv.unwrap_or_default();
+        let pow = pow.unwrap_or_default();
 
         let fields = match data {
             Data::Struct(DataStruct { fields, .. }) => Ok(fields),
@@ -260,7 +336,20 @@ impl TryFrom<DeriveInput> for Context {
             num_traits,
             num_integer,
             num_bigint,
-            no_impl_for_ref,
+            debug,
+            neg,
+            add,
+            add_assign,
+            sub,
+            sub_assign,
+            mul,
+            mul_assign,
+            div,
+            div_assign,
+            rem,
+            rem_assign,
+            inv,
+            pow,
             struct_vis,
             struct_ident,
             generics,
@@ -268,5 +357,85 @@ impl TryFrom<DeriveInput> for Context {
             field_ty,
             other_fields,
         })
+    }
+}
+
+#[derive(Clone, Copy)]
+struct DebugOptions {
+    kind: DebugKind,
+}
+
+impl Default for DebugOptions {
+    fn default() -> Self {
+        Self {
+            kind: DebugKind::SingleTuple,
+        }
+    }
+}
+
+impl TryFrom<&'_ MetaList> for DebugOptions {
+    type Error = syn::Error;
+
+    fn try_from(list: &'_ MetaList) -> syn::Result<Self> {
+        let kind = if_chain! {
+            if list.nested.len() == 1;
+            if let NestedMeta::Meta(Meta::Word(word)) = &list.nested[0];
+            then {
+                match word.to_string().as_ref() {
+                    "SingleTuple" => DebugKind::SingleTuple,
+                    "Transparent" => DebugKind::Transparent,
+                    _ => bail!(word.span(), "expected `SingleTuple` or `Transparent`"),
+                }
+            } else {
+                bail!(list.ident.span(), "expected `{}($Ident)`", list.ident);
+            }
+        };
+        Ok(Self { kind })
+    }
+}
+
+#[derive(Clone, Copy)]
+enum DebugKind {
+    SingleTuple,
+    Transparent,
+}
+
+#[derive(Clone, Copy)]
+struct OpOptions {
+    for_ref: bool,
+}
+
+impl Default for OpOptions {
+    fn default() -> Self {
+        Self { for_ref: true }
+    }
+}
+
+impl TryFrom<&'_ MetaList> for OpOptions {
+    type Error = syn::Error;
+
+    fn try_from(list: &'_ MetaList) -> syn::Result<Self> {
+        let mut for_ref = None;
+
+        for nested in &list.nested {
+            let name_value = match nested {
+                NestedMeta::Meta(Meta::NameValue(name_value)) => name_value,
+                nested => bail!(nested.span(), "expected `$MetaNameValue` (`$Ident = $Lit`)"),
+            };
+            if name_value.ident == "for_ref" {
+                let value = match &name_value.lit {
+                    Lit::Bool(value) => value.value,
+                    lit => bail!(lit.span(), "expected string literal"),
+                };
+                for_ref = Some(value);
+            } else {
+                bail!(name_value.ident.span(), "expected `for_ref`");
+            }
+        }
+
+        let for_ref =
+            for_ref.ok_or_else(|| syn::Error::new(list.ident.span(), "missing `for_ref`"))?;
+
+        Ok(Self { for_ref })
     }
 }

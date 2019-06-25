@@ -26,5 +26,5 @@ fn it_works() {
         expected % 1_000_000_007u64
     });
 
-    assert_eq!(F(BASE).pow(EXP).to_string(), EXPECTED.to_string());
+    assert_eq!((*F(BASE).pow(EXP)).to_string(), EXPECTED.to_string());
 }

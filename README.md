@@ -33,6 +33,11 @@ assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 To use a customized type, copy the following code via clipboard and edit it.
 
 ```rust
+#[allow(non_snake_case)]
+fn F(value: u64) -> F {
+    F::from(value)
+}
+
 #[derive(
     modtype::new,
     modtype::get,
@@ -74,12 +79,7 @@ To use a customized type, copy the following code via clipboard and edit it.
     modtype::CheckedMul,
     modtype::CheckedDiv,
     modtype::CheckedRem,
-    modtype::Pow_u8,
-    modtype::Pow_u16,
-    modtype::Pow_u32,
-    modtype::Pow_u64,
-    modtype::Pow_u128,
-    modtype::Pow_usize,
+    modtype::Pow,
     modtype::Integer,
     modtype::ToBigUint,
     modtype::ToBigInt,
@@ -90,7 +90,20 @@ To use a customized type, copy the following code via clipboard and edit it.
     num_traits = "num::traits",
     num_integer = "num::integer",
     num_bigint = "num::bigint",
-    no_impl_for_ref
+    debug(SingleTuple),
+    neg(for_ref = true),
+    add(for_ref = true),
+    add_assign(for_ref = true),
+    sub(for_ref = true),
+    sub_assign(for_ref = true),
+    mul(for_ref = true),
+    mul_assign(for_ref = true),
+    div(for_ref = true),
+    div_assign(for_ref = true),
+    rem(for_ref = true),
+    rem_assign(for_ref = true),
+    inv(for_ref = true),
+    pow(for_ref = true)
 )]
 struct F {
     #[modtype(value)]
@@ -118,7 +131,20 @@ struct F {
 | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
 | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
 | `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
-| `no_impl_for_ref`    | `no_impl_for_ref`                                                        | Yes                              |
+| `debug`              | `debug(SingleTuple)` or `debug(Transparent)`                             | Yes (default = `SingleTuple`)    |
+| `neg`                | `neg(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+| `add`                | `add(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+| `add_assign`         | `add_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
+| `sub`                | `sub(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+| `sub_assign`         | `sub_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
+| `mul`                | `mul(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+| `mul_assign`         | `mul_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
+| `div`                | `div(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+| `div_assign`         | `div_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
+| `rem`                | `rem(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+| `rem_assign`         | `rem_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
+| `inv`                | `inv(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+| `pow`                | `pow(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
 
 ### Field
 
@@ -145,6 +171,7 @@ struct F {
 [`Lit`]: https://docs.rs/syn/0.15/syn/enum.Lit.html
 [`LitStr`]: https://docs.rs/syn/0.15/syn/struct.LitStr.html
 [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
+[`LitBool`]: https://docs.rs/syn/0.15/syn/struct.LitBool.html
 [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
 [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
 [`ConstValue`]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html

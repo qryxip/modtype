@@ -27,6 +27,11 @@
 //! To use a customized type, copy the following code via clipboard and edit it.
 //!
 //! ```
+//! #[allow(non_snake_case)]
+//! fn F(value: u64) -> F {
+//!     F::from(value)
+//! }
+//!
 //! #[derive(
 //!     modtype::new,
 //!     modtype::get,
@@ -68,12 +73,7 @@
 //!     modtype::CheckedMul,
 //!     modtype::CheckedDiv,
 //!     modtype::CheckedRem,
-//!     modtype::Pow_u8,
-//!     modtype::Pow_u16,
-//!     modtype::Pow_u32,
-//!     modtype::Pow_u64,
-//!     modtype::Pow_u128,
-//!     modtype::Pow_usize,
+//!     modtype::Pow,
 //!     modtype::Integer,
 //!     modtype::ToBigUint,
 //!     modtype::ToBigInt,
@@ -84,7 +84,20 @@
 //!     num_traits = "num::traits",
 //!     num_integer = "num::integer",
 //!     num_bigint = "num::bigint",
-//!     no_impl_for_ref
+//!     debug(SingleTuple),
+//!     neg(for_ref = true),
+//!     add(for_ref = true),
+//!     add_assign(for_ref = true),
+//!     sub(for_ref = true),
+//!     sub_assign(for_ref = true),
+//!     mul(for_ref = true),
+//!     mul_assign(for_ref = true),
+//!     div(for_ref = true),
+//!     div_assign(for_ref = true),
+//!     rem(for_ref = true),
+//!     rem_assign(for_ref = true),
+//!     inv(for_ref = true),
+//!     pow(for_ref = true)
 //! )]
 //! struct F {
 //!     #[modtype(value)]
@@ -112,7 +125,20 @@
 //! | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
 //! | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
 //! | `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
-//! | `no_impl_for_ref`    | `no_impl_for_ref`                                                        | Yes                              |
+//! | `debug`              | `debug(SingleTuple)` or `debug(Transparent)`                             | Yes (default = `SingleTuple`)    |
+//! | `neg`                | `neg(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+//! | `add`                | `add(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+//! | `add_assign`         | `add_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
+//! | `sub`                | `sub(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+//! | `sub_assign`         | `sub_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
+//! | `mul`                | `mul(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+//! | `mul_assign`         | `mul_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
+//! | `div`                | `div(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+//! | `div_assign`         | `div_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
+//! | `rem`                | `rem(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+//! | `rem_assign`         | `rem_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
+//! | `inv`                | `inv(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+//! | `pow`                | `pow(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
 //!
 //! ## Field
 //!
@@ -139,6 +165,7 @@
 //! [`Lit`]: https://docs.rs/syn/0.15/syn/enum.Lit.html
 //! [`LitStr`]: https://docs.rs/syn/0.15/syn/struct.LitStr.html
 //! [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
+//! [`LitBool`]: https://docs.rs/syn/0.15/syn/struct.LitBool.html
 //! [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
 //! [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
 //! [`ConstValue`]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html
@@ -158,7 +185,7 @@ pub use modtype_derive::Into;
 
 pub use modtype_derive::Display;
 
-pub use modtype_derive::{DebugTransparent, DebugTransparent as Debug};
+pub use modtype_derive::ModtypeDebug as Debug;
 
 pub use modtype_derive::FromStr;
 
@@ -214,17 +241,7 @@ pub use modtype_derive::CheckedDiv;
 
 pub use modtype_derive::CheckedRem;
 
-pub use modtype_derive::Pow_u8;
-
-pub use modtype_derive::Pow_u16;
-
-pub use modtype_derive::Pow_u32;
-
-pub use modtype_derive::Pow_u64;
-
-pub use modtype_derive::Pow_u128;
-
-pub use modtype_derive::Pow_usize;
+pub use modtype_derive::Pow;
 
 pub use modtype_derive::Integer;
 
@@ -347,12 +364,7 @@ pub mod u64 {
             crate::CheckedMul,
             crate::CheckedDiv,
             crate::CheckedRem,
-            crate::Pow_u8,
-            crate::Pow_u16,
-            crate::Pow_u32,
-            crate::Pow_u64,
-            crate::Pow_u128,
-            crate::Pow_usize,
+            crate::Pow,
             crate::Integer,
             crate::ToBigUint,
             crate::ToBigInt,
@@ -402,7 +414,7 @@ pub mod u64 {
     ///
     /// // `Display`, `Debug`
     /// assert_eq!(F(3).to_string(), "3");
-    /// assert_eq!(format!("{:?}", F(3)), "3");
+    /// assert_eq!(format!("{:?}", F(3)), "F(3)");
     ///
     /// // `FromStr`
     /// assert_eq!("3".parse::<F>(), Ok(F(3)));
@@ -507,12 +519,7 @@ pub mod u64 {
         crate::CheckedMul,
         crate::CheckedDiv,
         crate::CheckedRem,
-        crate::Pow_u8,
-        crate::Pow_u16,
-        crate::Pow_u32,
-        crate::Pow_u64,
-        crate::Pow_u128,
-        crate::Pow_usize,
+        crate::Pow,
         crate::Integer,
         crate::ToBigUint,
         crate::ToBigInt,
@@ -546,25 +553,6 @@ pub mod u64 {
     ///     Z::new(value)
     /// }
     ///
-    /// assert_eq!(u64::from(Z::from(3)), 3);
-    /// assert_eq!(Z::from(3).to_string(), "3");
-    /// assert_eq!(format!("{:?}", Z::from(3)), "3");
-    /// assert_eq!(*Z::from(3), 3);
-    /// assert_eq!(-Z::from(1), Z::from(6));
-    /// assert_eq!(Z::from(6) + Z::from(2), Z::from(1));
-    /// assert_eq!(Z::from(0) - Z::from(1), Z::from(6));
-    /// assert_eq!(Z::zero(), Z::from(0));
-    /// assert_eq!((Z::min_value(), Z::max_value()), (Z::from(0), Z::from(6)));
-    /// assert_eq!(num::range_step(Z::from(0), Z::from(6), Z::from(2)).map(|x| *x).collect::<Vec<_>>(), &[0, 2, 4]);
-    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z::from(x).checked_sub(&Z::from(y)).is_some())));
-    /// (0..=6).for_each(|x| assert!(Z::from(x).checked_neg().is_some()));
-    /// assert_eq!(Z::from_i64(-1), None);
-    /// assert_eq!(Z::from(3).to_i64(), Some(3i64));
-    /// assert_eq!(Z::from(3).to_biguint(), 3u64.to_biguint());
-    /// assert_eq!(Z::from(3).to_bigint(), 3u64.to_bigint());
-    /// assert_eq!(Z::new(3), Z::from(3));
-    /// assert_eq!(Z::new(3).get(), 3u64);
-    ///
     /// // Constructor, `new`, `get`
     /// assert_eq!(Z(3), Z::new(3));
     /// assert_eq!(Z(3).get(), 3u64);
@@ -575,7 +563,7 @@ pub mod u64 {
     ///
     /// // `Display`, `Debug`
     /// assert_eq!(Z(3).to_string(), "3");
-    /// assert_eq!(format!("{:?}", Z(3)), "3");
+    /// assert_eq!(format!("{:?}", Z(3)), "Z(3)");
     ///
     /// // `FromStr`
     /// assert_eq!("3".parse::<Z>(), Ok(Z(3)));
