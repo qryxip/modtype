@@ -15,8 +15,8 @@ categories = ["algorithms"]
 codecov = { repository = "qryxip/modtype" }
 maintenance = { status = "actively-developed" }
 
-#[workspace]
-#members = ["./derive"]
+[workspace]
+members = ["./derive"]
 
 [dependencies]
 modtype_derive = { version = "0.3.0", path = "./derive" }

@@ -7,17 +7,32 @@
 This crate provides:
 - Macros that implement modular arithmetic integer types
 - Preset types
-    - [`modtype::preset::u64::F`]
-    - [`modtype::preset::u64::Z`]
-    - [`modtype::preset::u64::thread_local::F`]
-    - [`modtype::preset::u64::mod1000000007::F`]
-    - [`modtype::preset::u64::mod1000000007::Z`]
+    - `modtype::u64::F`
+    - `modtype::u64::Z`
+    - `modtype::u64::thread_local::F`
 
 ## Usage
 
 ```rust
-type F = F_<Const17U32>;
+use modtype::ConstValue;
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
+#[modtype(const_value = 1_000_000_007u64)]
+enum M {}
+
+type F = modtype::u64::F<M>;
+
+#[allow(non_snake_case)]
+fn F(value: u64) -> F {
+    F::new(value)
+}
+
+assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
+```
+
+To use a customized type, copy the following code via clipboard and edit it.
+
+```rust
 #[derive(
     modtype::new,
     modtype::get,
@@ -70,26 +85,17 @@ type F = F_<Const17U32>;
     modtype::ToBigInt,
 )]
 #[modtype(
-    modulus = "M::VALUE",
+    modulus = "1_000_000_007",
     std = "std",
     num_traits = "num::traits",
     num_integer = "num::integer",
     num_bigint = "num::bigint",
     no_impl_for_ref
 )]
-struct F_<M: ConstValue<Value = u32>> {
+struct F {
     #[modtype(value)]
-    __value: u32,
-    phantom: PhantomData<fn() -> M>,
+    __value: u64,
 }
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-#[modtype(const_value = 17u32)]
-enum Const17U32 {}
-```
-
-```rust
-use modtype::preset::u64::mod1000000007::{F, Z};
 ```
 
 ## Requirements
@@ -101,15 +107,17 @@ use modtype::preset::u64::mod1000000007::{F, Z};
     - If the modular arithmetic type implements [`One`], The modulus is larger than `1`.
 - If the modular arithmetic type implements [`Div`], the modulus is a prime.
 
+## Attributes
+
 ### Struct
 
 | Name                 | Format                                                                   | Optional                         |
 | :------------------- | :----------------------------------------------------------------------- | :------------------------------- |
-| `modulus`            | `modulus = #`[`Lit`] where `#`[`Lit`] is converted/parsed to an [`Expr`] | No                               |
-| `std`                | `std = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]          | Yes (default = `::std`)          |
-| `num_traits`         | `num_traits = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
-| `num_integer`        | `num_integer = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
-| `num_bigint`         | `num_bigint = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
+| `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`] | No                               |
+| `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]          | Yes (default = `::std`)          |
+| `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
+| `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
+| `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
 | `no_impl_for_ref`    | `no_impl_for_ref`                                                        | Yes                              |
 
 ### Field
@@ -124,7 +132,7 @@ use modtype::preset::u64::mod1000000007::{F, Z};
 
 | Name                 | Format                                                       | Optional  |
 | :------------------- | :----------------------------------------------------------- | :-------- |
-| `const_value`        | `const_value = #`[`LitInt`] where `#`[`LitInt`] has a suffix | No        |
+| `const_value`        | `const_value = $`[`LitInt`] where `$`[`LitInt`] has a suffix | No        |
 
 [`u8`]: https://doc.rust-lang.org/nightly/std/primitive.u8.html
 [`u16`]: https://doc.rust-lang.org/nightly/std/primitive.u16.html
@@ -140,8 +148,3 @@ use modtype::preset::u64::mod1000000007::{F, Z};
 [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
 [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
 [`ConstValue`]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html
-[`modtype::preset::u64::F`]: https://docs.rs/modtype/0.3/modtype/preset/u64/struct.F.html
-[`modtype::preset::u64::Z`]: https://docs.rs/modtype/0.3/modtype/preset/u64/struct.Z.html
-[`modtype::preset::u64::thread_local::F`]: https://docs.rs/modtype/0.3/modtype/preset/u64/thread_local/struct.F.html
-[`modtype::preset::u64::mod1000000007::F`]: https://docs.rs/modtype/0.3/modtype/preset/u64/mod1000000007/type.F.html
-[`modtype::preset::u64::mod1000000007::Z`]: https://docs.rs/modtype/0.3/modtype/preset/u64/mod1000000007/type.Z.html

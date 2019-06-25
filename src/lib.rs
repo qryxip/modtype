@@ -1,11 +1,96 @@
 //! This crate provides:
 //! - Macros that implement modular arithmetic integer types
 //! - Preset types
-//!     - [`modtype::preset::u64::F`]
-//!     - [`modtype::preset::u64::Z`]
-//!     - [`modtype::preset::u64::thread_local::F`]
-//!     - [`modtype::preset::u64::mod1000000007::F`]
-//!     - [`modtype::preset::u64::mod1000000007::Z`]
+//!     - [`modtype::u64::F`]
+//!     - [`modtype::u64::Z`]
+//!     - [`modtype::u64::thread_local::F`]
+//!
+//! # Usage
+//!
+//! ```
+//! use modtype::ConstValue;
+//!
+//! #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
+//! #[modtype(const_value = 1_000_000_007u64)]
+//! enum M {}
+//!
+//! type F = modtype::u64::F<M>;
+//!
+//! #[allow(non_snake_case)]
+//! fn F(value: u64) -> F {
+//!     F::new(value)
+//! }
+//!
+//! assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
+//! ```
+//!
+//! To use a customized type, copy the following code via clipboard and edit it.
+//!
+//! ```
+//! #[derive(
+//!     modtype::new,
+//!     modtype::get,
+//!     Default,
+//!     Clone,
+//!     Copy,
+//!     PartialEq,
+//!     Eq,
+//!     PartialOrd,
+//!     Ord,
+//!     modtype::From,
+//!     modtype::Into,
+//!     modtype::Display,
+//!     modtype::Debug,
+//!     modtype::FromStr,
+//!     modtype::Deref,
+//!     modtype::Neg,
+//!     modtype::Add,
+//!     modtype::AddAssign,
+//!     modtype::Sub,
+//!     modtype::SubAssign,
+//!     modtype::Mul,
+//!     modtype::MulAssign,
+//!     modtype::Div,
+//!     modtype::DivAssign,
+//!     modtype::Rem,
+//!     modtype::RemAssign,
+//!     modtype::Num,
+//!     modtype::Unsigned,
+//!     modtype::Bounded,
+//!     modtype::Zero,
+//!     modtype::One,
+//!     modtype::FromPrimitive,
+//!     modtype::ToPrimitive,
+//!     modtype::Inv,
+//!     modtype::CheckedNeg,
+//!     modtype::CheckedAdd,
+//!     modtype::CheckedSub,
+//!     modtype::CheckedMul,
+//!     modtype::CheckedDiv,
+//!     modtype::CheckedRem,
+//!     modtype::Pow_u8,
+//!     modtype::Pow_u16,
+//!     modtype::Pow_u32,
+//!     modtype::Pow_u64,
+//!     modtype::Pow_u128,
+//!     modtype::Pow_usize,
+//!     modtype::Integer,
+//!     modtype::ToBigUint,
+//!     modtype::ToBigInt,
+//! )]
+//! #[modtype(
+//!     modulus = "1_000_000_007",
+//!     std = "std",
+//!     num_traits = "num::traits",
+//!     num_integer = "num::integer",
+//!     num_bigint = "num::bigint",
+//!     no_impl_for_ref
+//! )]
+//! struct F {
+//!     #[modtype(value)]
+//!     __value: u64,
+//! }
+//! ```
 //!
 //! # Requirements
 //!
@@ -22,11 +107,11 @@
 //!
 //! | Name                 | Format                                                                   | Optional                         |
 //! | :------------------- | :----------------------------------------------------------------------- | :------------------------------- |
-//! | `modulus`            | `modulus = #`[`Lit`] where `#`[`Lit`] is converted/parsed to an [`Expr`] | No                               |
-//! | `std`                | `std = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]          | Yes (default = `::std`)          |
-//! | `num_traits`         | `num_traits = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
-//! | `num_integer`        | `num_integer = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
-//! | `num_bigint`         | `num_bigint = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
+//! | `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`] | No                               |
+//! | `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]          | Yes (default = `::std`)          |
+//! | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
+//! | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
+//! | `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
 //! | `no_impl_for_ref`    | `no_impl_for_ref`                                                        | Yes                              |
 //!
 //! ## Field
@@ -41,7 +126,7 @@
 //!
 //! | Name                 | Format                                                       | Optional  |
 //! | :------------------- | :----------------------------------------------------------- | :-------- |
-//! | `const_value`        | `const_value = #`[`LitInt`] where `#`[`LitInt`] has a suffix | No        |
+//! | `const_value`        | `const_value = $`[`LitInt`] where `$`[`LitInt`] has a suffix | No        |
 //!
 //! [`u8`]: https://doc.rust-lang.org/nightly/std/primitive.u8.html
 //! [`u16`]: https://doc.rust-lang.org/nightly/std/primitive.u16.html
@@ -57,11 +142,9 @@
 //! [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
 //! [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
 //! [`ConstValue`]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html
-//! [`modtype::preset::u64::F`]: ./preset/u64/struct.F.html
-//! [`modtype::preset::u64::Z`]: ./preset/u64/struct.Z.html
-//! [`modtype::preset::u64::thread_local::F`]: ./preset/u64/thread_local/struct.F.html
-//! [`modtype::preset::u64::mod1000000007::F`]: ./preset/u64/mod1000000007/type.F.html
-//! [`modtype::preset::u64::mod1000000007::Z`]: ./preset/u64/mod1000000007/type.Z.html
+//! [`modtype::u64::F`]: ./u64/struct.F.html
+//! [`modtype::u64::Z`]: ./u64/struct.Z.html
+//! [`modtype::u64::thread_local::F`]: ./u64/thread_local/struct.F.html
 
 pub use modtype_derive::ConstValue;
 
@@ -178,189 +261,50 @@ pub trait ConstValue: Copy + Ord + fmt::Debug {
     const VALUE: Self::Value;
 }
 
-/// Preset types.
-pub mod preset {
-    /// Preset tyeps that the inner types are `u64`.
-    pub mod u64 {
-        pub mod thread_local {
-            use std::cell::UnsafeCell;
+/// Preset tyeps that the inner types are `u64`.
+pub mod u64 {
+    pub mod thread_local {
+        use std::cell::UnsafeCell;
 
-            /// Set a modulus and execute a closure.
-            ///
-            /// # Example
-            ///
-            /// ```
-            /// use modtype::preset::u64::thread_local::{with_modulus, F};
-            ///
-            /// with_modulus(7, || {
-            ///     assert_eq!(F::from(6) + F::from(1), F::from(0));
-            /// });
-            /// ```
-            pub fn with_modulus<T, F: FnOnce() -> T>(modulus: u64, f: F) -> T {
-                unsafe { set_modulus(modulus) };
-                f()
-            }
-
-            #[inline]
-            unsafe fn modulus() -> u64 {
-                MODULUS.with(|m| *m.get())
-            }
-
-            unsafe fn set_modulus(modulus: u64) {
-                MODULUS.with(|m| *m.get() = modulus)
-            }
-
-            thread_local! {
-                static MODULUS: UnsafeCell<u64> = UnsafeCell::new(0);
-            }
-
-            /// A modular arithmetic integer type.
-            ///
-            /// # Example
-            ///
-            /// ```
-            /// use modtype::preset::u64::thread_local::{with_modulus, F};
-            ///
-            /// with_modulus(7, || {
-            ///     assert_eq!(F::from(6) + F::from(1), F::from(0));
-            /// });
-            /// ```
-            #[derive(
-                crate::new,
-                crate::get,
-                Default,
-                Clone,
-                Copy,
-                PartialEq,
-                Eq,
-                PartialOrd,
-                Ord,
-                crate::From,
-                crate::Into,
-                crate::Display,
-                crate::Debug,
-                crate::FromStr,
-                crate::Deref,
-                crate::Neg,
-                crate::Add,
-                crate::AddAssign,
-                crate::Sub,
-                crate::SubAssign,
-                crate::Mul,
-                crate::MulAssign,
-                crate::Div,
-                crate::DivAssign,
-                crate::Rem,
-                crate::RemAssign,
-                crate::Num,
-                crate::Unsigned,
-                crate::Bounded,
-                crate::Zero,
-                crate::One,
-                crate::FromPrimitive,
-                crate::ToPrimitive,
-                crate::Inv,
-                crate::CheckedNeg,
-                crate::CheckedAdd,
-                crate::CheckedSub,
-                crate::CheckedMul,
-                crate::CheckedDiv,
-                crate::CheckedRem,
-                crate::Pow_u8,
-                crate::Pow_u16,
-                crate::Pow_u32,
-                crate::Pow_u64,
-                crate::Pow_u128,
-                crate::Pow_usize,
-                crate::Integer,
-                crate::ToBigUint,
-                crate::ToBigInt,
-            )]
-            #[modtype(modulus = "unsafe { modulus() }")]
-            pub struct F {
-                #[modtype(value)]
-                __value: u64,
-            }
+        /// Set a modulus and execute a closure.
+        ///
+        /// # Example
+        ///
+        /// ```
+        /// use modtype::u64::thread_local::{with_modulus, F};
+        ///
+        /// with_modulus(7, || {
+        ///     assert_eq!(F::from(6) + F::from(1), F::from(0));
+        /// });
+        /// ```
+        pub fn with_modulus<T, F: FnOnce() -> T>(modulus: u64, f: F) -> T {
+            unsafe { set_modulus(modulus) };
+            f()
         }
 
-        pub mod mod1000000007 {
-            use crate::ConstValue;
-
-            /// A [`ConstValue`] which [`VALUE`] is `1_000_000_007u64`.
-            ///
-            /// [`ConstValue`]: ../../../trait.ConstValue.html
-            /// [`VALUE`]: ../../../trait.ConstValue.html#associatedconstant.VALUE
-            #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-            pub enum Const1000000007U64 {}
-
-            impl ConstValue for Const1000000007U64 {
-                type Value = u64;
-                const VALUE: u64 = 1_000_000_007;
-            }
-
-            pub type F = crate::preset::u64::F<Const1000000007U64>;
-            pub type Z = crate::preset::u64::Z<Const1000000007U64>;
+        #[inline]
+        unsafe fn modulus() -> u64 {
+            MODULUS.with(|m| *m.get())
         }
 
-        pub use crate::preset::u64::mod1000000007::Const1000000007U64;
+        unsafe fn set_modulus(modulus: u64) {
+            MODULUS.with(|m| *m.get() = modulus)
+        }
 
-        use crate::ConstValue;
-
-        use std::marker::PhantomData;
+        thread_local! {
+            static MODULUS: UnsafeCell<u64> = UnsafeCell::new(0);
+        }
 
         /// A modular arithmetic integer type.
         ///
         /// # Example
         ///
         /// ```
-        /// use modtype::ConstValue;
-        /// use num::bigint::{ToBigInt as _, ToBigUint as _};
-        /// use num::pow::Pow as _;
-        /// use num::traits::{CheckedNeg as _, CheckedRem as _};
-        /// use num::{Bounded as _, CheckedDiv as _, CheckedMul as _, CheckedSub as _, FromPrimitive as _, Integer as _, Num as _, One as _, ToPrimitive as _, Unsigned, Zero as _};
+        /// use modtype::u64::thread_local::{with_modulus, F};
         ///
-        /// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-        /// #[modtype(const_value = 7u64)]
-        /// enum Const7U64 {}
-        ///
-        /// type F = modtype::preset::u64::F<Const7U64>;
-        ///
-        /// fn static_assert_unsigned<T: Unsigned>() {}
-        ///
-        /// assert_eq!(u64::from(F::from(3)), 3);
-        /// assert_eq!(F::from(3).to_string(), "3");
-        /// assert_eq!(format!("{:?}", F::from(3)), "3");
-        /// assert_eq!(*F::from(3), 3);
-        /// assert_eq!(-F::from(1), F::from(6));
-        /// assert_eq!(F::from(6) + F::from(2), F::from(1));
-        /// assert_eq!(F::from(0) - F::from(1), F::from(6));
-        /// assert_eq!(F::from(3) * F::from(4), F::from(5));
-        /// assert_eq!(F::from(3) / F::from(4), F::from(6));
-        /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert_eq!(F::from(x) % F::from(y), F::from(0))));
-        /// assert_eq!(F::zero(), F::from(0));
-        /// assert_eq!(F::one(), F::from(1));
-        /// assert_eq!(F::from_str_radix("111", 2), Ok(F::from(0)));
-        /// assert_eq!((F::min_value(), F::max_value()), (F::from(0), F::from(6)));
-        /// assert_eq!(num::range_step(F::from(0), F::from(6), F::from(2)).map(|x| *x).collect::<Vec<_>>(), &[0, 2, 4]);
-        /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F::from(x).checked_sub(&F::from(y)).is_some())));
-        /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F::from(x).checked_mul(&F::from(y)).is_some())));
-        /// (0..=6).for_each(|x| assert!(F::from(x).checked_div(&F::from(0)).is_none()));
-        /// (0..=6).for_each(|x| assert!(F::from(x).checked_rem(&F::from(0)).is_none()));
-        /// (0..=6).for_each(|x| assert!(F::from(x).checked_neg().is_some()));
-        /// assert_eq!(F::from_i64(-1), None);
-        /// static_assert_unsigned::<F>();
-        /// assert_eq!(F::from(3).to_i64(), Some(3i64));
-        /// assert_eq!(F::from(3).pow(2u8), F::from(2));
-        /// assert_eq!(F::from(3).pow(2u16), F::from(2));
-        /// assert_eq!(F::from(3).pow(2u32), F::from(2));
-        /// assert_eq!(F::from(3).pow(2u64), F::from(2));
-        /// assert_eq!(F::from(3).pow(2u128), F::from(2));
-        /// assert_eq!(F::from(3).pow(2usize), F::from(2));
-        /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F::from(x).is_multiple_of(&F::from(y)))));
-        /// assert_eq!(F::from(3).to_biguint(), 3u64.to_biguint());
-        /// assert_eq!(F::from(3).to_bigint(), 3u64.to_bigint());
-        /// assert_eq!(F::new(3), F::from(3));
-        /// assert_eq!(F::new(3).get(), 3u64);
+        /// with_modulus(7, || {
+        ///     assert_eq!(F::from(6) + F::from(1), F::from(0));
+        /// });
         /// ```
         #[derive(
             crate::new,
@@ -413,85 +357,294 @@ pub mod preset {
             crate::ToBigUint,
             crate::ToBigInt,
         )]
-        #[modtype(modulus = "M::VALUE")]
-        pub struct F<M: ConstValue<Value = u64>> {
+        #[modtype(modulus = "unsafe { modulus() }")]
+        pub struct F {
             #[modtype(value)]
             __value: u64,
-            phantom: PhantomData<fn() -> M>,
         }
+    }
 
-        /// A modular arithmetic integer type.
-        ///
-        /// # Example
-        ///
-        /// ```
-        /// use modtype::ConstValue;
-        /// use num::bigint::{ToBigInt as _, ToBigUint as _};
-        /// use num::pow::Pow as _;
-        /// use num::traits::{CheckedNeg as _};
-        /// use num::{Bounded as _, CheckedSub as _, FromPrimitive as _, ToPrimitive as _, Zero as _};
-        ///
-        /// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-        /// #[modtype(const_value = 7u64)]
-        /// enum Const7U64 {}
-        ///
-        /// type Z = modtype::preset::u64::Z<Const7U64>;
-        ///
-        /// assert_eq!(u64::from(Z::from(3)), 3);
-        /// assert_eq!(Z::from(3).to_string(), "3");
-        /// assert_eq!(format!("{:?}", Z::from(3)), "3");
-        /// assert_eq!(*Z::from(3), 3);
-        /// assert_eq!(-Z::from(1), Z::from(6));
-        /// assert_eq!(Z::from(6) + Z::from(2), Z::from(1));
-        /// assert_eq!(Z::from(0) - Z::from(1), Z::from(6));
-        /// assert_eq!(Z::zero(), Z::from(0));
-        /// assert_eq!((Z::min_value(), Z::max_value()), (Z::from(0), Z::from(6)));
-        /// assert_eq!(num::range_step(Z::from(0), Z::from(6), Z::from(2)).map(|x| *x).collect::<Vec<_>>(), &[0, 2, 4]);
-        /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z::from(x).checked_sub(&Z::from(y)).is_some())));
-        /// (0..=6).for_each(|x| assert!(Z::from(x).checked_neg().is_some()));
-        /// assert_eq!(Z::from_i64(-1), None);
-        /// assert_eq!(Z::from(3).to_i64(), Some(3i64));
-        /// assert_eq!(Z::from(3).to_biguint(), 3u64.to_biguint());
-        /// assert_eq!(Z::from(3).to_bigint(), 3u64.to_bigint());
-        /// assert_eq!(Z::new(3), Z::from(3));
-        /// assert_eq!(Z::new(3).get(), 3u64);
-        /// ```
-        #[derive(
-            crate::new,
-            crate::get,
-            Default,
-            Clone,
-            Copy,
-            PartialEq,
-            Eq,
-            PartialOrd,
-            Ord,
-            crate::From,
-            crate::Into,
-            crate::Display,
-            crate::Debug,
-            crate::FromStr,
-            crate::Deref,
-            crate::Neg,
-            crate::Add,
-            crate::AddAssign,
-            crate::Sub,
-            crate::SubAssign,
-            crate::Bounded,
-            crate::Zero,
-            crate::FromPrimitive,
-            crate::ToPrimitive,
-            crate::CheckedNeg,
-            crate::CheckedAdd,
-            crate::CheckedSub,
-            crate::ToBigUint,
-            crate::ToBigInt,
-        )]
-        #[modtype(modulus = "M::VALUE")]
-        pub struct Z<M: ConstValue<Value = u64>> {
-            #[modtype(value)]
-            __value: u64,
-            phantom: PhantomData<fn() -> M>,
-        }
+    use crate::ConstValue;
+
+    use std::marker::PhantomData;
+
+    /// A modular arithmetic integer type.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use modtype::ConstValue;
+    /// use num::bigint::{ToBigInt as _, ToBigUint as _};
+    /// use num::pow::Pow as _;
+    /// use num::traits::{CheckedNeg as _, CheckedRem as _, Inv as _};
+    /// use num::{Bounded as _, CheckedAdd as _, CheckedDiv as _, CheckedMul as _, CheckedSub as _, FromPrimitive as _, Integer as _, Num as _, One as _, ToPrimitive as _, Unsigned, Zero as _};
+    ///
+    /// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
+    /// #[modtype(const_value = 7u64)]
+    /// enum M {}
+    ///
+    /// type F = modtype::u64::F<M>;
+    ///
+    /// #[allow(non_snake_case)]
+    /// fn F(value: u64) -> F {
+    ///     F::new(value)
+    /// }
+    ///
+    /// fn static_assert_unsigned<T: Unsigned>() {}
+    ///
+    /// // Constructor, `new`, `get`
+    /// assert_eq!(F(3), F::new(3));
+    /// assert_eq!(F(3).get(), 3u64);
+    ///
+    /// // `From`, `Into`
+    /// assert_eq!(F::from(3), F(3));
+    /// assert_eq!(u64::from(F(3)), 3);
+    ///
+    /// // `Display`, `Debug`
+    /// assert_eq!(F(3).to_string(), "3");
+    /// assert_eq!(format!("{:?}", F(3)), "3");
+    ///
+    /// // `FromStr`
+    /// assert_eq!("3".parse::<F>(), Ok(F(3)));
+    ///
+    /// // `Deref`, `Neg`
+    /// assert_eq!(*F(3), 3);
+    /// assert_eq!(-F(1), F(6));
+    ///
+    /// // `Add`, `Sub`, `Mul`, `Div`, `Rem`
+    /// assert_eq!(F(6) + F(2), F(1));
+    /// assert_eq!(F(0) - F(1), F(6));
+    /// assert_eq!(F(3) * F(4), F(5));
+    /// assert_eq!(F(3) / F(4), F(6));
+    /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert_eq!(F(x) % F(y), F(0))));
+    ///
+    /// // `Num`
+    /// assert_eq!(F::from_str_radix("111", 2), Ok(F(0)));
+    ///
+    /// // `Unsigned`
+    /// static_assert_unsigned::<F>();
+    ///
+    /// // `Bounded`
+    /// assert_eq!((F::min_value(), F::max_value()), (F(0), F(6)));
+    ///
+    /// // `Zero`, `One`
+    /// assert_eq!(F::zero(), F(0));
+    /// assert_eq!(F::one(), F(1));
+    ///
+    /// // `FromPrimitive`, `ToPrimitive`
+    /// assert_eq!(F::from_i64(-1), None);
+    /// assert_eq!(F(3).to_i64(), Some(3i64));
+    ///
+    /// // `Inv`
+    /// assert_eq!(F(3).inv(), F(5));
+    ///
+    /// // `CheckedNeg`
+    /// (0..=6).for_each(|x| assert!(F(x).checked_neg().is_some()));
+    ///
+    /// // `CheckedAdd`, `CheckedSub`, `CheckedMul`, `CheckedDiv`, `CheckedRem`
+    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F(x).checked_add(&F(y)).is_some())));
+    /// assert_eq!(num::range_step(F(0), F(6), F(2)).collect::<Vec<_>>(), &[F(0), F(2), F(4)]);
+    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F(x).checked_sub(&F(y)).is_some())));
+    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F(x).checked_mul(&F(y)).is_some())));
+    /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F(x).checked_div(&F(y)).is_some())));
+    /// (0..=6).for_each(|x| assert!(F(x).checked_div(&F(0)).is_none()));
+    /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F(x).checked_rem(&F(y)).is_some())));
+    /// (0..=6).for_each(|x| assert!(F(x).checked_rem(&F(0)).is_none()));
+    ///
+    /// // `Pow`
+    /// assert_eq!(F(3).pow(2u8), F(2));
+    /// assert_eq!(F(3).pow(2u16), F(2));
+    /// assert_eq!(F(3).pow(2u32), F(2));
+    /// assert_eq!(F(3).pow(2u64), F(2));
+    /// assert_eq!(F(3).pow(2u128), F(2));
+    /// assert_eq!(F(3).pow(2usize), F(2));
+    ///
+    /// // `Integer`
+    /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F(x).is_multiple_of(&F(y)))));
+    ///
+    /// // `ToBigUint`, `ToBigInt`
+    /// assert_eq!(F(3).to_biguint(), 3u64.to_biguint());
+    /// assert_eq!(F(3).to_bigint(), 3u64.to_bigint());
+    /// ```
+    #[derive(
+        crate::new,
+        crate::get,
+        Default,
+        Clone,
+        Copy,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        crate::From,
+        crate::Into,
+        crate::Display,
+        crate::Debug,
+        crate::FromStr,
+        crate::Deref,
+        crate::Neg,
+        crate::Add,
+        crate::AddAssign,
+        crate::Sub,
+        crate::SubAssign,
+        crate::Mul,
+        crate::MulAssign,
+        crate::Div,
+        crate::DivAssign,
+        crate::Rem,
+        crate::RemAssign,
+        crate::Num,
+        crate::Unsigned,
+        crate::Bounded,
+        crate::Zero,
+        crate::One,
+        crate::FromPrimitive,
+        crate::ToPrimitive,
+        crate::Inv,
+        crate::CheckedNeg,
+        crate::CheckedAdd,
+        crate::CheckedSub,
+        crate::CheckedMul,
+        crate::CheckedDiv,
+        crate::CheckedRem,
+        crate::Pow_u8,
+        crate::Pow_u16,
+        crate::Pow_u32,
+        crate::Pow_u64,
+        crate::Pow_u128,
+        crate::Pow_usize,
+        crate::Integer,
+        crate::ToBigUint,
+        crate::ToBigInt,
+    )]
+    #[modtype(modulus = "M::VALUE")]
+    pub struct F<M: ConstValue<Value = u64>> {
+        #[modtype(value)]
+        __value: u64,
+        phantom: PhantomData<fn() -> M>,
+    }
+
+    /// A modular arithmetic integer type.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use modtype::ConstValue;
+    /// use num::bigint::{ToBigInt as _, ToBigUint as _};
+    /// use num::pow::Pow as _;
+    /// use num::traits::{CheckedNeg as _};
+    /// use num::{Bounded as _, CheckedAdd as _, CheckedSub as _, FromPrimitive as _, ToPrimitive as _, Zero as _};
+    ///
+    /// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
+    /// #[modtype(const_value = 7u64)]
+    /// enum M {}
+    ///
+    /// type Z = modtype::u64::Z<M>;
+    ///
+    /// #[allow(non_snake_case)]
+    /// fn Z(value: u64) -> Z {
+    ///     Z::new(value)
+    /// }
+    ///
+    /// assert_eq!(u64::from(Z::from(3)), 3);
+    /// assert_eq!(Z::from(3).to_string(), "3");
+    /// assert_eq!(format!("{:?}", Z::from(3)), "3");
+    /// assert_eq!(*Z::from(3), 3);
+    /// assert_eq!(-Z::from(1), Z::from(6));
+    /// assert_eq!(Z::from(6) + Z::from(2), Z::from(1));
+    /// assert_eq!(Z::from(0) - Z::from(1), Z::from(6));
+    /// assert_eq!(Z::zero(), Z::from(0));
+    /// assert_eq!((Z::min_value(), Z::max_value()), (Z::from(0), Z::from(6)));
+    /// assert_eq!(num::range_step(Z::from(0), Z::from(6), Z::from(2)).map(|x| *x).collect::<Vec<_>>(), &[0, 2, 4]);
+    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z::from(x).checked_sub(&Z::from(y)).is_some())));
+    /// (0..=6).for_each(|x| assert!(Z::from(x).checked_neg().is_some()));
+    /// assert_eq!(Z::from_i64(-1), None);
+    /// assert_eq!(Z::from(3).to_i64(), Some(3i64));
+    /// assert_eq!(Z::from(3).to_biguint(), 3u64.to_biguint());
+    /// assert_eq!(Z::from(3).to_bigint(), 3u64.to_bigint());
+    /// assert_eq!(Z::new(3), Z::from(3));
+    /// assert_eq!(Z::new(3).get(), 3u64);
+    ///
+    /// // Constructor, `new`, `get`
+    /// assert_eq!(Z(3), Z::new(3));
+    /// assert_eq!(Z(3).get(), 3u64);
+    ///
+    /// // `From`, `Into`
+    /// assert_eq!(Z::from(3), Z(3));
+    /// assert_eq!(u64::from(Z(3)), 3);
+    ///
+    /// // `Display`, `Debug`
+    /// assert_eq!(Z(3).to_string(), "3");
+    /// assert_eq!(format!("{:?}", Z(3)), "3");
+    ///
+    /// // `FromStr`
+    /// assert_eq!("3".parse::<Z>(), Ok(Z(3)));
+    ///
+    /// // `Deref`, `Neg`
+    /// assert_eq!(*Z(3), 3);
+    /// assert_eq!(-Z(1), Z(6));
+    ///
+    /// // `Add`, `Sub`
+    /// assert_eq!(Z(6) + Z(2), Z(1));
+    /// assert_eq!(Z(0) - Z(1), Z(6));
+    ///
+    /// // `Bounded`
+    /// assert_eq!((Z::min_value(), Z::max_value()), (Z(0), Z(6)));
+    ///
+    /// // `Zero`
+    /// assert_eq!(Z::zero(), Z(0));
+    ///
+    /// // `FromPrimitive`, `ToPrimitive`
+    /// assert_eq!(Z::from_i64(-1), None);
+    /// assert_eq!(Z(3).to_i64(), Some(3i64));
+    ///
+    /// // `CheckedNeg`
+    /// (0..=6).for_each(|x| assert!(Z(x).checked_neg().is_some()));
+    ///
+    /// // `CheckedAdd`, `CheckedSub`
+    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z(x).checked_add(&Z(y)).is_some())));
+    /// assert_eq!(num::range_step(Z(0), Z(6), Z(2)).collect::<Vec<_>>(), &[Z(0), Z(2), Z(4)]);
+    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z(x).checked_sub(&Z(y)).is_some())));
+    ///
+    /// // `ToBigUint`, `ToBigInt`
+    /// assert_eq!(Z(3).to_biguint(), 3u64.to_biguint());
+    /// assert_eq!(Z(3).to_bigint(), 3u64.to_bigint());
+    /// ```
+    #[derive(
+        crate::new,
+        crate::get,
+        Default,
+        Clone,
+        Copy,
+        PartialEq,
+        Eq,
+        PartialOrd,
+        Ord,
+        crate::From,
+        crate::Into,
+        crate::Display,
+        crate::Debug,
+        crate::FromStr,
+        crate::Deref,
+        crate::Neg,
+        crate::Add,
+        crate::AddAssign,
+        crate::Sub,
+        crate::SubAssign,
+        crate::Bounded,
+        crate::Zero,
+        crate::FromPrimitive,
+        crate::ToPrimitive,
+        crate::CheckedNeg,
+        crate::CheckedAdd,
+        crate::CheckedSub,
+        crate::ToBigUint,
+        crate::ToBigInt,
+    )]
+    #[modtype(modulus = "M::VALUE")]
+    pub struct Z<M: ConstValue<Value = u64>> {
+        #[modtype(value)]
+        __value: u64,
+        phantom: PhantomData<fn() -> M>,
     }
 }

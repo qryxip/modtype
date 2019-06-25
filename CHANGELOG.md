@@ -6,6 +6,16 @@
 
 - `modtype::{Pow_u64, Pow_u128}`.
 
+### Changed
+
+- Move `modtype::preset::u64::F` to `modtype::u64::F`.
+- Move `modtype::preset::u64::Z` to `modtype::u64::Z`.
+- Move `modtype::preset::u64::thread_local::F` to `modtype::u64::thread_local::Z`.
+
+### Removed
+
+- `modtype::preset::u64::mod1000000007::{F, Z}`.
+
 ### Fixed
 
 - `modtype::Pow_{u8, u16, u32, usize}`.
