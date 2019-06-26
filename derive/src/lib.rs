@@ -89,13 +89,15 @@ pub fn get(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_get)
 }
 
-/// Derives [`From`]`<#InnerValue>`.
+/// Derives [`From`]`<#InnerValue>`, [`From`]`<`[`BigUint`]`>`, and [`From`]`<`[`BigInt`]`>`.
 ///
 /// # Requirements
 ///
 /// - The fields are [`Default`] except `#InnerValue`.
 ///
 /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+/// [`BigUint`]: https://docs.rs/num-bigint/0.2/num_bigint/struct.BigUint.html
+/// [`BigInt`]: https://docs.rs/num-bigint/0.2/num_bigint/struct.BigInt.html
 /// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(From, attributes(modtype))]
 pub fn from(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

@@ -118,27 +118,28 @@
 //!
 //! ## Struct
 //!
-//! | Name                 | Format                                                                   | Optional                         |
-//! | :------------------- | :----------------------------------------------------------------------- | :------------------------------- |
-//! | `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`] | No                               |
-//! | `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]          | Yes (default = `::std`)          |
-//! | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
-//! | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
-//! | `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
-//! | `debug`              | `debug(SingleTuple)` or `debug(Transparent)`                             | Yes (default = `SingleTuple`)    |
-//! | `neg`                | `neg(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-//! | `add`                | `add(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-//! | `add_assign`         | `add_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
-//! | `sub`                | `sub(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-//! | `sub_assign`         | `sub_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
-//! | `mul`                | `mul(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-//! | `mul_assign`         | `mul_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
-//! | `div`                | `div(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-//! | `div_assign`         | `div_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
-//! | `rem`                | `rem(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-//! | `rem_assign`         | `rem_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
-//! | `inv`                | `inv(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-//! | `pow`                | `pow(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+//! | Name                 | Format                                                                                                   | Optional                         |
+//! | :------------------- | :------------------------------------------------------------------------------------------------------- | :------------------------------- |
+//! | `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`]                                 | No                               |
+//! | `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                          | Yes (default = `::std`)          |
+//! | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                   | Yes (default = `::num::traits`)  |
+//! | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                  | Yes (default = `::num::integer`) |
+//! | `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                   | Yes (default = `::num::bigint`)  |
+//! | `from`               | `from($`[`Ident`]` $(, $`[`Ident`]s`) $(,)?)` where all [`Ident`]s ∈ {`InnerValue`, `BigUint`, `BigInt`} | Yes (default = all)              |
+//! | `debug`              | `debug(SingleTuple)` or `debug(Transparent)`                                                             | Yes (default = `SingleTuple`)    |
+//! | `neg`                | `neg(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+//! | `add`                | `add(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+//! | `add_assign`         | `add_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+//! | `sub`                | `sub(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+//! | `sub_assign`         | `sub_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+//! | `mul`                | `mul(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+//! | `mul_assign`         | `mul_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+//! | `div`                | `div(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+//! | `div_assign`         | `div_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+//! | `rem`                | `rem(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+//! | `rem_assign`         | `rem_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+//! | `inv`                | `inv(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+//! | `pow`                | `pow(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
 //!
 //! ## Field
 //!
@@ -162,6 +163,7 @@
 //! [`usize`]: https://doc.rust-lang.org/nightly/std/primitive.usize.html
 //! [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
 //! [`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
+//! [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
 //! [`Lit`]: https://docs.rs/syn/0.15/syn/enum.Lit.html
 //! [`LitStr`]: https://docs.rs/syn/0.15/syn/struct.LitStr.html
 //! [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
@@ -386,10 +388,10 @@ pub mod u64 {
     ///
     /// ```
     /// use modtype::ConstValue;
-    /// use num::bigint::{ToBigInt as _, ToBigUint as _};
+    /// use num::bigint::{Sign, ToBigInt as _, ToBigUint as _};
     /// use num::pow::Pow as _;
     /// use num::traits::{CheckedNeg as _, CheckedRem as _, Inv as _};
-    /// use num::{Bounded as _, CheckedAdd as _, CheckedDiv as _, CheckedMul as _, CheckedSub as _, FromPrimitive as _, Integer as _, Num as _, One as _, ToPrimitive as _, Unsigned, Zero as _};
+    /// use num::{BigInt, BigUint, Bounded as _, CheckedAdd as _, CheckedDiv as _, CheckedMul as _, CheckedSub as _, FromPrimitive as _, Integer as _, Num as _, One as _, ToPrimitive as _, Unsigned, Zero as _};
     ///
     /// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
     /// #[modtype(const_value = 7u64)]
@@ -408,8 +410,10 @@ pub mod u64 {
     /// assert_eq!(F(3), F::new(3));
     /// assert_eq!(F(3).get(), 3u64);
     ///
-    /// // `From`, `Into`
+    /// // `From<{u64, BigUint, BigInt}>`, `Into<u64>`
     /// assert_eq!(F::from(3), F(3));
+    /// assert_eq!(F::from(BigUint::new(vec![3])), F(3));
+    /// assert_eq!(F::from(BigInt::new(Sign::Minus, vec![4])), F(3));
     /// assert_eq!(u64::from(F(3)), 3);
     ///
     /// // `Display`, `Debug`
@@ -537,10 +541,10 @@ pub mod u64 {
     ///
     /// ```
     /// use modtype::ConstValue;
-    /// use num::bigint::{ToBigInt as _, ToBigUint as _};
+    /// use num::bigint::{Sign, ToBigInt as _, ToBigUint as _};
     /// use num::pow::Pow as _;
     /// use num::traits::{CheckedNeg as _};
-    /// use num::{Bounded as _, CheckedAdd as _, CheckedSub as _, FromPrimitive as _, ToPrimitive as _, Zero as _};
+    /// use num::{BigInt, BigUint, Bounded as _, CheckedAdd as _, CheckedSub as _, FromPrimitive as _, ToPrimitive as _, Zero as _};
     ///
     /// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
     /// #[modtype(const_value = 7u64)]
@@ -557,8 +561,10 @@ pub mod u64 {
     /// assert_eq!(Z(3), Z::new(3));
     /// assert_eq!(Z(3).get(), 3u64);
     ///
-    /// // `From`, `Into`
+    /// // `From<{u64, BigUint, BigInt}>`, `Into<u64>`
     /// assert_eq!(Z::from(3), Z(3));
+    /// assert_eq!(Z::from(BigUint::new(vec![3])), Z(3));
+    /// assert_eq!(Z::from(BigInt::new(Sign::Minus, vec![4])), Z(3));
     /// assert_eq!(u64::from(Z(3)), 3);
     ///
     /// // `Display`, `Debug`

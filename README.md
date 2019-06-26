@@ -90,6 +90,7 @@ fn F(value: u64) -> F {
     num_traits = "num::traits",
     num_integer = "num::integer",
     num_bigint = "num::bigint",
+    from(InnerValue, BigUint, BigInt),
     debug(SingleTuple),
     neg(for_ref = true),
     add(for_ref = true),
@@ -124,27 +125,28 @@ struct F {
 
 ### Struct
 
-| Name                 | Format                                                                   | Optional                         |
-| :------------------- | :----------------------------------------------------------------------- | :------------------------------- |
-| `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`] | No                               |
-| `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]          | Yes (default = `::std`)          |
-| `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
-| `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
-| `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
-| `debug`              | `debug(SingleTuple)` or `debug(Transparent)`                             | Yes (default = `SingleTuple`)    |
-| `neg`                | `neg(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-| `add`                | `add(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-| `add_assign`         | `add_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
-| `sub`                | `sub(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-| `sub_assign`         | `sub_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
-| `mul`                | `mul(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-| `mul_assign`         | `mul_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
-| `div`                | `div(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-| `div_assign`         | `div_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
-| `rem`                | `rem(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-| `rem_assign`         | `rem_assign(for_ref = $`[`LitBool`]`)`                                   | Yes (default = `true`)           |
-| `inv`                | `inv(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
-| `pow`                | `pow(for_ref = $`[`LitBool`]`)`                                          | Yes (default = `true`)           |
+| Name                 | Format                                                                                                   | Optional                         |
+| :------------------- | :------------------------------------------------------------------------------------------------------- | :------------------------------- |
+| `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`]                                 | No                               |
+| `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                          | Yes (default = `::std`)          |
+| `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                   | Yes (default = `::num::traits`)  |
+| `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                  | Yes (default = `::num::integer`) |
+| `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                   | Yes (default = `::num::bigint`)  |
+| `from`               | `from($`[`Ident`]` $(, $`[`Ident`]s`) $(,)?)` where all [`Ident`]s ∈ {`InnerValue`, `BigUint`, `BigInt`} | Yes (default = all)              |
+| `debug`              | `debug(SingleTuple)` or `debug(Transparent)`                                                             | Yes (default = `SingleTuple`)    |
+| `neg`                | `neg(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `add`                | `add(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `add_assign`         | `add_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+| `sub`                | `sub(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `sub_assign`         | `sub_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+| `mul`                | `mul(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `mul_assign`         | `mul_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+| `div`                | `div(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `div_assign`         | `div_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+| `rem`                | `rem(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `rem_assign`         | `rem_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+| `inv`                | `inv(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `pow`                | `pow(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
 
 ### Field
 
@@ -168,6 +170,7 @@ struct F {
 [`usize`]: https://doc.rust-lang.org/nightly/std/primitive.usize.html
 [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
 [`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
+[`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
 [`Lit`]: https://docs.rs/syn/0.15/syn/enum.Lit.html
 [`LitStr`]: https://docs.rs/syn/0.15/syn/struct.LitStr.html
 [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html

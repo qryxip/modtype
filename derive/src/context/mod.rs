@@ -3,6 +3,7 @@ mod num;
 mod std;
 
 use if_chain::if_chain;
+use maplit::btreeset;
 use proc_macro2::Span;
 use quote::quote;
 use syn::spanned::Spanned;
@@ -13,7 +14,9 @@ use syn::{
 };
 
 #[rustfmt::skip]
-use ::std::convert::TryFrom;
+use ::std::convert::{TryFrom, TryInto as _};
+#[rustfmt::skip]
+use ::std::collections::BTreeSet;
 #[rustfmt::skip]
 use ::std::mem;
 
@@ -23,6 +26,7 @@ pub(crate) struct Context {
     num_traits: Path,
     num_integer: Path,
     num_bigint: Path,
+    from: FromOptions,
     debug: DebugOptions,
     neg: OpOptions,
     add: OpOptions,
@@ -119,15 +123,11 @@ impl TryFrom<DeriveInput> for Context {
             }
         }
 
-        fn put_debug_opts(list: &MetaList, dist: &mut Option<DebugOptions>) -> syn::Result<()> {
-            if mem::replace(dist, Some(DebugOptions::try_from(list)?)).is_some() {
-                bail!(list.ident.span(), "multiple definitions");
-            }
-            Ok(())
-        }
-
-        fn put_op_opts(list: &MetaList, dist: &mut Option<OpOptions>) -> syn::Result<()> {
-            if mem::replace(dist, Some(OpOptions::try_from(list)?)).is_some() {
+        fn put_list_opts(
+            list: &MetaList,
+            dist: &mut Option<impl for<'a> TryFrom<&'a MetaList, Error = syn::Error>>,
+        ) -> syn::Result<()> {
+            if mem::replace(dist, Some(list.try_into()?)).is_some() {
                 bail!(list.ident.span(), "multiple definitions");
             }
             Ok(())
@@ -151,6 +151,7 @@ impl TryFrom<DeriveInput> for Context {
             data,
         } = input;
 
+        let mut from = None;
         let mut modulus = None;
         let mut std = None;
         let mut num_traits = None;
@@ -178,6 +179,7 @@ impl TryFrom<DeriveInput> for Context {
                 "num_traits" => ident.to_error("expected `num_traits = $LitStr`"),
                 "num_integer" => ident.to_error("expected `num_integer = $LitStr`"),
                 "num_bigint" => ident.to_error("expected `num_bigint = $LitStr`"),
+                "from" => ident.to_error("expected `from(..)`"),
                 "debug" => ident.to_error("expected `debug = $Ident`"),
                 "neg" => ident.to_error("expected `neg(..)`"),
                 "add" => ident.to_error("expected `add(..)`"),
@@ -202,20 +204,21 @@ impl TryFrom<DeriveInput> for Context {
 
         let mut on_list = |list: &MetaList| -> syn::Result<_> {
             match list.ident.to_string().as_ref() {
-                "debug" => put_debug_opts(list, &mut debug),
-                "neg" => put_op_opts(list, &mut neg),
-                "add" => put_op_opts(list, &mut add),
-                "add_assign" => put_op_opts(list, &mut add_assign),
-                "sub" => put_op_opts(list, &mut sub),
-                "sub_assign" => put_op_opts(list, &mut sub_assign),
-                "mul" => put_op_opts(list, &mut mul),
-                "mul_assign" => put_op_opts(list, &mut mul_assign),
-                "div" => put_op_opts(list, &mut div),
-                "div_assign" => put_op_opts(list, &mut div_assign),
-                "rem" => put_op_opts(list, &mut rem),
-                "rem_assign" => put_op_opts(list, &mut rem_assign),
-                "inv" => put_op_opts(list, &mut inv),
-                "pow" => put_op_opts(list, &mut pow),
+                "from" => put_list_opts(list, &mut from),
+                "debug" => put_list_opts(list, &mut debug),
+                "neg" => put_list_opts(list, &mut neg),
+                "add" => put_list_opts(list, &mut add),
+                "add_assign" => put_list_opts(list, &mut add_assign),
+                "sub" => put_list_opts(list, &mut sub),
+                "sub_assign" => put_list_opts(list, &mut sub_assign),
+                "mul" => put_list_opts(list, &mut mul),
+                "mul_assign" => put_list_opts(list, &mut mul_assign),
+                "div" => put_list_opts(list, &mut div),
+                "div_assign" => put_list_opts(list, &mut div_assign),
+                "rem" => put_list_opts(list, &mut rem),
+                "rem_assign" => put_list_opts(list, &mut rem_assign),
+                "inv" => put_list_opts(list, &mut inv),
+                "pow" => put_list_opts(list, &mut pow),
                 _ => Err(error_on_ident(&list.ident)),
             }
         };
@@ -260,6 +263,7 @@ impl TryFrom<DeriveInput> for Context {
         let num_traits = num_traits.unwrap_or_else(|| parse_quote!(::num::traits));
         let num_integer = num_integer.unwrap_or_else(|| parse_quote!(::num::integer));
         let num_bigint = num_bigint.unwrap_or_else(|| parse_quote!(::num::bigint));
+        let from = from.unwrap_or_default();
         let debug = debug.unwrap_or_default();
         let neg = neg.unwrap_or_default();
         let add = add.unwrap_or_default();
@@ -336,6 +340,7 @@ impl TryFrom<DeriveInput> for Context {
             num_traits,
             num_integer,
             num_bigint,
+            from,
             debug,
             neg,
             add,
@@ -360,16 +365,55 @@ impl TryFrom<DeriveInput> for Context {
     }
 }
 
-#[derive(Clone, Copy)]
-struct DebugOptions {
-    kind: DebugKind,
+struct FromOptions(BTreeSet<FromType>);
+
+impl Default for FromOptions {
+    fn default() -> Self {
+        Self(btreeset![
+            FromType::InnerValue,
+            FromType::BigUint,
+            FromType::BigInt,
+        ])
+    }
 }
+
+impl TryFrom<&'_ MetaList> for FromOptions {
+    type Error = syn::Error;
+
+    fn try_from(list: &'_ MetaList) -> syn::Result<Self> {
+        let mut set = btreeset![];
+        for nested in &list.nested {
+            let word = match nested {
+                NestedMeta::Meta(Meta::Word(word)) => word,
+                nested => bail!(nested.span(), "expected identifier"),
+            };
+            let value = match word.to_string().as_ref() {
+                "InnerValue" => FromType::InnerValue,
+                "BigUint" => FromType::BigUint,
+                "BigInt" => FromType::BigInt,
+                _ => bail!(word.span(), "expected `InnerValue`, `BigUint`, or `BigInt`"),
+            };
+            if !set.insert(value) {
+                bail!(word.span(), "multiple definitions");
+            }
+        }
+        Ok(Self(set))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum FromType {
+    InnerValue,
+    BigUint,
+    BigInt,
+}
+
+#[derive(Clone, Copy)]
+struct DebugOptions(DebugKind);
 
 impl Default for DebugOptions {
     fn default() -> Self {
-        Self {
-            kind: DebugKind::SingleTuple,
-        }
+        Self(DebugKind::SingleTuple)
     }
 }
 
@@ -390,7 +434,7 @@ impl TryFrom<&'_ MetaList> for DebugOptions {
                 bail!(list.ident.span(), "expected `{}($Ident)`", list.ident);
             }
         };
-        Ok(Self { kind })
+        Ok(Self(kind))
     }
 }
 
@@ -425,7 +469,7 @@ impl TryFrom<&'_ MetaList> for OpOptions {
             if name_value.ident == "for_ref" {
                 let value = match &name_value.lit {
                     Lit::Bool(value) => value.value,
-                    lit => bail!(lit.span(), "expected string literal"),
+                    lit => bail!(lit.span(), "expected bool literal"),
                 };
                 for_ref = Some(value);
             } else {
@@ -433,9 +477,8 @@ impl TryFrom<&'_ MetaList> for OpOptions {
             }
         }
 
-        let for_ref =
-            for_ref.ok_or_else(|| syn::Error::new(list.ident.span(), "missing `for_ref`"))?;
-
-        Ok(Self { for_ref })
+        Ok(Self {
+            for_ref: for_ref.unwrap_or_else(|| Self::default().for_ref),
+        })
     }
 }

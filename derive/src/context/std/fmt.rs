@@ -1,4 +1,4 @@
-use crate::context::{Context, DebugKind};
+use crate::context::{Context, DebugKind, DebugOptions};
 
 use quote::quote;
 use syn::{parse_quote, Block, LitStr};
@@ -31,7 +31,7 @@ impl Context {
     pub(crate) fn derive_debug(&self) -> proc_macro::TokenStream {
         let Context {
             std,
-            debug,
+            debug: DebugOptions(kind),
             struct_ident,
             generics,
             field_ident,
@@ -40,7 +40,7 @@ impl Context {
         } = self;
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let block: Block = match debug.kind {
+        let block: Block = match kind {
             DebugKind::SingleTuple => {
                 let tuple_name = LitStr::new(&struct_ident.to_string(), struct_ident.span());
                 parse_quote!({

@@ -65,6 +65,7 @@ fn F(value: u32) -> F {
     num_traits = "num::traits",
     num_integer = "num::integer",
     num_bigint = "num::bigint",
+    from(InnerValue, BigUint, BigInt),
     debug(SingleTuple),
     neg(for_ref = true),
     add(for_ref = true),
