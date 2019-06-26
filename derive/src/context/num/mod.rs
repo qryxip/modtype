@@ -1,4 +1,3 @@
-mod bigint;
 mod integer;
 mod traits;
 

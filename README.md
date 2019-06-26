@@ -71,7 +71,6 @@ fn F(value: u64) -> F {
     modtype::Zero,
     modtype::One,
     modtype::FromPrimitive,
-    modtype::ToPrimitive,
     modtype::Inv,
     modtype::CheckedNeg,
     modtype::CheckedAdd,
@@ -81,8 +80,6 @@ fn F(value: u64) -> F {
     modtype::CheckedRem,
     modtype::Pow,
     modtype::Integer,
-    modtype::ToBigUint,
-    modtype::ToBigInt,
 )]
 #[modtype(
     modulus = "1_000_000_007",

@@ -421,18 +421,6 @@ pub fn from_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     derive(input, Context::derive_from_primitive)
 }
 
-/// Derives [`ToPrimitive`].
-///
-/// # Requirements
-///
-/// Nothing.
-///
-/// [`ToPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.ToPrimitive.html
-#[proc_macro_derive(ToPrimitive, attributes(modtype))]
-pub fn to_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive(input, Context::derive_to_primitive)
-}
-
 /// Derives [`Inv`].
 ///
 /// # Requirements
@@ -601,30 +589,6 @@ pub fn pow(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(Integer, attributes(modtype))]
 pub fn integer(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_integer)
-}
-
-/// Derives [`ToBigUint`].
-///
-/// # Requirements
-///
-/// Nothing.
-///
-/// [`ToBigUint`]: https://docs.rs/num-bigint/0.2/num_bigint/biguint/trait.ToBigUint.html
-#[proc_macro_derive(ToBigUint, attributes(modtype))]
-pub fn to_big_uint(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive(input, Context::derive_to_big_uint)
-}
-
-/// Derives [`ToBigInt`].
-///
-/// # Requirements
-///
-/// Nothing.
-///
-/// [`ToBigInt`]: https://docs.rs/num-bigint/0.2/num_bigint/biguint/trait.ToBigInt.html
-#[proc_macro_derive(ToBigInt, attributes(modtype))]
-pub fn to_big_int(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive(input, Context::derive_to_big_int)
 }
 
 fn derive(

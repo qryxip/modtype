@@ -65,7 +65,6 @@
 //!     modtype::Zero,
 //!     modtype::One,
 //!     modtype::FromPrimitive,
-//!     modtype::ToPrimitive,
 //!     modtype::Inv,
 //!     modtype::CheckedNeg,
 //!     modtype::CheckedAdd,
@@ -75,8 +74,6 @@
 //!     modtype::CheckedRem,
 //!     modtype::Pow,
 //!     modtype::Integer,
-//!     modtype::ToBigUint,
-//!     modtype::ToBigInt,
 //! )]
 //! #[modtype(
 //!     modulus = "1_000_000_007",
@@ -227,8 +224,6 @@ pub use modtype_derive::One;
 
 pub use modtype_derive::FromPrimitive;
 
-pub use modtype_derive::ToPrimitive;
-
 pub use modtype_derive::Inv;
 
 pub use modtype_derive::CheckedNeg;
@@ -246,10 +241,6 @@ pub use modtype_derive::CheckedRem;
 pub use modtype_derive::Pow;
 
 pub use modtype_derive::Integer;
-
-pub use modtype_derive::ToBigUint;
-
-pub use modtype_derive::ToBigInt;
 
 use std::fmt;
 
@@ -358,7 +349,6 @@ pub mod u64 {
             crate::Zero,
             crate::One,
             crate::FromPrimitive,
-            crate::ToPrimitive,
             crate::Inv,
             crate::CheckedNeg,
             crate::CheckedAdd,
@@ -368,8 +358,6 @@ pub mod u64 {
             crate::CheckedRem,
             crate::Pow,
             crate::Integer,
-            crate::ToBigUint,
-            crate::ToBigInt,
         )]
         #[modtype(modulus = "unsafe { modulus() }")]
         pub struct F {
@@ -423,8 +411,13 @@ pub mod u64 {
     /// // `FromStr`
     /// assert_eq!("3".parse::<F>(), Ok(F(3)));
     ///
-    /// // `Deref`, `Neg`
+    /// // `Deref`
     /// assert_eq!(*F(3), 3);
+    /// assert_eq!(F(3).to_i64(), Some(3i64));
+    /// assert_eq!(F(3).to_biguint(), 3u64.to_biguint());
+    /// assert_eq!(F(3).to_bigint(), 3u64.to_bigint());
+    ///
+    /// // `Neg`
     /// assert_eq!(-F(1), F(6));
     ///
     /// // `Add`, `Sub`, `Mul`, `Div`, `Rem`
@@ -447,9 +440,8 @@ pub mod u64 {
     /// assert_eq!(F::zero(), F(0));
     /// assert_eq!(F::one(), F(1));
     ///
-    /// // `FromPrimitive`, `ToPrimitive`
+    /// // `FromPrimitive`
     /// assert_eq!(F::from_i64(-1), None);
-    /// assert_eq!(F(3).to_i64(), Some(3i64));
     ///
     /// // `Inv`
     /// assert_eq!(F(3).inv(), F(5));
@@ -477,10 +469,6 @@ pub mod u64 {
     ///
     /// // `Integer`
     /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F(x).is_multiple_of(&F(y)))));
-    ///
-    /// // `ToBigUint`, `ToBigInt`
-    /// assert_eq!(F(3).to_biguint(), 3u64.to_biguint());
-    /// assert_eq!(F(3).to_bigint(), 3u64.to_bigint());
     /// ```
     #[derive(
         crate::new,
@@ -515,7 +503,6 @@ pub mod u64 {
         crate::Zero,
         crate::One,
         crate::FromPrimitive,
-        crate::ToPrimitive,
         crate::Inv,
         crate::CheckedNeg,
         crate::CheckedAdd,
@@ -525,8 +512,6 @@ pub mod u64 {
         crate::CheckedRem,
         crate::Pow,
         crate::Integer,
-        crate::ToBigUint,
-        crate::ToBigInt,
     )]
     #[modtype(modulus = "M::VALUE")]
     pub struct F<M: ConstValue<Value = u64>> {
@@ -574,8 +559,13 @@ pub mod u64 {
     /// // `FromStr`
     /// assert_eq!("3".parse::<Z>(), Ok(Z(3)));
     ///
-    /// // `Deref`, `Neg`
+    /// // `Deref`
     /// assert_eq!(*Z(3), 3);
+    /// assert_eq!(Z(3).to_i64(), Some(3i64));
+    /// assert_eq!(Z(3).to_biguint(), 3u64.to_biguint());
+    /// assert_eq!(Z(3).to_bigint(), 3u64.to_bigint());
+    ///
+    /// // `Neg`
     /// assert_eq!(-Z(1), Z(6));
     ///
     /// // `Add`, `Sub`
@@ -588,9 +578,8 @@ pub mod u64 {
     /// // `Zero`
     /// assert_eq!(Z::zero(), Z(0));
     ///
-    /// // `FromPrimitive`, `ToPrimitive`
+    /// // `FromPrimitive`
     /// assert_eq!(Z::from_i64(-1), None);
-    /// assert_eq!(Z(3).to_i64(), Some(3i64));
     ///
     /// // `CheckedNeg`
     /// (0..=6).for_each(|x| assert!(Z(x).checked_neg().is_some()));
@@ -599,10 +588,6 @@ pub mod u64 {
     /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z(x).checked_add(&Z(y)).is_some())));
     /// assert_eq!(num::range_step(Z(0), Z(6), Z(2)).collect::<Vec<_>>(), &[Z(0), Z(2), Z(4)]);
     /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z(x).checked_sub(&Z(y)).is_some())));
-    ///
-    /// // `ToBigUint`, `ToBigInt`
-    /// assert_eq!(Z(3).to_biguint(), 3u64.to_biguint());
-    /// assert_eq!(Z(3).to_bigint(), 3u64.to_bigint());
     /// ```
     #[derive(
         crate::new,
@@ -628,12 +613,9 @@ pub mod u64 {
         crate::Bounded,
         crate::Zero,
         crate::FromPrimitive,
-        crate::ToPrimitive,
         crate::CheckedNeg,
         crate::CheckedAdd,
         crate::CheckedSub,
-        crate::ToBigUint,
-        crate::ToBigInt,
     )]
     #[modtype(modulus = "M::VALUE")]
     pub struct Z<M: ConstValue<Value = u64>> {
