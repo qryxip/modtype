@@ -8,6 +8,7 @@
 - Trait specific attributes.
 - `modtype::Pow` for `{u64, u128, i8, i16, i32, i64, i128, isize}`
 - `modtype::new_unchecked`.
+- `modtype::u64::field::Z`.
 
 ### Changed
 

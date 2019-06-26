@@ -81,6 +81,33 @@ impl Context {
             }
         }
     }
+
+    fn struct_update(
+        &self,
+        path_is_self: bool,
+        rest: Expr,
+    ) -> ExprStruct {
+        let Self {
+            struct_ident,
+            field_ident,
+            other_fields,
+            ..
+        } = self;
+
+        let struct_ident_or_self: Path = if path_is_self {
+            parse_quote!(Self)
+        } else {
+            parse_quote!(#struct_ident)
+        };
+
+        let rest = if other_fields.is_empty() {
+            quote!()
+        } else {
+            quote!(..#rest)
+        };
+
+        parse_quote!(#struct_ident_or_self { #field_ident, #rest })
+    }
 }
 
 impl TryFrom<DeriveInput> for Context {

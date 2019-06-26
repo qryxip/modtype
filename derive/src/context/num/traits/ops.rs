@@ -6,15 +6,24 @@ use syn::{parse_quote, BinOp, Expr, Ident, Type};
 impl Context {
     pub(crate) fn derive_inv(&self) -> proc_macro::TokenStream {
         let Context {
+            std,
             num_traits,
             inv,
             struct_ident,
             generics,
+            field_ident,
+            field_ty,
             ..
         } = self;
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let derive = |ty: Type| -> _ {
+            let struct_update = if let Type::Reference(_) = &ty {
+                self.struct_update(false, parse_quote!(*self))
+            } else {
+                self.struct_update(true, parse_quote!(self))
+            };
+
             quote! {
                 impl#impl_generics #num_traits::Inv for #ty
                     #where_clause
@@ -23,7 +32,12 @@ impl Context {
 
                     #[inline]
                     fn inv(self) -> #struct_ident#ty_generics {
-                        <#struct_ident#ty_generics as #num_traits::One>::one() / self
+                        fn static_assert_copy<T: #std::marker::Copy>() {}
+                        static_assert_copy::<#struct_ident#ty_generics>();
+
+                        let #field_ident = <#field_ty as #num_traits::One>::one();
+                        let one = #struct_update;
+                        one / self
                     }
                 }
             }
@@ -118,13 +132,15 @@ impl Context {
             num_traits,
             struct_ident,
             generics,
+            field_ident,
+            field_ty,
             ..
         } = self;
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let expr: Expr = if return_none_if_rhs_is_zero {
             parse_quote! {
-                if <Self as #num_traits::Zero>::is_zero(rhs) {
+                if <#field_ty as #num_traits::Zero>::is_zero(&rhs.#field_ident) {
                     None
                 } else {
                     Some(*self #op *rhs)

@@ -42,10 +42,13 @@ impl Context {
         } = self;
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let value_expr = parse_quote!(#modulus - self.#field_ident);
-        let struct_expr = self.struct_expr(false, Some(value_expr));
-
         let derive = |lhs_ty: Type| {
+            let struct_update = if let Type::Reference(_) = &lhs_ty {
+                self.struct_update(false, parse_quote!(*self))
+            } else {
+                self.struct_update(false, parse_quote!(self))
+            };
+
             quote! {
                 impl#impl_generics #std::ops::Neg for #lhs_ty
                 #where_clause
@@ -58,7 +61,8 @@ impl Context {
                         fn static_assert_sub<O, L: #std::ops::Sub<L, Output = O>>() {}
                         static_assert_add::<#struct_ident#ty_generics, Self>();
                         static_assert_sub::<#struct_ident#ty_generics, Self>();
-                        #struct_expr
+                        let #field_ident = (#modulus) - self.#field_ident;
+                        #struct_update
                     }
                 }
             }
@@ -138,11 +142,19 @@ impl Context {
             ..
         } = self;
         let (_, ty_generics, _) = generics.split_for_impl();
-        let struct_expr = self.struct_expr(false, None);
 
-        self.derive_bin(parse_quote!(Div), *div, |rhs_ty| {
+        self.derive_bin(parse_quote!(Div), *div, |lhs_is_ref, rhs_ty| {
+            let struct_update = if lhs_is_ref {
+                self.struct_update(false, parse_quote!(*self))
+            } else {
+                self.struct_update(false, parse_quote!(self))
+            };
+
             parse_quote! {
                 fn div(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
+                    fn static_assert_copy<T: #std::marker::Copy>() {}
+                    static_assert_copy::<#struct_ident#ty_generics>();
+
                     fn extended_gcd(a: i128, b: i128) -> (i128, i128, i128) {
                         if a == 0 {
                             (b, 0, 1)
@@ -173,7 +185,7 @@ impl Context {
                     let #field_ident =
                         <#field_ty as #num_traits::FromPrimitive>::from_i128(#field_ident);
                     let #field_ident = #std::option::Option::unwrap(#field_ident);
-                    #struct_expr
+                    #struct_update
                 }
             }
         })
@@ -195,22 +207,29 @@ impl Context {
             num_traits,
             struct_ident,
             generics,
+            field_ident,
+            field_ty,
             ..
         } = self;
         let (_, ty_generics, _) = generics.split_for_impl();
 
-        self.derive_bin(parse_quote!(Rem), *rem, |rhs_ty| {
+        self.derive_bin(parse_quote!(Rem), *rem, |lhs_is_ref, rhs_ty| {
+            let struct_update = if lhs_is_ref {
+                self.struct_update(false, parse_quote!(*self))
+            } else {
+                self.struct_update(false, parse_quote!(self))
+            };
+
             parse_quote! {
                 fn rem(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
-                    fn static_assert_div<T: #std::ops::Div<T, Output = T>>() {}
-                    fn static_assert_zero<T: #num_traits::Zero>() {}
-                    static_assert_div::<#struct_ident#ty_generics>();
-                    static_assert_zero::<#struct_ident#ty_generics>();
+                    fn static_assert_copy<T: #std::marker::Copy>() {}
+                    static_assert_copy::<#struct_ident#ty_generics>();
 
-                    if <#struct_ident#ty_generics as #num_traits::Zero>::is_zero(&rhs) {
+                    if <#field_ty as #num_traits::Zero>::is_zero(&rhs.#field_ident) {
                         panic!("attempt to calculate the remainder with a divisor of zero")
                     }
-                    <#struct_ident#ty_generics as #num_traits::Zero>::zero()
+                    let #field_ident = <#field_ty as #num_traits::Zero>::zero();
+                    #struct_update
                 }
             }
         })
@@ -234,6 +253,7 @@ impl Context {
     ) -> proc_macro::TokenStream {
         let Context {
             modulus,
+            std,
             struct_ident,
             generics,
             field_ident,
@@ -247,17 +267,25 @@ impl Context {
             &parse_quote!(rhs.#field_ident),
             &modulus,
         );
-        let struct_expr = self.struct_expr(false, None);
 
-        self.derive_bin(trait_ident, opts, |rhs_ty| {
+        self.derive_bin(trait_ident, opts, |lhs_is_ref, rhs_ty| {
+            let struct_update = if lhs_is_ref {
+                self.struct_update(false, parse_quote!(*self))
+            } else {
+                self.struct_update(false, parse_quote!(self))
+            };
+
             parse_quote! {
                 #[inline]
                 fn #fn_ident(self, rhs: #rhs_ty) -> #struct_ident#ty_generics {
+                    fn static_assert_copy<T: #std::marker::Copy>() {}
+                    static_assert_copy::<#struct_ident#ty_generics>();
+
                     let mut #field_ident = #expr;
                     if #field_ident >= #modulus {
                         #field_ident %= #modulus;
                     }
-                    #struct_expr
+                    #struct_update
                 }
             }
         })
@@ -267,7 +295,7 @@ impl Context {
         &self,
         trait_ident: Ident,
         opts: OpOptions,
-        derive_fn: impl Fn(&Type) -> ItemFn,
+        derive_fn: impl Fn(bool, &Type) -> ItemFn,
     ) -> proc_macro::TokenStream {
         let Context {
             std,
@@ -278,7 +306,11 @@ impl Context {
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let derive = |impl_generics: &ImplGenerics, lhs_ty: Type, rhs_ty: Type| -> _ {
-            let item_fn = derive_fn(&rhs_ty);
+            let lhs_is_ref = match &lhs_ty {
+                Type::Reference(_) => true,
+                _ => false,
+            };
+            let item_fn = derive_fn(lhs_is_ref, &rhs_ty);
             quote! {
                 impl#impl_generics #std::ops::#trait_ident<#rhs_ty> for #lhs_ty
                 #where_clause

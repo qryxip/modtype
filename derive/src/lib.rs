@@ -251,10 +251,10 @@ pub fn neg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// # Requirements
 ///
-/// - The fields are [`Default`] except `#InnerValue`.
+/// - `Self: `[`Copy`].
 ///
 /// [`Add`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Add.html
-/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(Add, attributes(modtype))]
 pub fn add(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_add)
@@ -279,10 +279,10 @@ pub fn add_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// # Requirements
 ///
-/// - The fields are [`Default`] except `#InnerValue`.
+/// - `Self: `[`Copy`].
 ///
 /// [`Sub`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Sub.html
-/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(Sub, attributes(modtype))]
 pub fn sub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_sub)
@@ -307,10 +307,10 @@ pub fn sub_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// # Requirements
 ///
-/// - The fields are [`Default`] except `#InnerValue`.
+/// - `Self: `[`Copy`].
 ///
 /// [`Mul`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Mul.html
-/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 #[proc_macro_derive(Mul, attributes(modtype))]
 pub fn mul(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_mul)
@@ -335,15 +335,15 @@ pub fn mul_assign(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// # Requirements
 ///
+/// - `Self: `[`Copy`].
 /// - `<#InnerValue as `[`ToPrimitive`]`>::`[`to_i128`] always return [`Some`] for values in [0, `#modulus`).
 /// - `#modulus` is a prime.
-/// - The fields are [`Default`] except `#InnerValue`.
 ///
 /// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 /// [`ToPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.ToPrimitive.html
 /// [`to_i128`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.ToPrimitive.html#method.to_i128
 /// [`Some`]: https://doc.rust-lang.org/nightly/core/option/enum.Option.html#variant.Some
-/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(Div, attributes(modtype))]
 pub fn div(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_div)
@@ -635,11 +635,11 @@ pub fn from_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 ///
 /// # Requirements
 ///
-/// - `Self: `[`One`].
+/// - `Self: `[`Copy`].
 /// - `Self: `[`Div`]`<Self, Output = Self>`.
 ///
 /// [`Inv`]: https://docs.rs/num-traits/0.2/num_traits/ops/inv/trait.Inv.html
-/// [`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
+/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 /// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
 #[proc_macro_derive(Inv, attributes(modtype))]
 pub fn inv(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

@@ -2,6 +2,7 @@
 //! - Macros that implement modular arithmetic integer types
 //! - Preset types
 //!     - [`modtype::u64::F`]
+//!     - [`modtype::u64::field::F`]
 //!     - [`modtype::u64::thread_local::F`]
 //!
 //! # Usage
@@ -164,7 +165,7 @@
 //! [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
 //! [`ConstValue`]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html
 //! [`modtype::u64::F`]: ./u64/struct.F.html
-//! [`modtype::u64::Z`]: ./u64/struct.Z.html
+//! [`modtype::u64::field::F`]: ./u64/field/struct.F.html
 //! [`modtype::u64::thread_local::F`]: ./u64/thread_local/struct.F.html
 
 pub use modtype_derive::use_modtype;
@@ -270,8 +271,94 @@ pub trait ConstValue: Copy + Ord + fmt::Debug {
     const VALUE: Self::Value;
 }
 
-/// Preset tyeps that the inner types are `u64`.
+/// Preset types that the inner types are `u64`.
 pub mod u64 {
+    pub mod field {
+        /// A modular arithmetic integer type.
+        ///
+        /// # Example
+        ///
+        /// ```
+        /// use modtype::u64::field::F;
+        ///
+        /// let runtime_mod = 7;
+        /// #[allow(non_snake_case)]
+        /// let F = F::factory(runtime_mod);
+        ///
+        /// assert_eq!(F(6) + F(1), F(0));
+        /// ```
+        #[derive(
+            Clone,
+            Copy,
+            PartialEq,
+            Eq,
+            PartialOrd,
+            Ord,
+            crate::Into,
+            crate::Display,
+            crate::Debug,
+            crate::Deref,
+            crate::Neg,
+            crate::Add,
+            crate::AddAssign,
+            crate::Sub,
+            crate::SubAssign,
+            crate::Mul,
+            crate::MulAssign,
+            crate::Div,
+            crate::DivAssign,
+            crate::Rem,
+            crate::RemAssign,
+            crate::Inv,
+            crate::CheckedNeg,
+            crate::CheckedAdd,
+            crate::CheckedSub,
+            crate::CheckedMul,
+            crate::CheckedDiv,
+            crate::CheckedRem,
+            crate::Pow,
+        )]
+        #[modtype(modulus = "self.modulus")]
+        pub struct F {
+            #[modtype(value)]
+            __value: u64,
+            modulus: u64,
+        }
+
+        impl F {
+            /// Constructs a new `F`.
+            #[inline]
+            pub fn new(value: u64, modulus: u64) -> Self {
+                let __value = if value >= modulus {
+                    value % modulus
+                } else {
+                    value
+                };
+                Self { __value, modulus }
+            }
+
+            /// Constructs a new `F` without checking the value.
+            pub const fn new_unchecked(value: u64, modulus: u64) -> Self {
+                Self {
+                    __value: value,
+                    modulus,
+                }
+            }
+
+            /// Same as `move |n| Self::`[`new`]`(n, modulus)`.
+            ///
+            /// [`new`]: ./struct.F.html#method.new
+            pub fn factory(modulus: u64) -> impl Fn(u64) -> Self {
+                move |n| Self::new(n, modulus)
+            }
+
+            /// Gets the inner value.
+            pub const fn get(self) -> u64 {
+                self.__value
+            }
+        }
+    }
+
     pub mod thread_local {
         use std::cell::UnsafeCell;
 
@@ -397,7 +484,7 @@ pub mod u64 {
     /// fn static_assert_unsigned<T: Unsigned>() {}
     ///
     /// // Constructor, `new`, `new_unchecked`, `get`
-    /// assert_eq!(F::new(3), F(3));
+    /// assert_eq!(F::new(8), F(1));
     /// assert_ne!(F::new_unchecked(8), F(1));
     /// assert_eq!(F(3).get(), 3u64);
     ///
@@ -424,8 +511,8 @@ pub mod u64 {
     /// assert_eq!(-F(1), F(6));
     ///
     /// // `Add`, `Sub`, `Mul`, `Div`, `Rem`
-    /// assert_eq!(F(6) + F(2), F(1));
-    /// assert_eq!(F(0) - F(1), F(6));
+    /// assert_eq!(F(3) + F(4), F(0));
+    /// assert_eq!(F(3) - F(4), F(6));
     /// assert_eq!(F(3) * F(4), F(5));
     /// assert_eq!(F(3) / F(4), F(6));
     /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert_eq!(F(x) % F(y), F(0))));
@@ -444,7 +531,7 @@ pub mod u64 {
     /// assert_eq!(F::one(), F(1));
     ///
     /// // `FromPrimitive`
-    /// assert_eq!(F::from_i128(-1), Some(F(0) - F(1)));
+    /// assert_eq!(F::from_i128(-1), Some(-F(1)));
     /// assert_eq!(F::from_f64(0.5), Some(F(1) / F(2)));
     ///
     /// // `Inv`

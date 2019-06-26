@@ -8,23 +8,14 @@ This crate provides:
 - Macros that implement modular arithmetic integer types
 - Preset types
     - `modtype::u64::F`
+    - `modtype::u64::field::F`
     - `modtype::u64::thread_local::F`
 
 ## Usage
 
 ```rust
-use modtype::ConstValue;
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-#[modtype(const_value = 1_000_000_007u64)]
-enum M {}
-
-type F = modtype::u64::F<M>;
-
-#[allow(non_snake_case)]
-fn F(value: u64) -> F {
-    F::new(value)
-}
+#[modtype::use_modtype]
+type F = modtype::u64::F<1_000_000_007u64>;
 
 assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 ```
