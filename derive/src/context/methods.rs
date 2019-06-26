@@ -24,6 +24,29 @@ impl Context {
         })
     }
 
+    pub(crate) fn derive_new_unchecked(&self) -> proc_macro::TokenStream {
+        let Context {
+            struct_vis,
+            struct_ident,
+            field_ty,
+            ..
+        } = self;
+
+        let doc = format!(
+            "Constructs a new `{}` without checking the value.",
+            struct_ident,
+        );
+        let struct_expr = self.struct_expr(true, Some(parse_quote!(value)));
+
+        self.derive_struct_method(parse_quote! {
+            #[doc = #doc]
+            #[inline]
+            #struct_vis fn new_unchecked(value: #field_ty) -> Self {
+                #struct_expr
+            }
+        })
+    }
+
     pub(crate) fn derive_get(&self) -> proc_macro::TokenStream {
         let Context {
             struct_vis,

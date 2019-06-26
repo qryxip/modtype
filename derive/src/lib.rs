@@ -121,6 +121,17 @@ pub fn new(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_new)
 }
 
+/// Implement `Self::new_unchecked: fn(#InnerValue) -> Self`.
+///
+/// # Requirements
+///
+/// - Nothing.
+/// ```
+#[proc_macro_derive(new_unchecked, attributes(modtype))]
+pub fn new_unchecked(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    derive(input, Context::derive_new_unchecked)
+}
+
 /// Derives `Self::get: fn(Self) -> #InnerValue`.
 ///
 /// # Requirements

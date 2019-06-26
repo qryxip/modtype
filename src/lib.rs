@@ -23,6 +23,7 @@
 //!
 //! #[derive(
 //!     modtype::new,
+//!     modtype::new_unchecked,
 //!     modtype::get,
 //!     Default,
 //!     Clone,
@@ -172,6 +173,8 @@ pub use modtype_derive::ConstValue;
 
 pub use modtype_derive::new;
 
+pub use modtype_derive::new_unchecked;
+
 pub use modtype_derive::get;
 
 pub use modtype_derive::From;
@@ -320,6 +323,7 @@ pub mod u64 {
         /// ```
         #[derive(
             crate::new,
+            crate::new_unchecked,
             crate::get,
             Default,
             Clone,
@@ -392,8 +396,9 @@ pub mod u64 {
     ///
     /// fn static_assert_unsigned<T: Unsigned>() {}
     ///
-    /// // Constructor, `new`, `get`
-    /// assert_eq!(F(3), F::new(3));
+    /// // Constructor, `new`, `new_unchecked`, `get`
+    /// assert_eq!(F::new(3), F(3));
+    /// assert_ne!(F::new_unchecked(8), F(1));
     /// assert_eq!(F(3).get(), 3u64);
     ///
     /// // `From<{u64, BigUint, BigInt}>`, `Into<u64>`
@@ -477,6 +482,7 @@ pub mod u64 {
     /// ```
     #[derive(
         crate::new,
+        crate::new_unchecked,
         crate::get,
         Default,
         Clone,

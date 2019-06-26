@@ -11,6 +11,7 @@ type F = F_<17u32>;
 
 #[derive(
     modtype::new,
+    modtype::new_unchecked,
     modtype::get,
     Default,
     Clone,

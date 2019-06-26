@@ -39,6 +39,7 @@ fn F(value: u64) -> F {
 
 #[derive(
     modtype::new,
+    modtype::new_unchecked,
     modtype::get,
     Default,
     Clone,
