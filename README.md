@@ -7,9 +7,9 @@
 This crate provides:
 - Macros that implement modular arithmetic integer types
 - Preset types
-    - `modtype::u64::F`
-    - `modtype::u64::field::F`
-    - `modtype::u64::thread_local::F`
+    - [`modtype::u64::F`]
+    - [`modtype::u64::field::F`]
+    - [`modtype::u64::thread_local::F`]
 
 ## Usage
 
@@ -174,4 +174,7 @@ struct F {
 [`LitBool`]: https://docs.rs/syn/0.15/syn/struct.LitBool.html
 [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
 [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
-[`ConstValue`]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html
+[`ConstValue`]: https://docs.rs/modtype_derive/0.4/modtype_derive/derive.ConstValue.html
+[`modtype::u64::F`]: https://docs.rs/modtype/0.4/modtype/u64/struct.F.html
+[`modtype::u64::field::F`]: https://docs.rs/modtype/0.4/modtype/u64/field/struct.F.html
+[`modtype::u64::thread_local::F`]: https://docs.rs/modtype/0.4/modtype/u64/thread_local/struct.F.html

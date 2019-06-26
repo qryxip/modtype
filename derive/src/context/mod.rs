@@ -82,11 +82,7 @@ impl Context {
         }
     }
 
-    fn struct_update(
-        &self,
-        path_is_self: bool,
-        rest: Expr,
-    ) -> ExprStruct {
+    fn struct_update(&self, path_is_self: bool, rest: Expr) -> ExprStruct {
         let Self {
             struct_ident,
             field_ident,

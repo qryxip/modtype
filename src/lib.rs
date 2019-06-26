@@ -163,7 +163,7 @@
 //! [`LitBool`]: https://docs.rs/syn/0.15/syn/struct.LitBool.html
 //! [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
 //! [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
-//! [`ConstValue`]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html
+//! [`ConstValue`]: https://docs.rs/modtype_derive/0.4/modtype_derive/derive.ConstValue.html
 //! [`modtype::u64::F`]: ./u64/struct.F.html
 //! [`modtype::u64::field::F`]: ./u64/field/struct.F.html
 //! [`modtype::u64::thread_local::F`]: ./u64/thread_local/struct.F.html
@@ -247,7 +247,7 @@ use std::fmt;
 /// A trait that has one associated constant value.
 ///
 /// This trait requires [`Copy`]` + `[`Ord`]` + `[`Debug`] because of [`#26925`].
-/// To implement this trait, use [the derive macro].
+/// To implement this trait, use [`use_modtype`] rather than [the derive macro].
 ///
 /// # Example
 ///
@@ -265,7 +265,8 @@ use std::fmt;
 /// [`Ord`]: https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html
 /// [`Debug`]: https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html
 /// [`#26925`]: https://github.com/rust-lang/rust/issues/26925
-/// [the derive macro]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html
+/// [`use_modtype`]: https://docs.rs/modtype_derive/0.4/modtype_derive/attr.use_modtype.html
+/// [the derive macro]: https://docs.rs/modtype_derive/0.4/modtype_derive/derive.ConstValue.html
 pub trait ConstValue: Copy + Ord + fmt::Debug {
     type Value: Copy;
     const VALUE: Self::Value;

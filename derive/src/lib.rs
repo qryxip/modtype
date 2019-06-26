@@ -29,6 +29,12 @@ use std::convert::TryFrom as _;
 
 /// An attribute macro to use a modular arithmetic type with a [`ConstValue`] argument.
 ///
+/// This macro:
+/// 1. Creates a bottom type.
+/// 2. Implements [`ConstValue`] for the bottom type.
+/// 3. Creates a type alias.
+/// 4. Creates a pseudo constructor.
+///
 /// # Usage
 ///
 /// ```ignore
@@ -70,7 +76,7 @@ use std::convert::TryFrom as _;
 /// | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $type_uppercase)`) |
 /// | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                |
 ///
-/// [`ConstValue`]: https://docs.rs/modtype/0.3/modtype/trait.ConstValue.html
+/// [`ConstValue`]: https://docs.rs/modtype/0.4/modtype/trait.ConstValue.html
 /// [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
 #[proc_macro_attribute]
 pub fn use_modtype(
@@ -90,7 +96,7 @@ pub fn use_modtype(
 /// | :------------------- | :----------------------------------------------------------- | :-------- |
 /// | `const_value`        | `const_value = #`[`LitInt`] where `#`[`LitInt`] has a suffix | No        |
 ///
-/// [`ConstValue`]: https://docs.rs/modtype/0.3/modtype/trait.ConstValue.html
+/// [`ConstValue`]: https://docs.rs/modtype/0.4/modtype/trait.ConstValue.html
 /// [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
 #[proc_macro_derive(ConstValue, attributes(modtype))]
 pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
