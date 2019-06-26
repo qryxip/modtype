@@ -19,12 +19,66 @@ extern crate proc_macro;
 
 mod const_value;
 mod context;
+mod use_modtype;
 
 use crate::context::Context;
 
 use syn::{parse_macro_input, DeriveInput};
 
 use std::convert::TryFrom as _;
+
+/// An attribute macro to use a modular arithmetic type with a [`ConstValue`] argument.
+///
+/// # Usage
+///
+/// ```ignore
+/// use modtype::use_modtype;
+///
+/// // #[use_modtype(constant(_1000000007U64), constructor(F))]
+/// #[use_modtype]
+/// type F = modtype::u64::F<1_000_000_007u64>;
+///
+/// assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
+/// ```
+///
+/// ↓
+///
+/// ```ignore
+/// type F = modtype::u64::F<_1000000007u64>;
+///
+/// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+/// enum _1000000007u64 {}
+///
+/// impl ::modtype::ConstValue for _1000000007U64 {
+///     type Value = u64;
+///     const VALUE: u64 = 1_000_000_007u64;
+/// }
+///
+/// #[allow(non_snake_case)]
+/// #[inline]
+/// fn F(value: u64) -> F {
+///     <F as ::std::convert::From<u64>>::from(value)
+/// }
+///
+/// assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
+/// ```
+///
+/// # Attributes
+///
+/// | Name          | Format                         | Optional                                      |
+/// | :------------ | :----------------------------- | :-------------------------------------------- |
+/// | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $type_uppercase)`) |
+/// | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                |
+///
+/// [`ConstValue`]: https://docs.rs/modtype/0.3/modtype/trait.ConstValue.html
+/// [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
+#[proc_macro_attribute]
+pub fn use_modtype(
+    args: proc_macro::TokenStream,
+    item: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    crate::use_modtype::use_modtype(args, item)
+}
 
 /// Derives [`ConstValue`].
 ///

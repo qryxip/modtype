@@ -120,7 +120,16 @@ struct F {
 
 ## Attributes
 
-### Struct
+### `use_modtype`
+
+| Name          | Format                         | Optional                                      |
+| :------------ | :----------------------------- | :-------------------------------------------- |
+| `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $type_uppercase)`) |
+| `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                |
+
+### Derive Macros
+
+#### Struct
 
 | Name                 | Format                                                                                                   | Optional                         |
 | :------------------- | :------------------------------------------------------------------------------------------------------- | :------------------------------- |
@@ -145,7 +154,7 @@ struct F {
 | `inv`                | `inv(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
 | `pow`                | `pow(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
 
-### Field
+#### Field
 
 | Name                 | Format  | Optional |
 | :------------------- | :------ | :------- |

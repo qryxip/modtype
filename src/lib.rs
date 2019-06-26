@@ -8,18 +8,8 @@
 //! # Usage
 //!
 //! ```
-//! use modtype::ConstValue;
-//!
-//! #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-//! #[modtype(const_value = 1_000_000_007u64)]
-//! enum M {}
-//!
-//! type F = modtype::u64::F<M>;
-//!
-//! #[allow(non_snake_case)]
-//! fn F(value: u64) -> F {
-//!     F::new(value)
-//! }
+//! #[modtype::use_modtype]
+//! type F = modtype::u64::F<1_000_000_007u64>;
 //!
 //! assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 //! ```
@@ -77,10 +67,6 @@
 //! )]
 //! #[modtype(
 //!     modulus = "1_000_000_007",
-//!     std = "std",
-//!     num_traits = "num::traits",
-//!     num_integer = "num::integer",
-//!     num_bigint = "num::bigint",
 //!     debug(SingleTuple),
 //!     neg(for_ref = true),
 //!     add(for_ref = true),
@@ -113,7 +99,16 @@
 //!
 //! # Attributes
 //!
-//! ## Struct
+//! ## `use_modtype`
+//!
+//! | Name          | Format                         | Optional                                      |
+//! | :------------ | :----------------------------- | :-------------------------------------------- |
+//! | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $type_uppercase)`) |
+//! | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                |
+//!
+//! ## Derive Macros
+//!
+//! ### Struct
 //!
 //! | Name                 | Format                                                                                                   | Optional                         |
 //! | :------------------- | :------------------------------------------------------------------------------------------------------- | :------------------------------- |
@@ -138,7 +133,7 @@
 //! | `inv`                | `inv(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
 //! | `pow`                | `pow(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
 //!
-//! ## Field
+//! ### Field
 //!
 //! | Name                 | Format  | Optional |
 //! | :------------------- | :------ | :------- |
@@ -171,6 +166,8 @@
 //! [`modtype::u64::F`]: ./u64/struct.F.html
 //! [`modtype::u64::Z`]: ./u64/struct.Z.html
 //! [`modtype::u64::thread_local::F`]: ./u64/thread_local/struct.F.html
+
+pub use modtype_derive::use_modtype;
 
 pub use modtype_derive::ConstValue;
 
@@ -284,12 +281,18 @@ pub mod u64 {
         /// use modtype::u64::thread_local::{with_modulus, F};
         ///
         /// with_modulus(7, || {
-        ///     assert_eq!(F::from(6) + F::from(1), F::from(0));
+        ///     assert_eq!(F(6) + F(1), F(0));
         /// });
         /// ```
         pub fn with_modulus<T, F: FnOnce() -> T>(modulus: u64, f: F) -> T {
             unsafe { set_modulus(modulus) };
             f()
+        }
+
+        #[allow(non_snake_case)]
+        #[inline]
+        pub fn F(value: u64) -> F {
+            F::new(value)
         }
 
         #[inline]
@@ -313,7 +316,7 @@ pub mod u64 {
         /// use modtype::u64::thread_local::{with_modulus, F};
         ///
         /// with_modulus(7, || {
-        ///     assert_eq!(F::from(6) + F::from(1), F::from(0));
+        ///     assert_eq!(F(6) + F(1), F(0));
         /// });
         /// ```
         #[derive(
@@ -375,22 +378,14 @@ pub mod u64 {
     /// # Example
     ///
     /// ```
-    /// use modtype::ConstValue;
+    /// use modtype::use_modtype;
     /// use num::bigint::{Sign, ToBigInt as _, ToBigUint as _};
     /// use num::pow::Pow as _;
     /// use num::traits::{CheckedNeg as _, CheckedRem as _, Inv as _};
     /// use num::{BigInt, BigUint, Bounded as _, CheckedAdd as _, CheckedDiv as _, CheckedMul as _, CheckedSub as _, FromPrimitive as _, Integer as _, Num as _, One as _, ToPrimitive as _, Unsigned, Zero as _};
     ///
-    /// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-    /// #[modtype(const_value = 7u64)]
-    /// enum M {}
-    ///
-    /// type F = modtype::u64::F<M>;
-    ///
-    /// #[allow(non_snake_case)]
-    /// fn F(value: u64) -> F {
-    ///     F::new(value)
-    /// }
+    /// #[use_modtype]
+    /// type F = modtype::u64::F<7u64>;
     ///
     /// fn static_assert_unsigned<T: Unsigned>() {}
     ///
@@ -525,22 +520,14 @@ pub mod u64 {
     /// # Example
     ///
     /// ```
-    /// use modtype::ConstValue;
+    /// use modtype::use_modtype;
     /// use num::bigint::{Sign, ToBigInt as _, ToBigUint as _};
     /// use num::pow::Pow as _;
     /// use num::traits::{CheckedNeg as _};
     /// use num::{BigInt, BigUint, Bounded as _, CheckedAdd as _, CheckedSub as _, FromPrimitive as _, ToPrimitive as _, Zero as _};
     ///
-    /// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-    /// #[modtype(const_value = 7u64)]
-    /// enum M {}
-    ///
-    /// type Z = modtype::u64::Z<M>;
-    ///
-    /// #[allow(non_snake_case)]
-    /// fn Z(value: u64) -> Z {
-    ///     Z::new(value)
-    /// }
+    /// #[use_modtype]
+    /// type Z = modtype::u64::Z<7u64>;
     ///
     /// // Constructor, `new`, `get`
     /// assert_eq!(Z(3), Z::new(3));

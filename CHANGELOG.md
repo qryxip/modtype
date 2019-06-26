@@ -4,7 +4,8 @@
 
 ### Added
 
-- Trait specific attributes
+- `#[use_modtype]` attribute macro.
+- Trait specific attributes.
 
 ### Changed
 
@@ -18,6 +19,9 @@
 - `modtype::preset::u64::mod1000000007::{F, Z}`.
 - `modtype::DebugTransparent` alias.
 - `no_impl_for_ref`.
+- `modtype::ToPrimitive`
+- `modtype::BigUint`
+- `modtype::BigInt`
 
 ### Fixed
 

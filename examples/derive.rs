@@ -1,4 +1,4 @@
-use modtype::ConstValue;
+use modtype::{use_modtype, ConstValue};
 
 use std::marker::PhantomData;
 
@@ -6,12 +6,8 @@ fn main() {
     println!("{} / {} ≡ {}", F(3), F(4), F(3) / F(4));
 }
 
-type F = F_<Const17U32>;
-
-#[allow(non_snake_case)]
-fn F(value: u32) -> F {
-    F::from(value)
-}
+#[use_modtype]
+type F = F_<17u32>;
 
 #[derive(
     modtype::new,
@@ -83,7 +79,3 @@ struct F_<M: ConstValue<Value = u32>> {
     __value: u32,
     phantom: PhantomData<fn() -> M>,
 }
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-#[modtype(const_value = 17u32)]
-enum Const17U32 {}

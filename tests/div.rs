@@ -1,19 +1,11 @@
-use modtype::ConstValue;
+use modtype::use_modtype;
 
 use num::traits::Inv as _;
 
 #[test]
 fn test_div_for_mod17() {
-    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-    #[modtype(const_value = 17u64)]
-    enum M {}
-
-    type F = modtype::u64::F<M>;
-
-    #[allow(non_snake_case)]
-    fn F(value: u64) -> F {
-        F::new(value)
-    }
+    #[use_modtype]
+    type F = modtype::u64::F<17u64>;
 
     for a in 0..=16 {
         for b in 1..=16 {
@@ -24,16 +16,8 @@ fn test_div_for_mod17() {
 
 #[test]
 fn test_div_for_mod1000000007() {
-    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-    #[modtype(const_value = 1_000_000_007u64)]
-    enum M {}
-
-    type F = modtype::u64::F<M>;
-
-    #[allow(non_snake_case)]
-    fn F(value: u64) -> F {
-        F::new(value)
-    }
+    #[use_modtype]
+    type F = modtype::u64::F<1_000_000_007u64>;
 
     assert_eq!(F(13).inv(), F(153_846_155));
 }
