@@ -460,6 +460,12 @@ pub mod u64 {
     /// assert_eq!(F(3).pow(2u64), F(2));
     /// assert_eq!(F(3).pow(2u128), F(2));
     /// assert_eq!(F(3).pow(2usize), F(2));
+    /// assert_eq!(F(3).pow(-2i8), F(4));
+    /// assert_eq!(F(3).pow(-2i16), F(4));
+    /// assert_eq!(F(3).pow(-2i32), F(4));
+    /// assert_eq!(F(3).pow(-2i64), F(4));
+    /// assert_eq!(F(3).pow(-2i128), F(4));
+    /// assert_eq!(F(3).pow(-2isize), F(4));
     ///
     /// // `Integer`
     /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F(x).is_multiple_of(&F(y)))));

@@ -580,29 +580,32 @@ pub fn checked_rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_checked_rem)
 }
 
-/// Derives [`Pow`] for primitive unsigned types.
+/// Derives [`Pow`] for primitive integer types.
 ///
 /// # Requirements
 ///
 /// - `Self: `[`Copy`].
 /// - `Self: `[`MulAssign`]`<Self>`.
+/// - `Self: `[`Inv`]`<Self>`.
 /// - `#modulus * #modulus` does not overflow.
 ///
 /// # Generated Code
 ///
 /// ```ignore
-/// impl #num_traits::Pow<u128> for #self_ty {
+/// // part
+///
+/// impl ::num::traits::Pow<u128> for F {
 ///     type Output = F;
 ///
 ///     #[inline]
-///     fn pow(self, exp: u128) -> #self_ty {
-///         fn static_assert_copy<T: #std::marker::Copy>() {}
-///         static_assert_copy::<#self_ty>();
+///     fn pow(self, exp: u128) -> F {
+///         fn static_assert_copy<T: ::std::marker::Copy>() {}
+///         static_assert_copy::<F>();
 ///
 ///         let mut base = self;
 ///         let mut exp = exp;
 ///         let mut acc = self;
-///         acc.__value = <#inner_value_ty as #num_traits::One>::one();
+///         acc.__value = <u32 as ::num::traits::One>::one();
 ///
 ///         while exp > 0 {
 ///             if (exp & 0x1) == 0x1 {
@@ -614,11 +617,46 @@ pub fn checked_rem(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///         acc
 ///     }
 /// }
+///
+/// impl ::num::traits::Pow<i128> for F {
+///     type Output = F;
+///
+///     #[inline]
+///     fn pow(self, exp: i128) -> F {
+///         fn static_assert_copy<T: ::std::marker::Copy>() {}
+///         static_assert_copy::<F>();
+///
+///         let mut base = self;
+///         let mut exp = exp;
+///         let mut acc = self;
+///         acc.__value = <u32 as ::num::traits::One>::one();
+///
+///         let neg = exp < 0;
+///         if neg {
+///             exp = -exp;
+///         }
+///
+///         while exp > 0 {
+///             if (exp & 0x1) == 0x1 {
+///                 acc *= base;
+///             }
+///             exp /= 2;
+///             base *= base;
+///         }
+///
+///         if neg {
+///             acc = <F as ::num::traits::Inv>::inv(acc);
+///         }
+///
+///         acc
+///     }
+/// }
 /// ```
 ///
 /// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
 /// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
 /// [`MulAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.MulAssign.html
+/// [`Inv`]: https://docs.rs/num-traits/0.2/num_traits/ops/inv/trait.Inv.html
 #[proc_macro_derive(Pow, attributes(modtype))]
 pub fn pow(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_pow)
