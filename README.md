@@ -8,7 +8,6 @@ This crate provides:
 - Macros that implement modular arithmetic integer types
 - Preset types
     - `modtype::u64::F`
-    - `modtype::u64::Z`
     - `modtype::u64::thread_local::F`
 
 ## Usage

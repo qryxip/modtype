@@ -10,12 +10,12 @@
 ### Changed
 
 - Move `modtype::preset::u64::F` to `modtype::u64::F`.
-- Move `modtype::preset::u64::Z` to `modtype::u64::Z`.
 - Move `modtype::preset::u64::thread_local::F` to `modtype::u64::thread_local::Z`.
 - Unify `modtype::Pow_*` macros.
 
 ### Removed
 
+- `modtype::preset::u64::Z`.
 - `modtype::preset::u64::mod1000000007::{F, Z}`.
 - `modtype::DebugTransparent` alias.
 - `no_impl_for_ref`.

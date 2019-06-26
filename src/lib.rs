@@ -2,7 +2,6 @@
 //! - Macros that implement modular arithmetic integer types
 //! - Preset types
 //!     - [`modtype::u64::F`]
-//!     - [`modtype::u64::Z`]
 //!     - [`modtype::u64::thread_local::F`]
 //!
 //! # Usage
@@ -510,102 +509,6 @@ pub mod u64 {
     )]
     #[modtype(modulus = "M::VALUE")]
     pub struct F<M: ConstValue<Value = u64>> {
-        #[modtype(value)]
-        __value: u64,
-        phantom: PhantomData<fn() -> M>,
-    }
-
-    /// A modular arithmetic integer type.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use modtype::use_modtype;
-    /// use num::bigint::{Sign, ToBigInt as _, ToBigUint as _};
-    /// use num::pow::Pow as _;
-    /// use num::traits::{CheckedNeg as _};
-    /// use num::{BigInt, BigUint, Bounded as _, CheckedAdd as _, CheckedSub as _, FromPrimitive as _, ToPrimitive as _, Zero as _};
-    ///
-    /// #[use_modtype]
-    /// type Z = modtype::u64::Z<7u64>;
-    ///
-    /// // Constructor, `new`, `get`
-    /// assert_eq!(Z(3), Z::new(3));
-    /// assert_eq!(Z(3).get(), 3u64);
-    ///
-    /// // `From<{u64, BigUint, BigInt}>`, `Into<u64>`
-    /// assert_eq!(Z::from(3), Z(3));
-    /// assert_eq!(Z::from(BigUint::new(vec![3])), Z(3));
-    /// assert_eq!(Z::from(BigInt::new(Sign::Minus, vec![4])), Z(3));
-    /// assert_eq!(u64::from(Z(3)), 3);
-    ///
-    /// // `Display`, `Debug`
-    /// assert_eq!(Z(3).to_string(), "3");
-    /// assert_eq!(format!("{:?}", Z(3)), "Z(3)");
-    ///
-    /// // `FromStr`
-    /// assert_eq!("3".parse::<Z>(), Ok(Z(3)));
-    ///
-    /// // `Deref`
-    /// assert_eq!(*Z(3), 3);
-    /// assert_eq!(Z(3).to_i64(), Some(3i64));
-    /// assert_eq!(Z(3).to_biguint(), 3u64.to_biguint());
-    /// assert_eq!(Z(3).to_bigint(), 3u64.to_bigint());
-    ///
-    /// // `Neg`
-    /// assert_eq!(-Z(1), Z(6));
-    ///
-    /// // `Add`, `Sub`
-    /// assert_eq!(Z(6) + Z(2), Z(1));
-    /// assert_eq!(Z(0) - Z(1), Z(6));
-    ///
-    /// // `Bounded`
-    /// assert_eq!((Z::min_value(), Z::max_value()), (Z(0), Z(6)));
-    ///
-    /// // `Zero`
-    /// assert_eq!(Z::zero(), Z(0));
-    ///
-    /// // `FromPrimitive`
-    /// assert_eq!(Z::from_i64(-1), None);
-    ///
-    /// // `CheckedNeg`
-    /// (0..=6).for_each(|x| assert!(Z(x).checked_neg().is_some()));
-    ///
-    /// // `CheckedAdd`, `CheckedSub`
-    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z(x).checked_add(&Z(y)).is_some())));
-    /// assert_eq!(num::range_step(Z(0), Z(6), Z(2)).collect::<Vec<_>>(), &[Z(0), Z(2), Z(4)]);
-    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(Z(x).checked_sub(&Z(y)).is_some())));
-    /// ```
-    #[derive(
-        crate::new,
-        crate::get,
-        Default,
-        Clone,
-        Copy,
-        PartialEq,
-        Eq,
-        PartialOrd,
-        Ord,
-        crate::From,
-        crate::Into,
-        crate::Display,
-        crate::Debug,
-        crate::FromStr,
-        crate::Deref,
-        crate::Neg,
-        crate::Add,
-        crate::AddAssign,
-        crate::Sub,
-        crate::SubAssign,
-        crate::Bounded,
-        crate::Zero,
-        crate::FromPrimitive,
-        crate::CheckedNeg,
-        crate::CheckedAdd,
-        crate::CheckedSub,
-    )]
-    #[modtype(modulus = "M::VALUE")]
-    pub struct Z<M: ConstValue<Value = u64>> {
         #[modtype(value)]
         __value: u64,
         phantom: PhantomData<fn() -> M>,
