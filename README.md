@@ -7,18 +7,31 @@
 This crate provides:
 - Macros that implement modular arithmetic integer types
 - Preset types
-    - [`modtype::preset::u64::F`]
-    - [`modtype::preset::u64::Z`]
-    - [`modtype::preset::u64::thread_local::F`]
-    - [`modtype::preset::u64::mod1000000007::F`]
-    - [`modtype::preset::u64::mod1000000007::Z`]
+    - [`modtype::u64::F`]
+    - [`modtype::u64::field::F`]
+    - [`modtype::u64::thread_local::F`]
 
 ## Usage
 
 ```rust
-type F = F_<Const17U32>;
+#[modtype::use_modtype]
+type F = modtype::u64::F<1_000_000_007u64>;
+
+assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
+```
+
+To use a customized type, copy the following code via clipboard and edit it.
+
+```rust
+#[allow(non_snake_case)]
+fn F(value: u64) -> F {
+    F::from(value)
+}
 
 #[derive(
+    modtype::new,
+    modtype::new_unchecked,
+    modtype::get,
     Default,
     Clone,
     Copy,
@@ -28,9 +41,9 @@ type F = F_<Const17U32>;
     Ord,
     modtype::From,
     modtype::Into,
-    modtype::FromStr,
     modtype::Display,
     modtype::Debug,
+    modtype::FromStr,
     modtype::Deref,
     modtype::Neg,
     modtype::Add,
@@ -43,51 +56,48 @@ type F = F_<Const17U32>;
     modtype::DivAssign,
     modtype::Rem,
     modtype::RemAssign,
+    modtype::Num,
+    modtype::Unsigned,
+    modtype::Bounded,
     modtype::Zero,
     modtype::One,
-    modtype::Num,
-    modtype::Bounded,
+    modtype::FromPrimitive,
+    modtype::Inv,
+    modtype::CheckedNeg,
     modtype::CheckedAdd,
     modtype::CheckedSub,
     modtype::CheckedMul,
     modtype::CheckedDiv,
     modtype::CheckedRem,
-    modtype::CheckedNeg,
-    modtype::Inv,
-    modtype::Unsigned,
-    modtype::FromPrimitive,
-    modtype::ToPrimitive,
-    modtype::Pow_u8,
-    modtype::Pow_u16,
-    modtype::Pow_u32,
-    modtype::Pow_usize,
+    modtype::Pow,
     modtype::Integer,
-    modtype::ToBigInt,
-    modtype::ToBigUint,
-    modtype::new,
-    modtype::get,
 )]
 #[modtype(
-    modulus = "M::VALUE",
+    modulus = "1_000_000_007",
     std = "std",
     num_traits = "num::traits",
     num_integer = "num::integer",
     num_bigint = "num::bigint",
-    no_impl_for_ref
+    from(InnerValue, BigUint, BigInt),
+    debug(SingleTuple),
+    neg(for_ref = true),
+    add(for_ref = true),
+    add_assign(for_ref = true),
+    sub(for_ref = true),
+    sub_assign(for_ref = true),
+    mul(for_ref = true),
+    mul_assign(for_ref = true),
+    div(for_ref = true),
+    div_assign(for_ref = true),
+    rem(for_ref = true),
+    rem_assign(for_ref = true),
+    inv(for_ref = true),
+    pow(for_ref = true)
 )]
-struct F_<M: ConstValue<Value = u32>> {
+struct F {
     #[modtype(value)]
-    __value: u32,
-    phantom: PhantomData<fn() -> M>,
+    __value: u64,
 }
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
-#[modtype(const_value = 17u32)]
-enum Const17U32 {}
-```
-
-```rust
-use modtype::preset::u64::mod1000000007::{F, Z};
 ```
 
 ## Requirements
@@ -99,18 +109,43 @@ use modtype::preset::u64::mod1000000007::{F, Z};
     - If the modular arithmetic type implements [`One`], The modulus is larger than `1`.
 - If the modular arithmetic type implements [`Div`], the modulus is a prime.
 
-### Struct
+## Attributes
 
-| Name                 | Format                                                                   | Optional                         |
-| :------------------- | :----------------------------------------------------------------------- | :------------------------------- |
-| `modulus`            | `modulus = #`[`Lit`] where `#`[`Lit`] is converted/parsed to an [`Expr`] | No                               |
-| `std`                | `std = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]          | Yes (default = `::std`)          |
-| `num_traits`         | `num_traits = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)  |
-| `num_integer`        | `num_integer = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`) |
-| `num_bigint`         | `num_bigint = #`[`LitStr`] where `#`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)  |
-| `no_impl_for_ref`    | `no_impl_for_ref`                                                        | Yes                              |
+### `use_modtype`
 
-### Field
+| Name          | Format                         | Optional                                      |
+| :------------ | :----------------------------- | :-------------------------------------------- |
+| `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $type_uppercase)`) |
+| `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                |
+
+### Derive Macros
+
+#### Struct
+
+| Name                 | Format                                                                                                   | Optional                         |
+| :------------------- | :------------------------------------------------------------------------------------------------------- | :------------------------------- |
+| `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`]                                 | No                               |
+| `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                          | Yes (default = `::std`)          |
+| `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                   | Yes (default = `::num::traits`)  |
+| `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                  | Yes (default = `::num::integer`) |
+| `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                   | Yes (default = `::num::bigint`)  |
+| `from`               | `from($`[`Ident`]` $(, $`[`Ident`]s`) $(,)?)` where all [`Ident`]s ∈ {`InnerValue`, `BigUint`, `BigInt`} | Yes (default = all)              |
+| `debug`              | `debug(SingleTuple)` or `debug(Transparent)`                                                             | Yes (default = `SingleTuple`)    |
+| `neg`                | `neg(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `add`                | `add(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `add_assign`         | `add_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+| `sub`                | `sub(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `sub_assign`         | `sub_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+| `mul`                | `mul(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `mul_assign`         | `mul_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+| `div`                | `div(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `div_assign`         | `div_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+| `rem`                | `rem(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `rem_assign`         | `rem_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
+| `inv`                | `inv(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+| `pow`                | `pow(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
+
+#### Field
 
 | Name                 | Format  | Optional |
 | :------------------- | :------ | :------- |
@@ -122,7 +157,7 @@ use modtype::preset::u64::mod1000000007::{F, Z};
 
 | Name                 | Format                                                       | Optional  |
 | :------------------- | :----------------------------------------------------------- | :-------- |
-| `const_value`        | `const_value = #`[`LitInt`] where `#`[`LitInt`] has a suffix | No        |
+| `const_value`        | `const_value = $`[`LitInt`] where `$`[`LitInt`] has a suffix | No        |
 
 [`u8`]: https://doc.rust-lang.org/nightly/std/primitive.u8.html
 [`u16`]: https://doc.rust-lang.org/nightly/std/primitive.u16.html
@@ -132,14 +167,14 @@ use modtype::preset::u64::mod1000000007::{F, Z};
 [`usize`]: https://doc.rust-lang.org/nightly/std/primitive.usize.html
 [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
 [`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
+[`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
 [`Lit`]: https://docs.rs/syn/0.15/syn/enum.Lit.html
 [`LitStr`]: https://docs.rs/syn/0.15/syn/struct.LitStr.html
 [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
+[`LitBool`]: https://docs.rs/syn/0.15/syn/struct.LitBool.html
 [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
 [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
-[`ConstValue`]: https://docs.rs/modtype_derive/0.3/modtype_derive/derive.ConstValue.html
-[`modtype::preset::u64::F`]: https://docs.rs/modtype/0.3/modtype/preset/u64/struct.F.html
-[`modtype::preset::u64::Z`]: https://docs.rs/modtype/0.3/modtype/preset/u64/struct.Z.html
-[`modtype::preset::u64::thread_local::F`]: https://docs.rs/modtype/0.3/modtype/preset/u64/thread_local/struct.F.html
-[`modtype::preset::u64::mod1000000007::F`]: https://docs.rs/modtype/0.3/modtype/preset/u64/mod1000000007/type.F.html
-[`modtype::preset::u64::mod1000000007::Z`]: https://docs.rs/modtype/0.3/modtype/preset/u64/mod1000000007/type.Z.html
+[`ConstValue`]: https://docs.rs/modtype_derive/0.4/modtype_derive/derive.ConstValue.html
+[`modtype::u64::F`]: https://docs.rs/modtype/0.4/modtype/u64/struct.F.html
+[`modtype::u64::field::F`]: https://docs.rs/modtype/0.4/modtype/u64/field/struct.F.html
+[`modtype::u64::thread_local::F`]: https://docs.rs/modtype/0.4/modtype/u64/thread_local/struct.F.html
