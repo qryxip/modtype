@@ -7,9 +7,9 @@ use proc_macro2::Span;
 use quote::quote;
 use syn::spanned::Spanned;
 use syn::{
-    parse_quote, Attribute, Data, DataEnum, DataStruct, DataUnion, DeriveInput, Expr, ExprStruct,
-    Field, Fields, FieldsNamed, Generics, Ident, Lit, Meta, MetaList, MetaNameValue, NestedMeta,
-    Path, Type, Visibility,
+    parse_quote, Data, DataEnum, DataStruct, DataUnion, DeriveInput, Expr, ExprStruct, Field,
+    Fields, FieldsNamed, Generics, Ident, Lit, Meta, MetaList, MetaNameValue, NestedMeta, Path,
+    Type, Visibility,
 };
 
 #[rustfmt::skip]
@@ -232,28 +232,28 @@ impl TryFrom<DeriveInput> for Context {
             }
         };
 
-        attrs
-            .iter()
-            .flat_map(Attribute::parse_meta)
-            .try_for_each::<_, syn::Result<_>>(|meta| {
-                if_chain! {
-                    if let Meta::List(MetaList { ident, nested, .. }) = &meta;
-                    if ident == "modtype";
-                    then {
-                        for nested in nested {
-                            match nested {
-                                NestedMeta::Meta(Meta::Word(word)) => on_word(word)?,
-                                NestedMeta::Meta(Meta::List(list)) => on_list(list)?,
-                                NestedMeta::Meta(Meta::NameValue(kv)) => on_name_value(kv)?,
-                                NestedMeta::Literal(_) => bail!(nested.span(), "expected `$Meta`"),
-                            }
+        attrs.iter().try_for_each::<_, syn::Result<_>>(|attr| {
+            let meta = attr
+                .parse_meta()
+                .map_err(|e| syn::Error::new(e.span(), format!("invalid meta: {}", e)))?;
+            if_chain! {
+                if let Meta::List(MetaList { ident, nested, .. }) = &meta;
+                if ident == "modtype";
+                then {
+                    for nested in nested {
+                        match nested {
+                            NestedMeta::Meta(Meta::Word(word)) => on_word(word)?,
+                            NestedMeta::Meta(Meta::List(list)) => on_list(list)?,
+                            NestedMeta::Meta(Meta::NameValue(kv)) => on_name_value(kv)?,
+                            NestedMeta::Literal(_) => bail!(nested.span(), "expected meta. not literal"),
                         }
-                        Ok(())
-                    } else {
-                        error_on_target_attr(&meta)
                     }
+                    Ok(())
+                } else {
+                    error_on_target_attr(&meta)
                 }
-            })?;
+            }
+        })?;
 
         let modulus = modulus.ok_or_else(|| struct_ident.to_error("`modulus` required"))?;
         let std = std.unwrap_or_else(|| parse_quote!(::std));

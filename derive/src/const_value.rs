@@ -60,46 +60,47 @@ pub(crate) fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenSt
     let mut int = None;
 
     for attr in &attrs {
-        if let Ok(meta) = attr.parse_meta() {
-            match &meta {
-                Meta::Word(ident) | Meta::NameValue(MetaNameValue { ident, .. })
-                    if ident == "modtype" =>
-                {
-                    return compile_error(ident.span(), MSG);
-                }
-                Meta::List(MetaList { ident, nested, .. }) if ident == "modtype" => {
-                    let (value, ty, span) = if_chain! {
-                        if nested.len() == 1;
-                        if let NestedMeta::Meta(Meta::NameValue(name_value)) = &nested[0];
-                        if name_value.ident == "const_value";
-                        if let Lit::Int(int) = &name_value.lit;
-                        if let Some::<Type>(ty) = match int.suffix() {
-                            IntSuffix::I8 => Some(parse_quote!(i8)),
-                            IntSuffix::I16 => Some(parse_quote!(i16)),
-                            IntSuffix::I32 => Some(parse_quote!(i32)),
-                            IntSuffix::I64 => Some(parse_quote!(i64)),
-                            IntSuffix::I128 => Some(parse_quote!(i128)),
-                            IntSuffix::Isize => Some(parse_quote!(isize)),
-                            IntSuffix::U8 => Some(parse_quote!(u8)),
-                            IntSuffix::U16 => Some(parse_quote!(u16)),
-                            IntSuffix::U32 => Some(parse_quote!(u32)),
-                            IntSuffix::U64 => Some(parse_quote!(u64)),
-                            IntSuffix::U128 => Some(parse_quote!(u128)),
-                            IntSuffix::Usize => Some(parse_quote!(usize)),
-                            IntSuffix::None => None,
-                        };
-                        then {
-                            (int.clone(), ty, ident.span())
-                        } else {
-                            return compile_error(ident.span(), MSG);
-                        }
-                    };
-                    if mem::replace(&mut int, Some((value, ty))).is_some() {
-                        return compile_error(span, "multiple definition");
-                    }
-                }
-                _ => {}
+        let meta = try_syn!(attr
+            .parse_meta()
+            .map_err(|e| syn::Error::new(e.span(), format!("invalid meta: {}", e))));
+        match &meta {
+            Meta::Word(ident) | Meta::NameValue(MetaNameValue { ident, .. })
+                if ident == "modtype" =>
+            {
+                return compile_error(ident.span(), MSG);
             }
+            Meta::List(MetaList { ident, nested, .. }) if ident == "modtype" => {
+                let (value, ty, span) = if_chain! {
+                    if nested.len() == 1;
+                    if let NestedMeta::Meta(Meta::NameValue(name_value)) = &nested[0];
+                    if name_value.ident == "const_value";
+                    if let Lit::Int(int) = &name_value.lit;
+                    if let Some::<Type>(ty) = match int.suffix() {
+                        IntSuffix::I8 => Some(parse_quote!(i8)),
+                        IntSuffix::I16 => Some(parse_quote!(i16)),
+                        IntSuffix::I32 => Some(parse_quote!(i32)),
+                        IntSuffix::I64 => Some(parse_quote!(i64)),
+                        IntSuffix::I128 => Some(parse_quote!(i128)),
+                        IntSuffix::Isize => Some(parse_quote!(isize)),
+                        IntSuffix::U8 => Some(parse_quote!(u8)),
+                        IntSuffix::U16 => Some(parse_quote!(u16)),
+                        IntSuffix::U32 => Some(parse_quote!(u32)),
+                        IntSuffix::U64 => Some(parse_quote!(u64)),
+                        IntSuffix::U128 => Some(parse_quote!(u128)),
+                        IntSuffix::Usize => Some(parse_quote!(usize)),
+                        IntSuffix::None => None,
+                    };
+                    then {
+                        (int.clone(), ty, ident.span())
+                    } else {
+                        return compile_error(ident.span(), MSG);
+                    }
+                };
+                if mem::replace(&mut int, Some((value, ty))).is_some() {
+                    return compile_error(span, "multiple definition");
+                }
+            }
+            _ => {}
         }
     }
 
