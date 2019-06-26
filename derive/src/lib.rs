@@ -466,10 +466,155 @@ pub fn one(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// # Requirements
 ///
-/// - `Self: `[`From`]`<#InnerValue>`.
+/// - `Self: `[`Neg`].
+/// - `Self: `[`Mul`]`<Self, Output = Self>`.
+/// - `Self: `[`Pow`]`<i16>`.
+/// - The fields are [`Default`] except `#InnerValue`.
+///
+/// # Generated Code
+///
+/// ```ignore
+/// const M: u64 = 1_000_000_007;
+///
+/// struct F {
+///     #[modtype(value)]
+///     __value: u64,
+/// }
+///
+/// impl ::num::traits::FromPrimitive for F {
+///     #[inline]
+///     fn from_u64(mut value: u64) -> Option<Self> {
+///         let __modulus = M;
+///
+///         let __value = if let ::std::option::Option::Some(mut value) =
+///             <u64 as ::num::traits::FromPrimitive>::from_u64(value)
+///         {
+///             if value >= __modulus {
+///                 value %= __modulus;
+///             }
+///             value
+///         } else {
+///             let modulus = <u64 as ::num::traits::ToPrimitive>::to_u64(&__modulus)?;
+///             if value >= modulus {
+///                 value %= modulus;
+///             }
+///             <u64 as ::num::traits::FromPrimitive>::from_u64(value)?
+///         };
+///
+///         ::std::option::Option::Some(Self { __value })
+///     }
+///
+///     #[inline]
+///     fn from_i64(mut value: i64) -> Option<Self> {
+///         let __modulus = M;
+///
+///         let neg = value < 0;
+///         if neg {
+///             value = -value;
+///         }
+///
+///         let mut __value = if let ::std::option::Option::Some(mut value) =
+///             <u64 as ::num::traits::FromPrimitive>::from_i64(value)
+///         {
+///             if value >= __modulus {
+///                 value %= __modulus;
+///             }
+///             value
+///         } else {
+///             let modulus = <u64 as ::num::traits::ToPrimitive>::to_i64(&__modulus)?;
+///             if value >= modulus {
+///                 value %= modulus;
+///             }
+///             <u64 as ::num::traits::FromPrimitive>::from_i64(value)?
+///         };
+///
+///         if neg {
+///             __value = __modulus - __value;
+///         }
+///
+///         ::std::option::Option::Some(Self { __value })
+///     }
+///
+///     #[inline]
+///     fn from_u128(mut value: u128) -> Option<Self> {
+///         let __modulus = M;
+///
+///         let __value = if let ::std::option::Option::Some(mut value) =
+///             <u64 as ::num::traits::FromPrimitive>::from_u128(value)
+///         {
+///             if value >= __modulus {
+///                 value %= __modulus;
+///             }
+///             value
+///         } else {
+///             let modulus = <u64 as ::num::traits::ToPrimitive>::to_u128(&__modulus)?;
+///             if value >= modulus {
+///                 value %= modulus;
+///             }
+///             <u64 as ::num::traits::FromPrimitive>::from_u128(value)?
+///         };
+///
+///         ::std::option::Option::Some(Self { __value })
+///     }
+///
+///     #[inline]
+///     fn from_i128(mut value: i128) -> Option<Self> {
+///         let __modulus = M;
+///
+///         let neg = value < 0;
+///         if neg {
+///             value = -value;
+///         }
+///
+///         let mut __value = if let ::std::option::Option::Some(mut value) =
+///             <u64 as ::num::traits::FromPrimitive>::from_i128(value)
+///         {
+///             if value >= __modulus {
+///                 value %= __modulus;
+///             }
+///             value
+///         } else {
+///             let modulus = <u64 as ::num::traits::ToPrimitive>::to_i128(&__modulus)?;
+///             if value >= modulus {
+///                 value %= modulus;
+///             }
+///             <u64 as ::num::traits::FromPrimitive>::from_i128(value)?
+///         };
+///
+///         if neg {
+///             __value = __modulus - __value;
+///         }
+///
+///         ::std::option::Option::Some(Self { __value })
+///     }
+///
+///     fn from_f32(value: f32) -> Option<Self> {
+///         let __modulus = M;
+///         let (mantissa, exponent, sign) = <f32 as ::num::traits::Float>::integer_decode(value);
+///
+///         let two = <Self as ::num::traits::FromPrimitive>::from_u64(2)?;
+///         let ret = <Self as ::num::traits::FromPrimitive>::from_u64(mantissa)?;
+///         let ret = ret * <Self as ::num::traits::Pow<i16>>::pow(two, exponent);
+///         Some(if sign == -1 { -ret } else { ret })
+///     }
+///
+///     fn from_f64(value: f64) -> Option<Self> {
+///         let __modulus = M;
+///         let (mantissa, exponent, sign) = <f64 as ::num::traits::Float>::integer_decode(value);
+///
+///         let two = <Self as ::num::traits::FromPrimitive>::from_u64(2)?;
+///         let ret = <Self as ::num::traits::FromPrimitive>::from_u64(mantissa)?;
+///         let ret = ret * <Self as ::num::traits::Pow<i16>>::pow(two, exponent);
+///         Some(if sign == -1 { -ret } else { ret })
+///     }
+/// }
+/// ```
 ///
 /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-/// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+/// [`Neg`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Neg.html
+/// [`Mul`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Mul.html
+/// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
+/// [`Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
 #[proc_macro_derive(FromPrimitive, attributes(modtype))]
 pub fn from_primitive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_from_primitive)

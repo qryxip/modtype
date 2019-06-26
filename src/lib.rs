@@ -381,7 +381,11 @@ pub mod u64 {
     /// use num::bigint::{Sign, ToBigInt as _, ToBigUint as _};
     /// use num::pow::Pow as _;
     /// use num::traits::{CheckedNeg as _, CheckedRem as _, Inv as _};
-    /// use num::{BigInt, BigUint, Bounded as _, CheckedAdd as _, CheckedDiv as _, CheckedMul as _, CheckedSub as _, FromPrimitive as _, Integer as _, Num as _, One as _, ToPrimitive as _, Unsigned, Zero as _};
+    /// use num::{
+    ///     BigInt, BigUint, Bounded as _, CheckedAdd as _, CheckedDiv as _, CheckedMul as _,
+    ///     CheckedSub as _, FromPrimitive as _, Integer as _, Num as _, One as _,
+    ///     ToPrimitive as _, Unsigned, Zero as _,
+    /// };
     ///
     /// #[use_modtype]
     /// type F = modtype::u64::F<7u64>;
@@ -435,7 +439,8 @@ pub mod u64 {
     /// assert_eq!(F::one(), F(1));
     ///
     /// // `FromPrimitive`
-    /// assert_eq!(F::from_i64(-1), None);
+    /// assert_eq!(F::from_i128(-1), Some(F(0) - F(1)));
+    /// assert_eq!(F::from_f64(0.5), Some(F(1) / F(2)));
     ///
     /// // `Inv`
     /// assert_eq!(F(3).inv(), F(5));

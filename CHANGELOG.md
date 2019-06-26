@@ -27,6 +27,7 @@
 ### Fixed
 
 - `modtype::Pow`.
+- `modtype::FromPrimitive`.
 
 ## [0.3.0] - 2019-06-22Z
 
