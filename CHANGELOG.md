@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `Clone`, `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord` derive macros.
+- `UnsignedPrimitive`, `SignedPrimitive`, `FloatPrimitive`.
+- Documents.
+
+### Changed
+
+- Almost everything.
+    - The types have 2 or 3 type arguments.
+    - Use generic unsigned types.
+    - Move derive macros to `derive` module.
+    - The derive macros just calls the methods of `Impl`.
+
+### Removed
+
+- `Integer` implementations (for now).
+- `Into` implementations for preset types.
+- Some derive macro attributes.
+
 ## [0.4.0] - 2019-06-26Z
 
 ### Added

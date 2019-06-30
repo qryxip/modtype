@@ -4,11 +4,11 @@ use num::pow::Pow as _;
 use num::BigUint;
 use once_cell::sync::Lazy;
 
-#[test]
-fn it_works() {
-    #[use_modtype]
-    type F = modtype::u64::F<1_000_000_007u64>;
+#[use_modtype]
+type F = modtype::u64::Z<1_000_000_007u64>;
 
+#[test]
+fn unsigned() {
     const BASE: u64 = 123_456_789;
     const EXP: u32 = 123;
 
@@ -19,4 +19,12 @@ fn it_works() {
     });
 
     assert_eq!((*F(BASE).pow(EXP)).to_string(), EXPECTED.to_string());
+}
+
+#[test]
+fn signed() {
+    const MANTISSA: u64 = 0x10_000_000_000_000;
+    const EXP: i16 = -53;
+
+    assert_eq!(F(MANTISSA) * F(2).pow(EXP), F(1) / F(2));
 }
