@@ -1,621 +1,1226 @@
-//! This crate provides:
-//! - Macros that implement modular arithmetic integer types
-//! - Preset types
-//!     - [`modtype::u64::F`]
-//!     - [`modtype::u64::field::F`]
-//!     - [`modtype::u64::thread_local::F`]
+//! This crate provides modular arithmetic integer types.
 //!
 //! # Usage
 //!
+//! ## [`modtype::Z`]
+//!
 //! ```
 //! #[modtype::use_modtype]
-//! type F = modtype::u64::F<1_000_000_007u64>;
+//! type F = modtype::u64::Z<1_000_000_007u64>;
 //!
 //! assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 //! ```
 //!
-//! To use a customized type, copy the following code via clipboard and edit it.
+//! ## [`modtype::thread_local::Z`]
 //!
 //! ```
 //! #[allow(non_snake_case)]
-//! fn F(value: u64) -> F {
-//!     F::from(value)
-//! }
+//! modtype::thread_local::u32::Z::with(7, |F| {
+//!     assert_eq!(F(6) + F(1), F(0));
+//! });
+//! ```
 //!
-//! #[derive(
-//!     modtype::new,
-//!     modtype::new_unchecked,
-//!     modtype::get,
-//!     Default,
-//!     Clone,
-//!     Copy,
-//!     PartialEq,
-//!     Eq,
-//!     PartialOrd,
-//!     Ord,
-//!     modtype::From,
-//!     modtype::Into,
-//!     modtype::Display,
-//!     modtype::Debug,
-//!     modtype::FromStr,
-//!     modtype::Deref,
-//!     modtype::Neg,
-//!     modtype::Add,
-//!     modtype::AddAssign,
-//!     modtype::Sub,
-//!     modtype::SubAssign,
-//!     modtype::Mul,
-//!     modtype::MulAssign,
-//!     modtype::Div,
-//!     modtype::DivAssign,
-//!     modtype::Rem,
-//!     modtype::RemAssign,
-//!     modtype::Num,
-//!     modtype::Unsigned,
-//!     modtype::Bounded,
-//!     modtype::Zero,
-//!     modtype::One,
-//!     modtype::FromPrimitive,
-//!     modtype::Inv,
-//!     modtype::CheckedNeg,
-//!     modtype::CheckedAdd,
-//!     modtype::CheckedSub,
-//!     modtype::CheckedMul,
-//!     modtype::CheckedDiv,
-//!     modtype::CheckedRem,
-//!     modtype::Pow,
-//!     modtype::Integer,
-//! )]
-//! #[modtype(
-//!     modulus = "1_000_000_007",
-//!     debug(SingleTuple),
-//!     neg(for_ref = true),
-//!     add(for_ref = true),
-//!     add_assign(for_ref = true),
-//!     sub(for_ref = true),
-//!     sub_assign(for_ref = true),
-//!     mul(for_ref = true),
-//!     mul_assign(for_ref = true),
-//!     div(for_ref = true),
-//!     div_assign(for_ref = true),
-//!     rem(for_ref = true),
-//!     rem_assign(for_ref = true),
-//!     inv(for_ref = true),
-//!     pow(for_ref = true)
-//! )]
-//! struct F {
-//!     #[modtype(value)]
-//!     __value: u64,
+//! ## [`modtype::field_param::Z`]
+//!
+//! ```
+//! use modtype::field_param::u32::Z;
+//! use num::CheckedDiv as _;
+//!
+//! #[allow(non_snake_case)]
+//! let Z = Z::factory(1000);
+//!
+//! assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
+//! ```
+//!
+//! # Customization
+//!
+//! `Z`s can be customized via [`modtype::Impl`].
+//!
+//! ```
+//! #[modtype::use_modtype]
+//! type F = modtype::Z<u64, Impl, 1_000_000_007u64>;
+//!
+//! enum Impl {}
+//!
+//! impl modtype::Impl for Impl {
+//!     type Uint = u64;
+//!
+//!     // your implementation here
 //! }
 //! ```
 //!
-//! # Requirements
+//! # Attributes for `use_modtype`
 //!
-//! - The inner value is [`u8`], [`u16`], [`u32`], [`u64`], [`u128`], or [`usize`].
-//! - The inner value and the modulus are of a same type.
-//! - The modulus is immutable.
-//! - The inner value is always smaller than the modulus.
-//!     - If the modular arithmetic type implements [`One`], The modulus is larger than `1`.
-//! - If the modular arithmetic type implements [`Div`], the modulus is a prime.
+//! | Name          | Format                         | Optional                                              |
+//! | :------------ | :----------------------------- | :---------------------------------------------------- |
+//! | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $value, $type_uppercase)`) |
+//! | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                        |
 //!
-//! # Attributes
-//!
-//! ## `use_modtype`
-//!
-//! | Name          | Format                         | Optional                                      |
-//! | :------------ | :----------------------------- | :-------------------------------------------- |
-//! | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $type_uppercase)`) |
-//! | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                |
-//!
-//! ## Derive Macros
-//!
-//! ### Struct
-//!
-//! | Name                 | Format                                                                                                   | Optional                         |
-//! | :------------------- | :------------------------------------------------------------------------------------------------------- | :------------------------------- |
-//! | `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`]                                 | No                               |
-//! | `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                          | Yes (default = `::std`)          |
-//! | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                   | Yes (default = `::num::traits`)  |
-//! | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                  | Yes (default = `::num::integer`) |
-//! | `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]                                   | Yes (default = `::num::bigint`)  |
-//! | `from`               | `from($`[`Ident`]` $(, $`[`Ident`]s`) $(,)?)` where all [`Ident`]s ∈ {`InnerValue`, `BigUint`, `BigInt`} | Yes (default = all)              |
-//! | `debug`              | `debug(SingleTuple)` or `debug(Transparent)`                                                             | Yes (default = `SingleTuple`)    |
-//! | `neg`                | `neg(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
-//! | `add`                | `add(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
-//! | `add_assign`         | `add_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
-//! | `sub`                | `sub(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
-//! | `sub_assign`         | `sub_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
-//! | `mul`                | `mul(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
-//! | `mul_assign`         | `mul_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
-//! | `div`                | `div(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
-//! | `div_assign`         | `div_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
-//! | `rem`                | `rem(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
-//! | `rem_assign`         | `rem_assign(for_ref = $`[`LitBool`]`)`                                                                   | Yes (default = `true`)           |
-//! | `inv`                | `inv(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
-//! | `pow`                | `pow(for_ref = $`[`LitBool`]`)`                                                                          | Yes (default = `true`)           |
-//!
-//! ### Field
-//!
-//! | Name                 | Format  | Optional |
-//! | :------------------- | :------ | :------- |
-//! | `value`              | `value` | No       |
-//!
-//! ## [`ConstValue`]
-//!
-//! ### Struct
-//!
-//! | Name                 | Format                                                       | Optional  |
-//! | :------------------- | :----------------------------------------------------------- | :-------- |
-//! | `const_value`        | `const_value = $`[`LitInt`] where `$`[`LitInt`] has a suffix | No        |
-//!
-//! [`u8`]: https://doc.rust-lang.org/nightly/std/primitive.u8.html
-//! [`u16`]: https://doc.rust-lang.org/nightly/std/primitive.u16.html
-//! [`u32`]: https://doc.rust-lang.org/nightly/std/primitive.u32.html
-//! [`u64`]: https://doc.rust-lang.org/nightly/std/primitive.u64.html
-//! [`u128`]: https://doc.rust-lang.org/nightly/std/primitive.u128.html
-//! [`usize`]: https://doc.rust-lang.org/nightly/std/primitive.usize.html
-//! [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
-//! [`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
 //! [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
-//! [`Lit`]: https://docs.rs/syn/0.15/syn/enum.Lit.html
-//! [`LitStr`]: https://docs.rs/syn/0.15/syn/struct.LitStr.html
-//! [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
-//! [`LitBool`]: https://docs.rs/syn/0.15/syn/struct.LitBool.html
-//! [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
-//! [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
-//! [`ConstValue`]: https://docs.rs/modtype_derive/0.4/modtype_derive/derive.ConstValue.html
-//! [`modtype::u64::F`]: ./u64/struct.F.html
-//! [`modtype::u64::field::F`]: ./u64/field/struct.F.html
-//! [`modtype::u64::thread_local::F`]: ./u64/thread_local/struct.F.html
+//! [`modtype::Z`]: ./struct.Z.html
+//! [`modtype::thread_local::Z`]: ./thread_local/struct.Z.html
+//! [`modtype::field_param::Z`]: ./field_param/struct.Z.html
+//! [`modtype::Impl`]: ./trait.Impl.html
 
 pub use modtype_derive::use_modtype;
 
-pub use modtype_derive::ConstValue;
+use num::{
+    BigInt, BigUint, CheckedAdd as _, CheckedMul as _, CheckedSub as _, Float, FromPrimitive,
+    Integer, Num, One as _, PrimInt, Signed, ToPrimitive as _, Unsigned, Zero as _,
+};
 
-pub use modtype_derive::new;
-
-pub use modtype_derive::new_unchecked;
-
-pub use modtype_derive::get;
-
-pub use modtype_derive::From;
-
-pub use modtype_derive::Into;
-
-pub use modtype_derive::Display;
-
-pub use modtype_derive::ModtypeDebug as Debug;
-
-pub use modtype_derive::FromStr;
-
-pub use modtype_derive::Deref;
-
-pub use modtype_derive::Neg;
-
-pub use modtype_derive::Add;
-
-pub use modtype_derive::AddAssign;
-
-pub use modtype_derive::Sub;
-
-pub use modtype_derive::SubAssign;
-
-pub use modtype_derive::Mul;
-
-pub use modtype_derive::MulAssign;
-
-pub use modtype_derive::Div;
-
-pub use modtype_derive::DivAssign;
-
-pub use modtype_derive::Rem;
-
-pub use modtype_derive::RemAssign;
-
-pub use modtype_derive::Num;
-
-pub use modtype_derive::Unsigned;
-
-pub use modtype_derive::Bounded;
-
-pub use modtype_derive::Zero;
-
-pub use modtype_derive::One;
-
-pub use modtype_derive::FromPrimitive;
-
-pub use modtype_derive::Inv;
-
-pub use modtype_derive::CheckedNeg;
-
-pub use modtype_derive::CheckedAdd;
-
-pub use modtype_derive::CheckedSub;
-
-pub use modtype_derive::CheckedMul;
-
-pub use modtype_derive::CheckedDiv;
-
-pub use modtype_derive::CheckedRem;
-
-pub use modtype_derive::Pow;
-
-pub use modtype_derive::Integer;
-
+use std::convert::Infallible;
 use std::fmt;
+use std::iter::{Product, Sum};
+use std::marker::PhantomData;
+use std::num::ParseIntError;
+use std::ops::{
+    AddAssign, BitAndAssign, BitOrAssign, BitXorAssign, DivAssign, MulAssign, RemAssign, SubAssign,
+};
+use std::str::FromStr;
+
+/// A trait for primitive unsigned integer types. (i.e. `u8`, `u16`, `u32`, `u64`, `u128`, `usize`)
+pub trait UnsignedPrimitive:
+    Unsigned
+    + PrimInt
+    + Integer
+    + Num<FromStrRadixErr = ParseIntError>
+    + FromStr<Err = ParseIntError>
+    + FromPrimitive
+    + Into<BigUint>
+    + Into<BigInt>
+    + Default
+    + fmt::Display
+    + fmt::Debug
+    + fmt::LowerHex
+    + fmt::UpperHex
+    + Sum
+    + Product
+    + AddAssign
+    + SubAssign
+    + MulAssign
+    + DivAssign
+    + RemAssign
+    + BitAndAssign
+    + BitOrAssign
+    + BitXorAssign
+    + Send
+    + Sync
+    + 'static
+{
+}
+
+impl UnsignedPrimitive for u8 {}
+impl UnsignedPrimitive for u16 {}
+impl UnsignedPrimitive for u32 {}
+impl UnsignedPrimitive for u64 {}
+impl UnsignedPrimitive for u128 {}
+impl UnsignedPrimitive for usize {}
+
+/// A trait for primitive signed integer types. (i.e. `i8`, `i16`, `i32`, `i64`, `i128`, `isize`)
+pub trait SignedPrimitive:
+    Signed
+    + PrimInt
+    + Integer
+    + Num<FromStrRadixErr = ParseIntError>
+    + FromStr<Err = ParseIntError>
+    + FromPrimitive
+    + Into<BigInt>
+    + Default
+    + fmt::Display
+    + fmt::Debug
+    + fmt::LowerHex
+    + fmt::UpperHex
+    + Sum
+    + Product
+    + AddAssign
+    + SubAssign
+    + MulAssign
+    + DivAssign
+    + RemAssign
+    + BitAndAssign
+    + BitOrAssign
+    + BitXorAssign
+    + Send
+    + Sync
+    + 'static
+{
+}
+
+impl SignedPrimitive for i8 {}
+impl SignedPrimitive for i16 {}
+impl SignedPrimitive for i32 {}
+impl SignedPrimitive for i64 {}
+impl SignedPrimitive for i128 {}
+impl SignedPrimitive for isize {}
+
+/// A trait for primitive floating point number type. (i.e. `f32`, `f64`)
+pub trait FloatPrimitive:
+    Signed
+    + Float
+    + Num<FromStrRadixErr = num::traits::ParseFloatError>
+    + FromStr<Err = std::num::ParseFloatError>
+    + FromPrimitive
+    + Default
+    + fmt::Display
+    + fmt::Debug
+    + Sum
+    + Product
+    + AddAssign
+    + SubAssign
+    + MulAssign
+    + DivAssign
+    + RemAssign
+    + Send
+    + Sync
+    + 'static
+{
+}
+
+impl FloatPrimitive for f32 {}
+impl FloatPrimitive for f64 {}
 
 /// A trait that has one associated constant value.
 ///
-/// This trait requires [`Copy`]` + `[`Ord`]` + `[`Debug`] because of [`#26925`].
 /// To implement this trait, use [`use_modtype`] rather than [the derive macro].
 ///
 /// # Example
 ///
 /// ```
-/// use modtype::ConstValue;
+/// use modtype::derive::ConstValue;
+/// use modtype::ConstValue as _;
 ///
-/// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, ConstValue)]
+/// #[derive(ConstValue)]
 /// #[modtype(const_value = 17u32)]
 /// enum Const17U32 {}
 ///
 /// assert_eq!(Const17U32::VALUE, 17u32);
 /// ```
 ///
-/// [`Copy`]: https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html
-/// [`Ord`]: https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html
-/// [`Debug`]: https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html
-/// [`#26925`]: https://github.com/rust-lang/rust/issues/26925
-/// [`use_modtype`]: https://docs.rs/modtype_derive/0.4/modtype_derive/attr.use_modtype.html
-/// [the derive macro]: https://docs.rs/modtype_derive/0.4/modtype_derive/derive.ConstValue.html
-pub trait ConstValue: Copy + Ord + fmt::Debug {
+/// [`use_modtype`]: https://docs.rs/modtype_derive/0.5/modtype_derive/attr.use_modtype.html
+/// [the derive macro]: https://docs.rs/modtype_derive/0.5/modtype_derive/derive.ConstValue.html
+pub trait ConstValue {
     type Value: Copy;
     const VALUE: Self::Value;
 }
 
-/// Preset types that the inner types are `u64`.
+/// Actual implementation.
+///
+/// Note that the default implementations assumes:
+/// - The inner value is always smaller than the modulus.
+/// - The modulus is larger than `1`.
+/// - `modulus + modulus` does not overflow.
+/// - `modulus * modulus` does not overflow.
+pub trait Impl {
+    type Uint: UnsignedPrimitive;
+
+    #[inline]
+    fn new(value: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+        if value >= modulus {
+            value % modulus
+        } else {
+            value
+        }
+    }
+
+    #[inline]
+    fn get(value: Self::Uint, _modulus: Self::Uint) -> Self::Uint {
+        value
+    }
+
+    #[inline]
+    fn from_biguint(value: BigUint, modulus: Self::Uint) -> Self::Uint {
+        let modulus = Into::<BigUint>::into(modulus);
+        (value % modulus).to_string().parse().unwrap()
+    }
+
+    #[inline]
+    fn from_bigint(mut value: BigInt, modulus: Self::Uint) -> Self::Uint {
+        let is_neg = value.is_negative();
+        if is_neg {
+            value = -value;
+        }
+        let modulus_big = Into::<BigInt>::into(modulus);
+        let acc = (value % modulus_big)
+            .to_string()
+            .parse::<Self::Uint>()
+            .unwrap();
+        if is_neg {
+            modulus - acc
+        } else {
+            acc
+        }
+    }
+
+    #[inline]
+    fn fmt_display(
+        value: Self::Uint,
+        _modulus: Self::Uint,
+        fmt: &mut fmt::Formatter,
+    ) -> fmt::Result {
+        <Self::Uint as fmt::Display>::fmt(&value, fmt)
+    }
+
+    #[inline]
+    fn fmt_debug(
+        value: Self::Uint,
+        _modulus: Self::Uint,
+        _ty: &'static str,
+        fmt: &mut fmt::Formatter,
+    ) -> fmt::Result {
+        <Self::Uint as fmt::Debug>::fmt(&value, fmt)
+    }
+
+    #[inline]
+    fn from_str(str: &str, modulus: Self::Uint) -> Result<Self::Uint, ParseIntError> {
+        str.parse().map(|v| Self::new(v, modulus))
+    }
+
+    #[inline]
+    fn neg(value: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+        modulus - value
+    }
+
+    #[inline]
+    fn add(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+        Self::new(lhs + rhs, modulus)
+    }
+
+    #[inline]
+    fn sub(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+        let acc = if lhs < rhs {
+            modulus + lhs - rhs
+        } else {
+            lhs - rhs
+        };
+        Self::new(acc, modulus)
+    }
+
+    #[inline]
+    fn mul(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+        Self::new(lhs * rhs, modulus)
+    }
+
+    #[inline]
+    fn div(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+        if rhs == Self::Uint::zero() {
+            panic!("attempt to divide by zero");
+        }
+        Self::checked_div(lhs, rhs, modulus).expect("could not divide. is the modulus is a prime?")
+    }
+
+    #[inline]
+    fn rem(_lhs: Self::Uint, rhs: Self::Uint, _modulus: Self::Uint) -> Self::Uint {
+        if rhs == Self::Uint::zero() {
+            panic!("attempt to calculate the remainder with a divisor of zero");
+        }
+        Self::Uint::zero()
+    }
+
+    #[inline]
+    fn inv(value: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+        Self::div(Self::Uint::one(), value, modulus)
+    }
+
+    #[inline]
+    fn from_str_radix(
+        str: &str,
+        radix: u32,
+        modulus: Self::Uint,
+    ) -> Result<Self::Uint, ParseIntError> {
+        Self::Uint::from_str_radix(str, radix).map(|v| Self::new(v, modulus))
+    }
+
+    #[inline]
+    fn min_value(_modulus: Self::Uint) -> Self::Uint {
+        Self::Uint::zero()
+    }
+
+    #[inline]
+    fn max_value(modulus: Self::Uint) -> Self::Uint {
+        modulus - Self::Uint::one()
+    }
+
+    #[inline]
+    fn zero(_modulus: Self::Uint) -> Self::Uint {
+        Self::Uint::zero()
+    }
+
+    #[inline]
+    fn is_zero(value: Self::Uint, _modulus: Self::Uint) -> bool {
+        value == Self::Uint::zero()
+    }
+
+    #[inline]
+    fn one(_modulus: Self::Uint) -> Self::Uint {
+        Self::Uint::one()
+    }
+
+    #[inline]
+    fn is_one(value: Self::Uint, _modulus: Self::Uint) -> bool {
+        value == Self::Uint::one()
+    }
+
+    #[inline]
+    fn from_i64(value: i64, modulus: Self::Uint) -> Option<Self::Uint> {
+        Self::from_i128(value.to_i128()?, modulus)
+    }
+
+    #[inline]
+    fn from_u64(value: u64, modulus: Self::Uint) -> Option<Self::Uint> {
+        Self::from_u128(value.to_u128()?, modulus)
+    }
+
+    #[inline]
+    fn from_isize(value: isize, modulus: Self::Uint) -> Option<Self::Uint> {
+        Self::from_i128(value.to_i128()?, modulus)
+    }
+
+    #[inline]
+    fn from_i8(value: i8, modulus: Self::Uint) -> Option<Self::Uint> {
+        Self::from_i128(value.to_i128()?, modulus)
+    }
+
+    #[inline]
+    fn from_i16(value: i16, modulus: Self::Uint) -> Option<Self::Uint> {
+        Self::from_i128(value.to_i128()?, modulus)
+    }
+
+    #[inline]
+    fn from_i32(value: i32, modulus: Self::Uint) -> Option<Self::Uint> {
+        Self::from_i128(value.to_i128()?, modulus)
+    }
+
+    #[inline]
+    fn from_i128(value: i128, modulus: Self::Uint) -> Option<Self::Uint> {
+        if value < 0 {
+            Self::from_u128((-value).to_u128()?, modulus).map(|v| Self::neg(v, modulus))
+        } else {
+            Self::from_u128(value.to_u128()?, modulus)
+        }
+    }
+
+    #[inline]
+    fn from_usize(value: usize, modulus: Self::Uint) -> Option<Self::Uint> {
+        Self::from_u128(value.to_u128()?, modulus)
+    }
+
+    #[inline]
+    fn from_u8(value: u8, modulus: Self::Uint) -> Option<Self::Uint> {
+        Self::from_u128(value.to_u128()?, modulus)
+    }
+
+    #[inline]
+    fn from_u16(value: u16, modulus: Self::Uint) -> Option<Self::Uint> {
+        Self::from_u128(value.to_u128()?, modulus)
+    }
+
+    #[inline]
+    fn from_u32(value: u32, modulus: Self::Uint) -> Option<Self::Uint> {
+        Self::from_u128(value.to_u128()?, modulus)
+    }
+
+    #[inline]
+    fn from_u128(mut value: u128, modulus: Self::Uint) -> Option<Self::Uint> {
+        let modulus = modulus.to_u128()?;
+        if value >= modulus {
+            value %= modulus;
+        }
+        Self::Uint::from_u128(value)
+    }
+
+    #[inline]
+    fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Uint) -> Option<Self::Uint> {
+        let (man, exp, sign) = value.integer_decode();
+        let acc = Self::mul(
+            Self::from_u64(man, modulus)?,
+            Self::pow_signed(Self::Uint::one() + Self::Uint::one(), exp, modulus),
+            modulus,
+        );
+        Some(match sign {
+            -1 => Self::neg(acc, modulus),
+            _ => acc,
+        })
+    }
+
+    #[inline]
+    fn checked_neg(value: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+        Some(Self::neg(value, modulus))
+    }
+
+    #[inline]
+    fn checked_add(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+        lhs.checked_add(&rhs).map(|v| Self::new(v, modulus))
+    }
+
+    #[inline]
+    fn checked_sub(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+        (lhs + modulus)
+            .checked_sub(&rhs)
+            .map(|v| Self::new(v, modulus))
+    }
+
+    #[inline]
+    fn checked_mul(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+        lhs.checked_mul(&rhs).map(|v| Self::new(v, modulus))
+    }
+
+    #[inline]
+    fn checked_div(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+        #[allow(clippy::many_single_char_names)]
+        fn egcd(a: i128, b: i128) -> (i128, i128, i128) {
+            if a == 0 {
+                (b, 0, 1)
+            } else {
+                let (d, u, v) = egcd(b % a, a);
+                (d, v - (b / a) * u, u)
+            }
+        }
+
+        let lhs = lhs.to_i128()?;
+        let rhs = rhs.to_i128()?;
+        let modulus = modulus.to_i128()?;
+
+        if rhs == 0 {
+            return None;
+        }
+
+        let (d, u, _) = egcd(rhs, modulus);
+
+        if rhs % d != 0 {
+            return None;
+        }
+
+        let mut acc = (lhs * u) % modulus;
+        if acc < 0 {
+            acc += modulus;
+        }
+        Self::Uint::from_i128(acc)
+    }
+
+    #[inline]
+    fn checked_rem(_lhs: Self::Uint, rhs: Self::Uint, _modulus: Self::Uint) -> Option<Self::Uint> {
+        if rhs == Self::Uint::zero() {
+            None
+        } else {
+            Some(Self::Uint::zero())
+        }
+    }
+
+    #[inline]
+    fn pow_unsigned<E: UnsignedPrimitive>(
+        base: Self::Uint,
+        exp: E,
+        modulus: Self::Uint,
+    ) -> Self::Uint {
+        let (mut base, mut exp, mut acc) = (base, exp, Self::Uint::one());
+
+        while exp > E::zero() {
+            if (exp & E::one()) == E::one() {
+                acc = Self::mul(acc, base, modulus);
+            }
+            exp /= E::one() + E::one();
+            base = Self::mul(base, base, modulus);
+        }
+
+        acc
+    }
+
+    #[inline]
+    fn pow_signed<E: SignedPrimitive>(base: Self::Uint, exp: E, modulus: Self::Uint) -> Self::Uint {
+        let (mut base, mut exp, mut acc) = (base, exp, Self::Uint::one());
+
+        let exp_neg = exp < E::zero();
+        if exp_neg {
+            exp = -exp;
+        }
+
+        while exp > E::zero() {
+            if (exp & E::one()) == E::one() {
+                acc = Self::mul(acc, base, modulus);
+            }
+            exp /= E::one() + E::one();
+            base = Self::mul(base, base, modulus);
+        }
+
+        if exp_neg {
+            acc = Self::inv(acc, modulus);
+        }
+
+        acc
+    }
+}
+
+/// The default implementation.
+pub enum DefaultImpl<T: UnsignedPrimitive> {
+    Infallible(Infallible, PhantomData<fn() -> T>),
+}
+
+impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
+    type Uint = T;
+}
+
+/// A modular arithmetic integer type which modulus is **a constant**.
+///
+/// # Examples
+///
+/// ```
+/// use modtype::use_modtype;
+/// use num::bigint::{Sign, ToBigInt as _, ToBigUint as _};
+/// use num::pow::Pow as _;
+/// use num::traits::{CheckedNeg as _, CheckedRem as _, Inv as _};
+/// use num::{
+///     BigInt, BigUint, Bounded as _, CheckedAdd as _, CheckedDiv as _, CheckedMul as _,
+///     CheckedSub as _, FromPrimitive as _, Num as _, One as _, ToPrimitive as _, Unsigned,
+///     Zero as _,
+/// };
+///
+/// #[use_modtype]
+/// type F = modtype::u32::Z<7u32>;
+///
+/// fn static_assert_unsigned<T: Unsigned>() {}
+///
+/// // Constructor, `new`, `new_unchecked`, `get`
+/// assert_eq!(F::new(8), F(1));
+/// assert_ne!(F::new_unchecked(8), F(1));
+/// assert_eq!(F(3).get(), 3u32);
+///
+/// // `From<{T, BigUint, BigInt}>`
+/// assert_eq!(F::from(3), F(3));
+/// assert_eq!(F::from(BigUint::new(vec![3])), F(3));
+/// assert_eq!(F::from(BigInt::new(Sign::Minus, vec![4])), F(3));
+///
+/// // `Display`, `Debug`
+/// assert_eq!(F(3).to_string(), "3");
+/// assert_eq!(format!("{:?}", F(3)), "3");
+///
+/// // `FromStr`
+/// assert_eq!("3".parse::<F>(), Ok(F(3)));
+///
+/// // `Deref`
+/// assert_eq!(*F(3), 3);
+/// assert_eq!(F(3).to_i64(), Some(3i64));
+/// assert_eq!(F(3).to_biguint(), 3u64.to_biguint());
+/// assert_eq!(F(3).to_bigint(), 3u64.to_bigint());
+///
+/// // `Neg`
+/// assert_eq!(-F(1), F(6));
+///
+/// // `Add`, `Sub`, `Mul`, `Div`, `Rem`
+/// assert_eq!(F(3) + F(4), F(0));
+/// assert_eq!(F(3) - F(4), F(6));
+/// assert_eq!(F(3) * F(4), F(5));
+/// assert_eq!(F(3) / F(4), F(6));
+/// (0..=6).for_each(|x| (1..=6).for_each(|y| assert_eq!(F(x) % F(y), F(0))));
+///
+/// // `Num`
+/// assert_eq!(F::from_str_radix("111", 2), Ok(F(0)));
+///
+/// // `Unsigned`
+/// static_assert_unsigned::<F>();
+///
+/// // `Bounded`
+/// assert_eq!((F::min_value(), F::max_value()), (F(0), F(6)));
+///
+/// // `Zero`, `One`
+/// assert_eq!(F::zero(), F(0));
+/// assert_eq!(F::one(), F(1));
+///
+/// // `FromPrimitive`
+/// assert_eq!(F::from_i128(-1), Some(-F(1)));
+/// assert_eq!(F::from_f64(0.5), Some(F(1) / F(2)));
+///
+/// // `Inv`
+/// assert_eq!(F(3).inv(), F(5));
+///
+/// // `CheckedNeg`
+/// (0..=6).for_each(|x| assert!(F(x).checked_neg().is_some()));
+///
+/// // `CheckedAdd`, `CheckedSub`, `CheckedMul`, `CheckedDiv`, `CheckedRem`
+/// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F(x).checked_add(&F(y)).is_some())));
+/// assert_eq!(
+///     num::range_step(F(0), F(6), F(2)).collect::<Vec<_>>(),
+///     &[F(0), F(2), F(4)],
+/// );
+/// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F(x).checked_sub(&F(y)).is_some())));
+/// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F(x).checked_mul(&F(y)).is_some())));
+/// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F(x).checked_div(&F(y)).is_some())));
+/// (0..=6).for_each(|x| assert!(F(x).checked_div(&F(0)).is_none()));
+/// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F(x).checked_rem(&F(y)).is_some())));
+/// (0..=6).for_each(|x| assert!(F(x).checked_rem(&F(0)).is_none()));
+///
+/// // `Pow`
+/// assert_eq!(F(3).pow(2u8), F(2));
+/// assert_eq!(F(3).pow(2u16), F(2));
+/// assert_eq!(F(3).pow(2u32), F(2));
+/// assert_eq!(F(3).pow(2u64), F(2));
+/// assert_eq!(F(3).pow(2u128), F(2));
+/// assert_eq!(F(3).pow(2usize), F(2));
+/// assert_eq!(F(3).pow(-2i8), F(4));
+/// assert_eq!(F(3).pow(-2i16), F(4));
+/// assert_eq!(F(3).pow(-2i32), F(4));
+/// assert_eq!(F(3).pow(-2i64), F(4));
+/// assert_eq!(F(3).pow(-2i128), F(4));
+/// assert_eq!(F(3).pow(-2isize), F(4));
+/// ```
+#[derive(
+    crate::derive::new,
+    crate::derive::new_unchecked,
+    crate::derive::get,
+    crate::derive::Clone,
+    crate::derive::Copy,
+    crate::derive::Default,
+    crate::derive::PartialEq,
+    crate::derive::Eq,
+    crate::derive::PartialOrd,
+    crate::derive::Ord,
+    crate::derive::From,
+    crate::derive::Display,
+    crate::derive::Debug,
+    crate::derive::FromStr,
+    crate::derive::Deref,
+    crate::derive::Neg,
+    crate::derive::Add,
+    crate::derive::AddAssign,
+    crate::derive::Sub,
+    crate::derive::SubAssign,
+    crate::derive::Mul,
+    crate::derive::MulAssign,
+    crate::derive::Div,
+    crate::derive::DivAssign,
+    crate::derive::Rem,
+    crate::derive::RemAssign,
+    crate::derive::Num,
+    crate::derive::Unsigned,
+    crate::derive::Bounded,
+    crate::derive::Zero,
+    crate::derive::One,
+    crate::derive::FromPrimitive,
+    crate::derive::Inv,
+    crate::derive::CheckedNeg,
+    crate::derive::CheckedAdd,
+    crate::derive::CheckedSub,
+    crate::derive::CheckedMul,
+    crate::derive::CheckedDiv,
+    crate::derive::CheckedRem,
+    crate::derive::Pow,
+)]
+#[modtype(modulus = "M::VALUE", implementation = "I", modtype = "crate")]
+pub struct Z<T: UnsignedPrimitive, I: Impl<Uint = T>, M: ConstValue<Value = T>> {
+    #[modtype(value)]
+    __value: T,
+    phantom: PhantomData<fn() -> (M, I)>,
+}
+
+/// A type alias.
+pub mod u8 {
+    use crate::DefaultImpl;
+
+    /// A type alias.
+    pub type Z<M> = crate::Z<u8, DefaultImpl<u8>, M>;
+}
+
+/// A type alias.
+pub mod u16 {
+    use crate::DefaultImpl;
+
+    /// A type alias.
+    pub type Z<M> = crate::Z<u16, DefaultImpl<u16>, M>;
+}
+
+/// A type alias.
+pub mod u32 {
+    use crate::DefaultImpl;
+
+    /// A type alias.
+    pub type Z<M> = crate::Z<u32, DefaultImpl<u32>, M>;
+}
+
+/// A type alias.
 pub mod u64 {
-    pub mod field {
-        /// A modular arithmetic integer type.
-        ///
-        /// # Example
-        ///
-        /// ```
-        /// use modtype::u64::field::F;
-        ///
-        /// let runtime_mod = 7;
-        /// #[allow(non_snake_case)]
-        /// let F = F::factory(runtime_mod);
-        ///
-        /// assert_eq!(F(6) + F(1), F(0));
-        /// ```
-        #[derive(
-            Clone,
-            Copy,
-            PartialEq,
-            Eq,
-            PartialOrd,
-            Ord,
-            crate::Into,
-            crate::Display,
-            crate::Debug,
-            crate::Deref,
-            crate::Neg,
-            crate::Add,
-            crate::AddAssign,
-            crate::Sub,
-            crate::SubAssign,
-            crate::Mul,
-            crate::MulAssign,
-            crate::Div,
-            crate::DivAssign,
-            crate::Rem,
-            crate::RemAssign,
-            crate::Inv,
-            crate::CheckedNeg,
-            crate::CheckedAdd,
-            crate::CheckedSub,
-            crate::CheckedMul,
-            crate::CheckedDiv,
-            crate::CheckedRem,
-            crate::Pow,
-        )]
-        #[modtype(modulus = "self.modulus")]
-        pub struct F {
-            #[modtype(value)]
-            __value: u64,
-            modulus: u64,
-        }
+    use crate::DefaultImpl;
 
-        impl F {
-            /// Constructs a new `F`.
-            #[inline]
-            pub fn new(value: u64, modulus: u64) -> Self {
-                let __value = if value >= modulus {
-                    value % modulus
-                } else {
-                    value
-                };
-                Self { __value, modulus }
-            }
+    /// A type alias.
+    pub type Z<M> = crate::Z<u64, DefaultImpl<u64>, M>;
+}
 
-            /// Constructs a new `F` without checking the value.
-            pub const fn new_unchecked(value: u64, modulus: u64) -> Self {
-                Self {
-                    __value: value,
-                    modulus,
-                }
-            }
+/// A type alias.
+pub mod u128 {
+    use crate::DefaultImpl;
 
-            /// Same as `move |n| Self::`[`new`]`(n, modulus)`.
-            ///
-            /// [`new`]: ./struct.F.html#method.new
-            pub fn factory(modulus: u64) -> impl Fn(u64) -> Self {
-                move |n| Self::new(n, modulus)
-            }
+    /// A type alias.
+    pub type Z<M> = crate::Z<u128, DefaultImpl<u128>, M>;
+}
 
-            /// Gets the inner value.
-            pub const fn get(self) -> u64 {
-                self.__value
-            }
-        }
-    }
+/// A type alias.
+pub mod usize {
+    use crate::DefaultImpl;
 
-    pub mod thread_local {
-        use std::cell::UnsafeCell;
+    /// A type alias.
+    pub type Z<M> = crate::Z<usize, DefaultImpl<usize>, M>;
+}
 
-        /// Set a modulus and execute a closure.
-        ///
-        /// # Example
-        ///
-        /// ```
-        /// use modtype::u64::thread_local::{with_modulus, F};
-        ///
-        /// with_modulus(7, || {
-        ///     assert_eq!(F(6) + F(1), F(0));
-        /// });
-        /// ```
-        pub fn with_modulus<T, F: FnOnce() -> T>(modulus: u64, f: F) -> T {
-            unsafe { set_modulus(modulus) };
-            f()
-        }
-
-        #[allow(non_snake_case)]
-        #[inline]
-        pub fn F(value: u64) -> F {
-            F::new(value)
-        }
-
-        #[inline]
-        unsafe fn modulus() -> u64 {
-            MODULUS.with(|m| *m.get())
-        }
-
-        unsafe fn set_modulus(modulus: u64) {
-            MODULUS.with(|m| *m.get() = modulus)
-        }
-
-        thread_local! {
-            static MODULUS: UnsafeCell<u64> = UnsafeCell::new(0);
-        }
-
-        /// A modular arithmetic integer type.
-        ///
-        /// # Example
-        ///
-        /// ```
-        /// use modtype::u64::thread_local::{with_modulus, F};
-        ///
-        /// with_modulus(7, || {
-        ///     assert_eq!(F(6) + F(1), F(0));
-        /// });
-        /// ```
-        #[derive(
-            crate::new,
-            crate::new_unchecked,
-            crate::get,
-            Default,
-            Clone,
-            Copy,
-            PartialEq,
-            Eq,
-            PartialOrd,
-            Ord,
-            crate::From,
-            crate::Into,
-            crate::Display,
-            crate::Debug,
-            crate::FromStr,
-            crate::Deref,
-            crate::Neg,
-            crate::Add,
-            crate::AddAssign,
-            crate::Sub,
-            crate::SubAssign,
-            crate::Mul,
-            crate::MulAssign,
-            crate::Div,
-            crate::DivAssign,
-            crate::Rem,
-            crate::RemAssign,
-            crate::Num,
-            crate::Unsigned,
-            crate::Bounded,
-            crate::Zero,
-            crate::One,
-            crate::FromPrimitive,
-            crate::Inv,
-            crate::CheckedNeg,
-            crate::CheckedAdd,
-            crate::CheckedSub,
-            crate::CheckedMul,
-            crate::CheckedDiv,
-            crate::CheckedRem,
-            crate::Pow,
-            crate::Integer,
-        )]
-        #[modtype(modulus = "unsafe { modulus() }")]
-        pub struct F {
-            #[modtype(value)]
-            __value: u64,
-        }
-    }
-
-    use crate::ConstValue;
+/// A modular arithmetic integer type which modulus is **a `struct` field**.
+pub mod field_param {
+    use crate::{Impl, UnsignedPrimitive};
 
     use std::marker::PhantomData;
 
-    /// A modular arithmetic integer type.
+    /// A modular arithmetic integer type which modulus is **a `struct` field**.
     ///
     /// # Example
     ///
     /// ```
-    /// use modtype::use_modtype;
-    /// use num::bigint::{Sign, ToBigInt as _, ToBigUint as _};
-    /// use num::pow::Pow as _;
-    /// use num::traits::{CheckedNeg as _, CheckedRem as _, Inv as _};
-    /// use num::{
-    ///     BigInt, BigUint, Bounded as _, CheckedAdd as _, CheckedDiv as _, CheckedMul as _,
-    ///     CheckedSub as _, FromPrimitive as _, Integer as _, Num as _, One as _,
-    ///     ToPrimitive as _, Unsigned, Zero as _,
-    /// };
+    /// use num::CheckedDiv as _;
     ///
-    /// #[use_modtype]
-    /// type F = modtype::u64::F<7u64>;
+    /// #[allow(non_snake_case)]
+    /// let Z = modtype::field_param::u32::Z::factory(1000);
     ///
-    /// fn static_assert_unsigned<T: Unsigned>() {}
-    ///
-    /// // Constructor, `new`, `new_unchecked`, `get`
-    /// assert_eq!(F::new(8), F(1));
-    /// assert_ne!(F::new_unchecked(8), F(1));
-    /// assert_eq!(F(3).get(), 3u64);
-    ///
-    /// // `From<{u64, BigUint, BigInt}>`, `Into<u64>`
-    /// assert_eq!(F::from(3), F(3));
-    /// assert_eq!(F::from(BigUint::new(vec![3])), F(3));
-    /// assert_eq!(F::from(BigInt::new(Sign::Minus, vec![4])), F(3));
-    /// assert_eq!(u64::from(F(3)), 3);
-    ///
-    /// // `Display`, `Debug`
-    /// assert_eq!(F(3).to_string(), "3");
-    /// assert_eq!(format!("{:?}", F(3)), "F(3)");
-    ///
-    /// // `FromStr`
-    /// assert_eq!("3".parse::<F>(), Ok(F(3)));
-    ///
-    /// // `Deref`
-    /// assert_eq!(*F(3), 3);
-    /// assert_eq!(F(3).to_i64(), Some(3i64));
-    /// assert_eq!(F(3).to_biguint(), 3u64.to_biguint());
-    /// assert_eq!(F(3).to_bigint(), 3u64.to_bigint());
-    ///
-    /// // `Neg`
-    /// assert_eq!(-F(1), F(6));
-    ///
-    /// // `Add`, `Sub`, `Mul`, `Div`, `Rem`
-    /// assert_eq!(F(3) + F(4), F(0));
-    /// assert_eq!(F(3) - F(4), F(6));
-    /// assert_eq!(F(3) * F(4), F(5));
-    /// assert_eq!(F(3) / F(4), F(6));
-    /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert_eq!(F(x) % F(y), F(0))));
-    ///
-    /// // `Num`
-    /// assert_eq!(F::from_str_radix("111", 2), Ok(F(0)));
-    ///
-    /// // `Unsigned`
-    /// static_assert_unsigned::<F>();
-    ///
-    /// // `Bounded`
-    /// assert_eq!((F::min_value(), F::max_value()), (F(0), F(6)));
-    ///
-    /// // `Zero`, `One`
-    /// assert_eq!(F::zero(), F(0));
-    /// assert_eq!(F::one(), F(1));
-    ///
-    /// // `FromPrimitive`
-    /// assert_eq!(F::from_i128(-1), Some(-F(1)));
-    /// assert_eq!(F::from_f64(0.5), Some(F(1) / F(2)));
-    ///
-    /// // `Inv`
-    /// assert_eq!(F(3).inv(), F(5));
-    ///
-    /// // `CheckedNeg`
-    /// (0..=6).for_each(|x| assert!(F(x).checked_neg().is_some()));
-    ///
-    /// // `CheckedAdd`, `CheckedSub`, `CheckedMul`, `CheckedDiv`, `CheckedRem`
-    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F(x).checked_add(&F(y)).is_some())));
-    /// assert_eq!(num::range_step(F(0), F(6), F(2)).collect::<Vec<_>>(), &[F(0), F(2), F(4)]);
-    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F(x).checked_sub(&F(y)).is_some())));
-    /// (0..=6).for_each(|x| (0..=6).for_each(|y| assert!(F(x).checked_mul(&F(y)).is_some())));
-    /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F(x).checked_div(&F(y)).is_some())));
-    /// (0..=6).for_each(|x| assert!(F(x).checked_div(&F(0)).is_none()));
-    /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F(x).checked_rem(&F(y)).is_some())));
-    /// (0..=6).for_each(|x| assert!(F(x).checked_rem(&F(0)).is_none()));
-    ///
-    /// // `Pow`
-    /// assert_eq!(F(3).pow(2u8), F(2));
-    /// assert_eq!(F(3).pow(2u16), F(2));
-    /// assert_eq!(F(3).pow(2u32), F(2));
-    /// assert_eq!(F(3).pow(2u64), F(2));
-    /// assert_eq!(F(3).pow(2u128), F(2));
-    /// assert_eq!(F(3).pow(2usize), F(2));
-    /// assert_eq!(F(3).pow(-2i8), F(4));
-    /// assert_eq!(F(3).pow(-2i16), F(4));
-    /// assert_eq!(F(3).pow(-2i32), F(4));
-    /// assert_eq!(F(3).pow(-2i64), F(4));
-    /// assert_eq!(F(3).pow(-2i128), F(4));
-    /// assert_eq!(F(3).pow(-2isize), F(4));
-    ///
-    /// // `Integer`
-    /// (0..=6).for_each(|x| (1..=6).for_each(|y| assert!(F(x).is_multiple_of(&F(y)))));
+    /// assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
     /// ```
     #[derive(
-        crate::new,
-        crate::new_unchecked,
-        crate::get,
-        Default,
-        Clone,
-        Copy,
-        PartialEq,
-        Eq,
-        PartialOrd,
-        Ord,
-        crate::From,
-        crate::Into,
-        crate::Display,
-        crate::Debug,
-        crate::FromStr,
-        crate::Deref,
-        crate::Neg,
-        crate::Add,
-        crate::AddAssign,
-        crate::Sub,
-        crate::SubAssign,
-        crate::Mul,
-        crate::MulAssign,
-        crate::Div,
-        crate::DivAssign,
-        crate::Rem,
-        crate::RemAssign,
-        crate::Num,
-        crate::Unsigned,
-        crate::Bounded,
-        crate::Zero,
-        crate::One,
-        crate::FromPrimitive,
-        crate::Inv,
-        crate::CheckedNeg,
-        crate::CheckedAdd,
-        crate::CheckedSub,
-        crate::CheckedMul,
-        crate::CheckedDiv,
-        crate::CheckedRem,
-        crate::Pow,
-        crate::Integer,
+        crate::derive::Clone,
+        crate::derive::Copy,
+        crate::derive::PartialEq,
+        crate::derive::Eq,
+        crate::derive::PartialOrd,
+        crate::derive::Ord,
+        crate::derive::Display,
+        crate::derive::Debug,
+        crate::derive::Deref,
+        crate::derive::Neg,
+        crate::derive::Add,
+        crate::derive::AddAssign,
+        crate::derive::Sub,
+        crate::derive::SubAssign,
+        crate::derive::Mul,
+        crate::derive::MulAssign,
+        crate::derive::Div,
+        crate::derive::DivAssign,
+        crate::derive::Rem,
+        crate::derive::RemAssign,
+        crate::derive::Inv,
+        crate::derive::CheckedNeg,
+        crate::derive::CheckedAdd,
+        crate::derive::CheckedSub,
+        crate::derive::CheckedMul,
+        crate::derive::CheckedDiv,
+        crate::derive::CheckedRem,
+        crate::derive::Pow,
     )]
-    #[modtype(modulus = "M::VALUE")]
-    pub struct F<M: ConstValue<Value = u64>> {
+    #[modtype(modulus = "self.modulus", implementation = "I", modtype = "crate")]
+    pub struct Z<T: UnsignedPrimitive, I: Impl<Uint = T>> {
         #[modtype(value)]
-        __value: u64,
-        phantom: PhantomData<fn() -> M>,
+        __value: T,
+        modulus: T,
+        phantom: PhantomData<fn() -> I>,
     }
+
+    impl<T: UnsignedPrimitive, I: Impl<Uint = T>> Z<T, I> {
+        /// Constructs a new `Z`.
+        #[inline]
+        pub fn new(value: T, modulus: T) -> Self {
+            Self {
+                __value: I::new(value, modulus),
+                modulus,
+                phantom: PhantomData,
+            }
+        }
+
+        /// Constructs a new `Z` without checking the value.
+        #[inline]
+        pub fn new_unchecked(value: T, modulus: T) -> Self {
+            Self {
+                __value: value,
+                modulus,
+                phantom: PhantomData,
+            }
+        }
+
+        /// Same as `move |n| Self::`[`new`]`(n, modulus)`.
+        ///
+        /// [`new`]: ./struct.Z.html#method.new
+        pub fn factory(modulus: T) -> impl Fn(T) -> Self {
+            move |n| Self::new(n, modulus)
+        }
+
+        /// Gets the inner value.
+        #[inline]
+        pub fn get(self) -> T {
+            self.__value
+        }
+    }
+
+    /// A type alias.
+    pub mod u8 {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::field_param::Z<u8, DefaultImpl<u8>>;
+    }
+
+    /// A type alias.
+    pub mod u16 {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::field_param::Z<u16, DefaultImpl<u16>>;
+    }
+
+    /// A type alias.
+    pub mod u32 {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::field_param::Z<u32, DefaultImpl<u32>>;
+    }
+
+    /// A type alias.
+    pub mod u64 {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::field_param::Z<u64, DefaultImpl<u64>>;
+    }
+
+    /// A type alias.
+    pub mod u128 {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::field_param::Z<u128, DefaultImpl<u128>>;
+    }
+
+    /// A type alias.
+    pub mod usize {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::field_param::Z<usize, DefaultImpl<usize>>;
+    }
+}
+
+/// A modular arithmetic integer type which modulus is **`thread_local`**.
+pub mod thread_local {
+    use crate::{Impl, UnsignedPrimitive};
+
+    use std::cell::UnsafeCell;
+    use std::marker::PhantomData;
+    use std::thread::LocalKey;
+
+    /// A modular arithmetic integer type which modulus is **`thread_local`**.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #[allow(non_snake_case)]
+    /// modtype::thread_local::u32::Z::with(7, |F| {
+    ///     assert_eq!(F(6) + F(1), F(0));
+    /// });
+    /// ```
+    #[derive(
+        crate::derive::new,
+        crate::derive::new_unchecked,
+        crate::derive::get,
+        crate::derive::Clone,
+        crate::derive::Copy,
+        crate::derive::Default,
+        crate::derive::PartialEq,
+        crate::derive::Eq,
+        crate::derive::PartialOrd,
+        crate::derive::Ord,
+        crate::derive::From,
+        crate::derive::Display,
+        crate::derive::Debug,
+        crate::derive::FromStr,
+        crate::derive::Deref,
+        crate::derive::Neg,
+        crate::derive::Add,
+        crate::derive::AddAssign,
+        crate::derive::Sub,
+        crate::derive::SubAssign,
+        crate::derive::Mul,
+        crate::derive::MulAssign,
+        crate::derive::Div,
+        crate::derive::DivAssign,
+        crate::derive::Rem,
+        crate::derive::RemAssign,
+        crate::derive::Num,
+        crate::derive::Unsigned,
+        crate::derive::Bounded,
+        crate::derive::Zero,
+        crate::derive::One,
+        crate::derive::FromPrimitive,
+        crate::derive::Inv,
+        crate::derive::CheckedNeg,
+        crate::derive::CheckedAdd,
+        crate::derive::CheckedSub,
+        crate::derive::CheckedMul,
+        crate::derive::CheckedDiv,
+        crate::derive::CheckedRem,
+        crate::derive::Pow,
+    )]
+    #[modtype(
+        modulus = "unsafe { T::modulus() }",
+        implementation = "I",
+        modtype = "crate"
+    )]
+    pub struct Z<T: HasThreadLocalModulus, I: Impl<Uint = T>> {
+        #[modtype(value)]
+        __value: T,
+        phantom: PhantomData<fn() -> I>,
+    }
+
+    impl<T: HasThreadLocalModulus, I: Impl<Uint = T>> Z<T, I> {
+        /// Sets `modulus` and run `f`.
+        ///
+        /// The modulus is set to `0` when `f` finished.
+        pub fn with<O, C: FnOnce(fn(T) -> Self) -> O>(modulus: T, f: C) -> O {
+            unsafe { T::set_modulus(modulus) };
+            let ret = f(Self::new);
+            unsafe { T::set_modulus(T::zero()) };
+            ret
+        }
+    }
+
+    /// A trait that represents an associated `LocalKey<UnsafeCell<Self>>`.
+    pub trait HasThreadLocalModulus: UnsignedPrimitive {
+        /// The `LocalKey<UnsafeCell<Self>>`.
+        fn local_key() -> &'static LocalKey<UnsafeCell<Self>>;
+
+        /// Gets the value of the `LocalKey<UnsafeCell<Self>>`.
+        ///
+        /// # Safety
+        ///
+        /// This function is safe as long as `Self::local_key().with` does not leak the raw pointer.
+        unsafe fn modulus() -> Self {
+            Self::local_key().with(|m| *m.get())
+        }
+
+        /// Sets `modulus`.
+        ///
+        /// # Safety
+        ///
+        /// This function is safe as long as `Self::local_key().with` does not leak the raw pointer.
+        unsafe fn set_modulus(modulus: Self) {
+            Self::local_key().with(|m| *m.get() = modulus)
+        }
+    }
+
+    impl HasThreadLocalModulus for u8 {
+        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            &MODULUS_U8
+        }
+    }
+
+    impl HasThreadLocalModulus for u16 {
+        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            &MODULUS_U16
+        }
+    }
+
+    impl HasThreadLocalModulus for u32 {
+        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            &MODULUS_U32
+        }
+    }
+
+    impl HasThreadLocalModulus for u64 {
+        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            &MODULUS_U64
+        }
+    }
+
+    impl HasThreadLocalModulus for u128 {
+        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            &MODULUS_U128
+        }
+    }
+
+    impl HasThreadLocalModulus for usize {
+        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            &MODULUS_USIZE
+        }
+    }
+
+    thread_local! {
+        static MODULUS_U8: UnsafeCell<u8> = UnsafeCell::new(0);
+        static MODULUS_U16: UnsafeCell<u16> = UnsafeCell::new(0);
+        static MODULUS_U32: UnsafeCell<u32> = UnsafeCell::new(0);
+        static MODULUS_U64: UnsafeCell<u64> = UnsafeCell::new(0);
+        static MODULUS_U128: UnsafeCell<u128> = UnsafeCell::new(0);
+        static MODULUS_USIZE: UnsafeCell<usize> = UnsafeCell::new(0);
+    }
+
+    /// A type alias.
+    pub mod u8 {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::thread_local::Z<u8, DefaultImpl<u8>>;
+    }
+
+    /// A type alias.
+    pub mod u16 {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::thread_local::Z<u16, DefaultImpl<u16>>;
+    }
+
+    /// A type alias.
+    pub mod u32 {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::thread_local::Z<u32, DefaultImpl<u32>>;
+    }
+
+    /// A type alias.
+    pub mod u64 {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::thread_local::Z<u64, DefaultImpl<u64>>;
+    }
+
+    /// A type alias.
+    pub mod u128 {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::thread_local::Z<u128, DefaultImpl<u128>>;
+    }
+
+    /// A type alias.
+    pub mod usize {
+        use crate::DefaultImpl;
+
+        /// A type alias.
+        pub type Z = crate::thread_local::Z<usize, DefaultImpl<usize>>;
+    }
+}
+
+pub mod derive {
+    //! Derive macros.
+    //!
+    //! # Attributes
+    //!
+    //! ## Struct
+    //!
+    //! | Name             | Format                                                                     | Optional                         |
+    //! | :--------------- | :------------------------------------------------------------------------- | :------------------------------- |
+    //! | `modulus`        | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`]   | No                               |
+    //! | `implementation` | `implementation = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`] | No                               |
+    //! | `std`            | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]            | Yes (default = `::std`)          |
+    //! | `num_traits`     | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]     | Yes (default = `::num::traits`)  |
+    //! | `num_integer`    | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]    | Yes (default = `::num::integer`) |
+    //! | `num_bigint`     | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]     | Yes (default = `::num::bigint`)  |
+    //! | `modtype`        | `modtype = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]        | Yes (default = `::modtype`)      |
+    //!
+    //! ## Field
+    //!
+    //! | Name                 | Format  | Optional |
+    //! | :------------------- | :------ | :------- |
+    //! | `value`              | `value` | No       |
+    //!
+    //! # [`ConstValue`]
+    //!
+    //! ## Struct
+    //!
+    //! | Name                 | Format                                                       | Optional  |
+    //! | :------------------- | :----------------------------------------------------------- | :-------- |
+    //! | `const_value`        | `const_value = $`[`LitInt`] where `$`[`LitInt`] has a suffix | No        |
+    //!
+    //! [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
+    //! [`Lit`]: https://docs.rs/syn/0.15/syn/enum.Lit.html
+    //! [`LitStr`]: https://docs.rs/syn/0.15/syn/struct.LitStr.html
+    //! [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
+    //! [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
+    //! [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
+    //! [`ConstValue`]: https://docs.rs/modtype_derive/0.5/modtype_derive/derive.ConstValue.html
+
+    pub use modtype_derive::ConstValue;
+
+    pub use modtype_derive::new;
+
+    pub use modtype_derive::new_unchecked;
+
+    pub use modtype_derive::get;
+
+    pub use modtype_derive::From;
+
+    pub use modtype_derive::Into;
+
+    pub use modtype_derive::ModtypeClone as Clone;
+
+    pub use modtype_derive::ModtypeCopy as Copy;
+
+    pub use modtype_derive::ModtypeDefault as Default;
+
+    pub use modtype_derive::ModtypePartialEq as PartialEq;
+
+    pub use modtype_derive::ModtypeEq as Eq;
+
+    pub use modtype_derive::ModtypePartialOrd as PartialOrd;
+
+    pub use modtype_derive::ModtypeOrd as Ord;
+
+    pub use modtype_derive::Display;
+
+    pub use modtype_derive::ModtypeDebug as Debug;
+
+    pub use modtype_derive::FromStr;
+
+    pub use modtype_derive::Deref;
+
+    pub use modtype_derive::Neg;
+
+    pub use modtype_derive::Add;
+
+    pub use modtype_derive::AddAssign;
+
+    pub use modtype_derive::Sub;
+
+    pub use modtype_derive::SubAssign;
+
+    pub use modtype_derive::Mul;
+
+    pub use modtype_derive::MulAssign;
+
+    pub use modtype_derive::Div;
+
+    pub use modtype_derive::DivAssign;
+
+    pub use modtype_derive::Rem;
+
+    pub use modtype_derive::RemAssign;
+
+    pub use modtype_derive::Num;
+
+    pub use modtype_derive::Unsigned;
+
+    pub use modtype_derive::Bounded;
+
+    pub use modtype_derive::Zero;
+
+    pub use modtype_derive::One;
+
+    pub use modtype_derive::FromPrimitive;
+
+    pub use modtype_derive::Inv;
+
+    pub use modtype_derive::CheckedNeg;
+
+    pub use modtype_derive::CheckedAdd;
+
+    pub use modtype_derive::CheckedSub;
+
+    pub use modtype_derive::CheckedMul;
+
+    pub use modtype_derive::CheckedDiv;
+
+    pub use modtype_derive::CheckedRem;
+
+    pub use modtype_derive::Pow;
 }

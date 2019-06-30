@@ -1,123 +1,101 @@
 use crate::context::Context;
 
 use quote::quote;
-use syn::{parse_quote, Path};
+use syn::{parse_quote, Ident};
 
 impl Context {
     pub(crate) fn derive_pow(&self) -> proc_macro::TokenStream {
         let Context {
-            std,
+            modulus,
             num_traits,
-            pow,
             struct_ident,
             generics,
             field_ident,
-            field_ty,
             ..
         } = self;
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let derive = |exp: &Path, signed: bool, base_ref: bool, exp_ref: bool| -> _ {
-            let (base, base_star_token) = if base_ref {
-                (quote!(&'_ #struct_ident#ty_generics), quote!(*))
-            } else {
-                (quote!(#struct_ident#ty_generics), quote!())
-            };
+        let mut acc = quote!();
 
-            let (exp, exp_star_token) = if exp_ref {
-                (quote!(&'_ #exp), quote!(*))
-            } else {
-                (quote!(#exp), quote!())
-            };
+        let pairs: &[(Ident, Ident)] = &[
+            (parse_quote!(u8), parse_quote!(pow_unsigned)),
+            (parse_quote!(u16), parse_quote!(pow_unsigned)),
+            (parse_quote!(u32), parse_quote!(pow_unsigned)),
+            (parse_quote!(u64), parse_quote!(pow_unsigned)),
+            (parse_quote!(u128), parse_quote!(pow_unsigned)),
+            (parse_quote!(usize), parse_quote!(pow_unsigned)),
+            (parse_quote!(i8), parse_quote!(pow_signed)),
+            (parse_quote!(i16), parse_quote!(pow_signed)),
+            (parse_quote!(i32), parse_quote!(pow_signed)),
+            (parse_quote!(i64), parse_quote!(pow_signed)),
+            (parse_quote!(i128), parse_quote!(pow_signed)),
+            (parse_quote!(isize), parse_quote!(pow_signed)),
+        ];
 
-            let on_signed_pre = if signed {
-                quote! {
-                    let neg = exp < 0;
-                    if neg {
-                        exp = -exp;
+        for (exp, method) in pairs {
+            let (update_c_c, update_r_c) = self.struct_update(
+                method.clone(),
+                &[
+                    parse_quote!(self.#field_ident),
+                    parse_quote!(exp),
+                    modulus.clone(),
+                ],
+            );
+            let (update_c_r, update_r_r) = self.struct_update(
+                method.clone(),
+                &[
+                    parse_quote!(self.#field_ident),
+                    parse_quote!(*exp),
+                    modulus.clone(),
+                ],
+            );
+
+            acc.extend(quote! {
+                impl#impl_generics #num_traits::Pow<#exp> for #struct_ident#ty_generics
+                #where_clause
+                {
+                    type Output = Self;
+
+                    #[inline]
+                    fn pow(self, exp: #exp) -> Self {
+                        #update_c_c
                     }
                 }
-            } else {
-                quote!()
-            };
 
-            let on_signed_post = if signed {
-                quote! {
-                    if neg {
-                        acc = <#struct_ident#ty_generics as #num_traits::Inv>::inv(acc);
+                impl#impl_generics #num_traits::Pow<&'_ #exp> for #struct_ident#ty_generics
+                #where_clause
+                {
+                    type Output = Self;
+
+                    #[inline]
+                    fn pow(self, exp: &'_ #exp) -> Self {
+                        #update_c_r
                     }
                 }
-            } else {
-                quote!()
-            };
 
-            quote! {
-                impl#impl_generics #num_traits::Pow<#exp> for #base
+                impl#impl_generics #num_traits::Pow<#exp> for &'_ #struct_ident#ty_generics
                 #where_clause
                 {
                     type Output = #struct_ident#ty_generics;
 
+                    #[inline]
                     fn pow(self, exp: #exp) -> #struct_ident#ty_generics {
-                        fn static_assert_copy<T: #std::marker::Copy>() {}
-                        static_assert_copy::<#struct_ident#ty_generics>();
-
-                        let mut base = #base_star_token self;
-                        let mut exp = #exp_star_token exp;
-                        let mut acc = #base_star_token self;
-                        acc.#field_ident = <#field_ty as #num_traits::One>::one();
-
-                        #on_signed_pre
-
-                        while exp > 0 {
-                            if (exp & 0x1) == 0x1 {
-                                acc *= base;
-                            }
-                            exp /= 2;
-                            base *= base;
-                        }
-
-                        #on_signed_post
-
-                        acc
+                        #update_r_c
                     }
                 }
-            }
-        };
 
-        let mut ret = quote!();
+                impl#impl_generics #num_traits::Pow<&'_ #exp> for &'_ #struct_ident#ty_generics
+                #where_clause
+                {
+                    type Output = #struct_ident#ty_generics;
 
-        for exp in &[
-            parse_quote!(u8),
-            parse_quote!(u16),
-            parse_quote!(u32),
-            parse_quote!(u64),
-            parse_quote!(u128),
-            parse_quote!(usize),
-        ] {
-            ret.extend(derive(exp, false, false, false));
-            if pow.for_ref {
-                ret.extend(derive(exp, false, false, true));
-                ret.extend(derive(exp, false, true, false));
-                ret.extend(derive(exp, false, true, true));
-            }
+                    #[inline]
+                    fn pow(self, exp: &'_ #exp) -> #struct_ident#ty_generics {
+                        #update_r_r
+                    }
+                }
+            });
         }
-
-        for exp in &[
-            parse_quote!(i8),
-            parse_quote!(i16),
-            parse_quote!(i32),
-            parse_quote!(i64),
-            parse_quote!(i128),
-            parse_quote!(isize),
-        ] {
-            ret.extend(derive(exp, true, false, false));
-            if pow.for_ref {
-                ret.extend(derive(exp, true, false, true));
-                ret.extend(derive(exp, true, true, false));
-                ret.extend(derive(exp, true, true, true));
-            }
-        }
-
-        ret.into()
+        acc.into()
     }
 }

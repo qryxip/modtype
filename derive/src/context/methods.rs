@@ -6,7 +6,9 @@ use syn::{parse_quote, ItemFn};
 impl Context {
     pub(crate) fn derive_new(&self) -> proc_macro::TokenStream {
         let Context {
-            std,
+            modulus,
+            implementation,
+            modtype,
             struct_vis,
             struct_ident,
             field_ty,
@@ -15,11 +17,14 @@ impl Context {
 
         let doc = format!("Constructs a new `{}`.", struct_ident);
 
+        let value_expr = parse_quote!(<#implementation as #modtype::Impl>::new(value, #modulus));
+        let struct_expr = self.struct_expr(true, Some(value_expr));
+
         self.derive_struct_method(parse_quote! {
             #[doc = #doc]
             #[inline]
             #struct_vis fn new(value: #field_ty) -> Self {
-                <Self as #std::convert::From<#field_ty>>::from(value)
+                #struct_expr
             }
         })
     }
@@ -49,6 +54,9 @@ impl Context {
 
     pub(crate) fn derive_get(&self) -> proc_macro::TokenStream {
         let Context {
+            modulus,
+            implementation,
+            modtype,
             struct_vis,
             field_ident,
             field_ty,
@@ -59,7 +67,7 @@ impl Context {
             #[doc = "Gets the inner value."]
             #[inline]
             #struct_vis fn get(self) -> #field_ty {
-                self.#field_ident
+                <#implementation as #modtype::Impl>::get(self.#field_ident, #modulus)
             }
         })
     }

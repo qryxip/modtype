@@ -71,10 +71,16 @@ pub(crate) fn use_modtype(
                 if let Some(last) = path.segments.iter().last();
                 if let PathArguments::AngleBracketed(args) = &last.arguments;
                 let AngleBracketedGenericArguments { args, .. } = args;
-                if args.len() == 1;
-                if let GenericArgument::Const(expr) = &args[0];
+                let const_exprs = args
+                    .iter()
+                    .flat_map(|arg| match arg {
+                        GenericArgument::Const(expr) => Some(expr),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                if const_exprs.len() == 1;
                 then {
-                    expr
+                    const_exprs[0]
                 } else {
                     bail!(path.span(), "expected 1 const argument")
                 }
@@ -120,9 +126,15 @@ pub(crate) fn use_modtype(
             if let Some(last) = type_path.path.segments.iter_mut().last();
             if let PathArguments::AngleBracketed(args) = &mut last.arguments;
             let AngleBracketedGenericArguments { args, .. } = args;
-            if let Some(last) = args.iter_mut().last();
+            if let Some(arg) = args
+                .iter_mut()
+                .flat_map(|arg| match arg {
+                    arg @ GenericArgument::Const(_) => Some(arg),
+                    _ => None,
+                })
+                .next();
             then {
-                *last = parse_quote!(#constant);
+                *arg = GenericArgument::Type(parse_quote!(#constant));
             } else {
                 unreachable!();
             }
