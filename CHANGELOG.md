@@ -4,6 +4,12 @@
 
 ### Added
 
+- `{modtype::Z, modtype::thread_local::Z, modtype::field_param}::modulus`
+
+## [0.5.0] - 2019-06-30Z
+
+### Added
+
 - `Clone`, `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord` derive macros.
 - `UnsignedPrimitive`, `SignedPrimitive`, `FloatPrimitive`.
 - Documents.

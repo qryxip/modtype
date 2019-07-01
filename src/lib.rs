@@ -713,6 +713,14 @@ pub struct Z<T: UnsignedPrimitive, I: Impl<Uint = T>, M: ConstValue<Value = T>> 
     phantom: PhantomData<fn() -> (M, I)>,
 }
 
+impl<T: UnsignedPrimitive, I: Impl<Uint = T>, M: ConstValue<Value = T>> Z<T, I, M> {
+    /// Gets the modulus.
+    #[inline]
+    pub fn modulus() -> T {
+        <M as ConstValue>::VALUE
+    }
+}
+
 /// A type alias.
 pub mod u8 {
     use crate::DefaultImpl;
@@ -850,6 +858,12 @@ pub mod field_param {
         pub fn get(self) -> T {
             self.value
         }
+
+        /// Gets the modulus.
+        #[inline]
+        pub fn modulus(self) -> T {
+            self.modulus
+        }
     }
 
     /// A type alias.
@@ -970,6 +984,14 @@ pub mod thread_local {
         #[modtype(value)]
         value: T,
         phantom: PhantomData<fn() -> I>,
+    }
+
+    impl<T: HasThreadLocalModulus, I: Impl<Uint = T>> Z<T, I> {
+        /// Gets the modulus.
+        #[inline]
+        pub fn modulus() -> T {
+            unsafe { T::modulus() }
+        }
     }
 
     impl<T: HasThreadLocalModulus, I: Impl<Uint = T>> Z<T, I> {
