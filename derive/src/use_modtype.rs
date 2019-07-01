@@ -1,3 +1,4 @@
+use heck::CamelCase as _;
 use if_chain::if_chain;
 use proc_macro2::Span;
 use quote::quote;
@@ -115,7 +116,7 @@ pub(crate) fn use_modtype(
         };
 
         let constant = constant.unwrap_or_else(|| {
-            let str = format!("_{}{}", int_value, int_ty.to_string().to_uppercase());
+            let str = format!("_{}{}", int_value, int_ty.to_string().to_camel_case());
             Ident::new(&str, int.span())
         });
         let constructor = constructor.unwrap_or_else(|| item.ident.clone());

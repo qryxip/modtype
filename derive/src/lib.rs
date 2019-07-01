@@ -71,10 +71,10 @@ use std::convert::TryFrom as _;
 ///
 /// # Attributes
 ///
-/// | Name          | Format                         | Optional                                      |
-/// | :------------ | :----------------------------- | :-------------------------------------------- |
-/// | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $type_uppercase)`) |
-/// | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                |
+/// | Name          | Format                         | Optional                                                |
+/// | :------------ | :----------------------------- | :------------------------------------------------------ |
+/// | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $value, $type_pascal_case)`) |
+/// | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                          |
 ///
 /// [`ConstValue`]: https://docs.rs/modtype/0.5/modtype/trait.ConstValue.html
 /// [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html

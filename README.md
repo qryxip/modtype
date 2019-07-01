@@ -55,15 +55,16 @@ impl modtype::Impl for Impl {
 }
 ```
 
-## Attributes for `use_modtype`
+## Attributes for [`use_modtype`]
 
-| Name          | Format                         | Optional                                              |
-| :------------ | :----------------------------- | :---------------------------------------------------- |
-| `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $value, $type_uppercase)`) |
-| `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                        |
+| Name          | Format                         | Optional                                                |
+| :------------ | :----------------------------- | :------------------------------------------------------ |
+| `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $value, $type_pascal_case)`) |
+| `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                          |
 
 [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
 [`modtype::Z`]: https://docs.rs/modtype/0.5/modtype/struct.Z.html
 [`modtype::thread_local::Z`]: https://docs.rs/modtype/0.5/modtype/thread_local/struct.Z.html
 [`modtype::field_param::Z`]: https://docs.rs/modtype/0.5/modtype/field_param/struct.Z.html
 [`modtype::Impl`]: https://docs.rs/modtype/0.5/modtype/trait.Impl.html
+[`use_modtype`]: https://docs.rs/modtype_derive/0.5/modtype_derive/attr.use_modtype.html

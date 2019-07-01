@@ -15,8 +15,8 @@
 //!
 //! ```
 //! #[allow(non_snake_case)]
-//! modtype::thread_local::u32::Z::with(7, |F| {
-//!     assert_eq!(F(6) + F(1), F(0));
+//! modtype::thread_local::u32::Z::with(57, |Z| {
+//!     assert_eq!(Z(42) + Z(15), Z(0));
 //! });
 //! ```
 //!
@@ -49,18 +49,19 @@
 //! }
 //! ```
 //!
-//! # Attributes for `use_modtype`
+//! # Attributes for [`use_modtype`]
 //!
-//! | Name          | Format                         | Optional                                              |
-//! | :------------ | :----------------------------- | :---------------------------------------------------- |
-//! | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $value, $type_uppercase)`) |
-//! | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                        |
+//! | Name          | Format                         | Optional                                                |
+//! | :------------ | :----------------------------- | :------------------------------------------------------ |
+//! | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $value, $type_pascal_case)`) |
+//! | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                          |
 //!
 //! [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
 //! [`modtype::Z`]: ./struct.Z.html
 //! [`modtype::thread_local::Z`]: ./thread_local/struct.Z.html
 //! [`modtype::field_param::Z`]: ./field_param/struct.Z.html
 //! [`modtype::Impl`]: ./trait.Impl.html
+//! [`use_modtype`]: https://docs.rs/modtype_derive/0.5/modtype_derive/attr.use_modtype.html
 
 pub use modtype_derive::use_modtype;
 
@@ -914,8 +915,8 @@ pub mod thread_local {
     ///
     /// ```
     /// #[allow(non_snake_case)]
-    /// modtype::thread_local::u32::Z::with(7, |F| {
-    ///     assert_eq!(F(6) + F(1), F(0));
+    /// modtype::thread_local::u32::Z::with(57, |Z| {
+    ///     assert_eq!(Z(42) + Z(15), Z(0));
     /// });
     /// ```
     #[derive(
