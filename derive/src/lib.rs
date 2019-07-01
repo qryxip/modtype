@@ -33,27 +33,27 @@ use std::convert::TryFrom as _;
 /// 1. Confirms that the type contains 1 const argument.
 /// 2. Creates a bottom type that represents the const value.
 /// 3. Implements [`ConstValue`] for the bottom type.
-/// 4. Creates a type alias replacing the const.
+/// 4. Replaces the const argument with the bottom type.
 /// 5. Creates a pseudo constructor.
 ///
 /// # Usage
 ///
-/// ```ignore
+/// ```
 /// use modtype::use_modtype;
 ///
 /// // #[use_modtype(constant(_1000000007U64), constructor(F))]
 /// #[use_modtype]
-/// type F = modtype::u64::F<1_000_000_007u64>;
+/// type F = modtype::u64::Z<1_000_000_007u64>;
 ///
 /// assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 /// ```
 ///
 /// ↓
 ///
-/// ```ignore
-/// type F = modtype::u64::F<_1000000007u64>;
+/// ```
+/// type F = modtype::u64::Z<_1000000007U64>;
 ///
-/// enum _1000000007u64 {}
+/// enum _1000000007U64 {}
 ///
 /// impl ::modtype::ConstValue for _1000000007U64 {
 ///     type Value = u64;

@@ -19,3 +19,6 @@ maplit = "1.0.1"
 proc-macro2 = "0.4.30"
 quote = "0.6.12"
 syn = { version = "0.15.39", features = ["full", "extra-traits"] }
+
+[dev-dependencies]
+modtype = { version = "0.5.0", path = "../" }
