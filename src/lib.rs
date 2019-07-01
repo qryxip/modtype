@@ -709,7 +709,7 @@ impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
 #[modtype(modulus = "M::VALUE", implementation = "I", modtype = "crate")]
 pub struct Z<T: UnsignedPrimitive, I: Impl<Uint = T>, M: ConstValue<Value = T>> {
     #[modtype(value)]
-    __value: T,
+    value: T,
     phantom: PhantomData<fn() -> (M, I)>,
 }
 
@@ -812,7 +812,7 @@ pub mod field_param {
     #[modtype(modulus = "self.modulus", implementation = "I", modtype = "crate")]
     pub struct Z<T: UnsignedPrimitive, I: Impl<Uint = T>> {
         #[modtype(value)]
-        __value: T,
+        value: T,
         modulus: T,
         phantom: PhantomData<fn() -> I>,
     }
@@ -822,7 +822,7 @@ pub mod field_param {
         #[inline]
         pub fn new(value: T, modulus: T) -> Self {
             Self {
-                __value: I::new(value, modulus),
+                value: I::new(value, modulus),
                 modulus,
                 phantom: PhantomData,
             }
@@ -832,7 +832,7 @@ pub mod field_param {
         #[inline]
         pub fn new_unchecked(value: T, modulus: T) -> Self {
             Self {
-                __value: value,
+                value,
                 modulus,
                 phantom: PhantomData,
             }
@@ -848,7 +848,7 @@ pub mod field_param {
         /// Gets the inner value.
         #[inline]
         pub fn get(self) -> T {
-            self.__value
+            self.value
         }
     }
 
@@ -968,7 +968,7 @@ pub mod thread_local {
     )]
     pub struct Z<T: HasThreadLocalModulus, I: Impl<Uint = T>> {
         #[modtype(value)]
-        __value: T,
+        value: T,
         phantom: PhantomData<fn() -> I>,
     }
 

@@ -315,10 +315,6 @@ impl TryFrom<DeriveInput> for Context {
             return Err(vis.to_error("the field visibility must be `Inherited`"));
         }
 
-        if !field_ident.to_string().starts_with("__") {
-            return Err(field_ident.to_error("the field name must start with \"__\""));
-        }
-
         Ok(Self {
             modulus,
             implementation,
