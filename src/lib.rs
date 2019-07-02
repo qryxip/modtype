@@ -246,6 +246,26 @@ pub trait Impl {
     }
 
     #[inline]
+    fn plus(lhs: Self::Target, raw: Self::Target, modulus: Self::Target) -> Self::Target {
+        Self::new(lhs + raw, modulus)
+    }
+
+    #[inline]
+    fn minus(lhs: Self::Target, raw: Self::Target, modulus: Self::Target) -> Self::Target {
+        Self::sub(lhs, Self::new(raw, modulus), modulus)
+    }
+
+    #[inline]
+    fn times(lhs: Self::Target, raw: Self::Target, modulus: Self::Target) -> Self::Target {
+        Self::new(lhs * raw, modulus)
+    }
+
+    #[inline]
+    fn obelus(lhs: Self::Target, raw: Self::Target, modulus: Self::Target) -> Self::Target {
+        Self::div(lhs, Self::new(raw, modulus), modulus)
+    }
+
+    #[inline]
     fn from_biguint(value: BigUint, modulus: Self::Target) -> Self::Target {
         let modulus = Into::<BigUint>::into(modulus);
         (value % modulus).to_string().parse().unwrap()
@@ -712,6 +732,10 @@ impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
     crate::derive::new,
     crate::derive::new_unchecked,
     crate::derive::get,
+    crate::derive::plus,
+    crate::derive::minus,
+    crate::derive::times,
+    crate::derive::obelus,
     crate::derive::Clone,
     crate::derive::Copy,
     crate::derive::Default,
@@ -832,6 +856,10 @@ pub mod field_param {
     /// assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
     /// ```
     #[derive(
+        crate::derive::plus,
+        crate::derive::minus,
+        crate::derive::times,
+        crate::derive::obelus,
         crate::derive::Clone,
         crate::derive::Copy,
         crate::derive::PartialEq,
@@ -981,6 +1009,10 @@ pub mod thread_local {
         crate::derive::new,
         crate::derive::new_unchecked,
         crate::derive::get,
+        crate::derive::plus,
+        crate::derive::minus,
+        crate::derive::times,
+        crate::derive::obelus,
         crate::derive::Clone,
         crate::derive::Copy,
         crate::derive::Default,
@@ -1214,6 +1246,14 @@ pub mod derive {
     pub use modtype_derive::new_unchecked;
 
     pub use modtype_derive::get;
+
+    pub use modtype_derive::plus;
+
+    pub use modtype_derive::minus;
+
+    pub use modtype_derive::times;
+
+    pub use modtype_derive::obelus;
 
     pub use modtype_derive::From;
 

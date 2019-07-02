@@ -121,6 +121,30 @@ pub fn get(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     derive(input, Context::derive_get)
 }
 
+/// Derives `plus` with `#implementation::plus`.
+#[proc_macro_derive(plus, attributes(modtype))]
+pub fn plus(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    derive(input, Context::derive_plus)
+}
+
+/// Derives `minus` with `#implementation::minus`.
+#[proc_macro_derive(minus, attributes(modtype))]
+pub fn minus(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    derive(input, Context::derive_minus)
+}
+
+/// Derives `times` with `#implementation::times`.
+#[proc_macro_derive(times, attributes(modtype))]
+pub fn times(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    derive(input, Context::derive_times)
+}
+
+/// Derives `obelus` with `#implementation::obelus`.
+#[proc_macro_derive(obelus, attributes(modtype))]
+pub fn obelus(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    derive(input, Context::derive_obelus)
+}
+
 /// Derives [`From`]`<{#InnerValue, `[`BigUint`]`, `[`BigInt`]`}>` with `#implementation::{new, from_biguint, from_bigint}`.
 ///
 /// # Requirements
