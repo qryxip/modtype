@@ -15,6 +15,7 @@ impl Context {
             field_ident,
             ..
         } = self;
+        let generics = self.with_features(&[parse_quote!(Addition)], &generics);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let zero = parse_quote!(<#implementation as #modtype::Impl>::zero(#modulus));
@@ -49,6 +50,7 @@ impl Context {
             field_ident,
             ..
         } = self;
+        let generics = self.with_features(&[parse_quote!(Multiplication)], &generics);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let one = parse_quote!(<#implementation as #modtype::Impl>::one(#modulus));

@@ -44,6 +44,7 @@
 //!
 //! impl modtype::Impl for Impl {
 //!     type Target = u64;
+//!     type Features = modtype::DefaultFeatures;
 //!
 //!     // your implementation here
 //! }
@@ -64,6 +65,9 @@
 //! [`use_modtype`]: https://docs.rs/modtype_derive/0.5/modtype_derive/attr.use_modtype.html
 
 pub use modtype_derive::use_modtype;
+
+#[doc(inline)]
+pub use crate::features::{DefaultFeatures, False, Features, True};
 
 use num::{
     integer, BigInt, BigUint, CheckedAdd as _, CheckedMul as _, CheckedSub as _, Float,
@@ -230,6 +234,7 @@ pub trait ConstValue {
 /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
 pub trait Impl {
     type Target: UnsignedPrimitive;
+    type Features: Features;
 
     #[inline]
     fn new(value: Self::Target, modulus: Self::Target) -> Self::Target {
@@ -243,26 +248,6 @@ pub trait Impl {
     #[inline]
     fn get(value: Self::Target, _modulus: Self::Target) -> Self::Target {
         value
-    }
-
-    #[inline]
-    fn plus(lhs: Self::Target, raw: Self::Target, modulus: Self::Target) -> Self::Target {
-        Self::new(lhs + raw, modulus)
-    }
-
-    #[inline]
-    fn minus(lhs: Self::Target, raw: Self::Target, modulus: Self::Target) -> Self::Target {
-        Self::sub(lhs, Self::new(raw, modulus), modulus)
-    }
-
-    #[inline]
-    fn times(lhs: Self::Target, raw: Self::Target, modulus: Self::Target) -> Self::Target {
-        Self::new(lhs * raw, modulus)
-    }
-
-    #[inline]
-    fn obelus(lhs: Self::Target, raw: Self::Target, modulus: Self::Target) -> Self::Target {
-        Self::div(lhs, Self::new(raw, modulus), modulus)
     }
 
     #[inline]
@@ -314,17 +299,26 @@ pub trait Impl {
     }
 
     #[inline]
-    fn neg(value: Self::Target, modulus: Self::Target) -> Self::Target {
+    fn neg(value: Self::Target, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<Subtraction = True>,
+    {
         modulus - value
     }
 
     #[inline]
-    fn add(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+    fn add(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<Addition = True>,
+    {
         Self::new(lhs + rhs, modulus)
     }
 
     #[inline]
-    fn sub(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+    fn sub(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<Subtraction = True>,
+    {
         let acc = if lhs < rhs {
             modulus + lhs - rhs
         } else {
@@ -334,12 +328,18 @@ pub trait Impl {
     }
 
     #[inline]
-    fn mul(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+    fn mul(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<Multiplication = True>,
+    {
         Self::new(lhs * rhs, modulus)
     }
 
     #[inline]
-    fn div(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+    fn div(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<Division = True>,
+    {
         if rhs == Self::Target::zero() {
             panic!("attempt to divide by zero");
         }
@@ -348,7 +348,10 @@ pub trait Impl {
     }
 
     #[inline]
-    fn rem(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+    fn rem(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<Division = True>,
+    {
         if rhs == Self::Target::zero() {
             panic!("attempt to calculate the remainder with a divisor of zero");
         }
@@ -359,7 +362,10 @@ pub trait Impl {
     }
 
     #[inline]
-    fn inv(value: Self::Target, modulus: Self::Target) -> Self::Target {
+    fn inv(value: Self::Target, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<Division = True>,
+    {
         Self::div(Self::Target::one(), value, modulus)
     }
 
@@ -368,7 +374,11 @@ pub trait Impl {
         str: &str,
         radix: u32,
         modulus: Self::Target,
-    ) -> Result<Self::Target, ParseIntError> {
+    ) -> Result<Self::Target, ParseIntError>
+    where
+        Self::Features:
+            Features<Addition = True, Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::Target::from_str_radix(str, radix).map(|v| Self::new(v, modulus))
     }
 
@@ -383,57 +393,90 @@ pub trait Impl {
     }
 
     #[inline]
-    fn zero(_modulus: Self::Target) -> Self::Target {
+    fn zero(_modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<Addition = True>,
+    {
         Self::Target::zero()
     }
 
     #[inline]
-    fn is_zero(value: Self::Target, _modulus: Self::Target) -> bool {
+    fn is_zero(value: Self::Target, _modulus: Self::Target) -> bool
+    where
+        Self::Features: Features<Addition = True>,
+    {
         value == Self::Target::zero()
     }
 
     #[inline]
-    fn one(_modulus: Self::Target) -> Self::Target {
+    fn one(_modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<Multiplication = True>,
+    {
         Self::Target::one()
     }
 
     #[inline]
-    fn is_one(value: Self::Target, _modulus: Self::Target) -> bool {
+    fn is_one(value: Self::Target, _modulus: Self::Target) -> bool
+    where
+        Self::Features: Features<Multiplication = True>,
+    {
         value == Self::Target::one()
     }
 
     #[inline]
-    fn from_i64(value: i64, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_i64(value: i64, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
     #[inline]
-    fn from_u64(value: u64, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_u64(value: u64, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
     #[inline]
-    fn from_isize(value: isize, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_isize(value: isize, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
     #[inline]
-    fn from_i8(value: i8, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_i8(value: i8, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
     #[inline]
-    fn from_i16(value: i16, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_i16(value: i16, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
     #[inline]
-    fn from_i32(value: i32, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_i32(value: i32, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
     #[inline]
-    fn from_i128(value: i128, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_i128(value: i128, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         if value < 0 {
             Self::from_u128((-value).to_u128()?, modulus).map(|v| Self::neg(v, modulus))
         } else {
@@ -442,27 +485,42 @@ pub trait Impl {
     }
 
     #[inline]
-    fn from_usize(value: usize, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_usize(value: usize, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
     #[inline]
-    fn from_u8(value: u8, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_u8(value: u8, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
     #[inline]
-    fn from_u16(value: u16, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_u16(value: u16, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
     #[inline]
-    fn from_u32(value: u32, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_u32(value: u32, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
     #[inline]
-    fn from_u128(mut value: u128, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_u128(mut value: u128, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         let modulus = modulus.to_u128()?;
         if value >= modulus {
             value %= modulus;
@@ -471,7 +529,10 @@ pub trait Impl {
     }
 
     #[inline]
-    fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Target) -> Option<Self::Target> {
+    fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+    {
         let (man, exp, sign) = value.integer_decode();
         let acc = Self::mul(
             Self::from_u64(man, modulus)?,
@@ -485,7 +546,10 @@ pub trait Impl {
     }
 
     #[inline]
-    fn checked_neg(value: Self::Target, modulus: Self::Target) -> Option<Self::Target> {
+    fn checked_neg(value: Self::Target, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True>,
+    {
         Some(Self::neg(value, modulus))
     }
 
@@ -494,7 +558,10 @@ pub trait Impl {
         lhs: Self::Target,
         rhs: Self::Target,
         modulus: Self::Target,
-    ) -> Option<Self::Target> {
+    ) -> Option<Self::Target>
+    where
+        Self::Features: Features<Addition = True>,
+    {
         lhs.checked_add(&rhs).map(|v| Self::new(v, modulus))
     }
 
@@ -503,7 +570,10 @@ pub trait Impl {
         lhs: Self::Target,
         rhs: Self::Target,
         modulus: Self::Target,
-    ) -> Option<Self::Target> {
+    ) -> Option<Self::Target>
+    where
+        Self::Features: Features<Subtraction = True>,
+    {
         (lhs + modulus)
             .checked_sub(&rhs)
             .map(|v| Self::new(v, modulus))
@@ -514,7 +584,10 @@ pub trait Impl {
         lhs: Self::Target,
         rhs: Self::Target,
         modulus: Self::Target,
-    ) -> Option<Self::Target> {
+    ) -> Option<Self::Target>
+    where
+        Self::Features: Features<Multiplication = True>,
+    {
         lhs.checked_mul(&rhs).map(|v| Self::new(v, modulus))
     }
 
@@ -523,7 +596,10 @@ pub trait Impl {
         lhs: Self::Target,
         rhs: Self::Target,
         modulus: Self::Target,
-    ) -> Option<Self::Target> {
+    ) -> Option<Self::Target>
+    where
+        Self::Features: Features<Division = True>,
+    {
         #[allow(clippy::many_single_char_names)]
         fn egcd(a: i128, b: i128) -> (i128, i128, i128) {
             if a == 0 {
@@ -573,7 +649,10 @@ pub trait Impl {
         base: Self::Target,
         exp: E,
         modulus: Self::Target,
-    ) -> Self::Target {
+    ) -> Self::Target
+    where
+        Self::Features: Features<Multiplication = True>,
+    {
         let (mut base, mut exp, mut acc) = (base, exp, Self::Target::one());
 
         while exp > E::zero() {
@@ -592,7 +671,10 @@ pub trait Impl {
         base: Self::Target,
         exp: E,
         modulus: Self::Target,
-    ) -> Self::Target {
+    ) -> Self::Target
+    where
+        Self::Features: Features<Multiplication = True, Division = True>,
+    {
         let (mut base, mut exp, mut acc) = (base, exp, Self::Target::one());
 
         let exp_neg = exp < E::zero();
@@ -623,6 +705,7 @@ pub enum DefaultImpl<T: UnsignedPrimitive> {
 
 impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
     type Target = T;
+    type Features = DefaultFeatures;
 }
 
 /// A modular arithmetic integer type which modulus is **a constant**.
@@ -732,10 +815,6 @@ impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
     crate::derive::new,
     crate::derive::new_unchecked,
     crate::derive::get,
-    crate::derive::plus,
-    crate::derive::minus,
-    crate::derive::times,
-    crate::derive::obelus,
     crate::derive::Clone,
     crate::derive::Copy,
     crate::derive::Default,
@@ -856,10 +935,6 @@ pub mod field_param {
     /// assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
     /// ```
     #[derive(
-        crate::derive::plus,
-        crate::derive::minus,
-        crate::derive::times,
-        crate::derive::obelus,
         crate::derive::Clone,
         crate::derive::Copy,
         crate::derive::PartialEq,
@@ -1009,10 +1084,6 @@ pub mod thread_local {
         crate::derive::new,
         crate::derive::new_unchecked,
         crate::derive::get,
-        crate::derive::plus,
-        crate::derive::minus,
-        crate::derive::times,
-        crate::derive::obelus,
         crate::derive::Clone,
         crate::derive::Copy,
         crate::derive::Default,
@@ -1247,14 +1318,6 @@ pub mod derive {
 
     pub use modtype_derive::get;
 
-    pub use modtype_derive::plus;
-
-    pub use modtype_derive::minus;
-
-    pub use modtype_derive::times;
-
-    pub use modtype_derive::obelus;
-
     pub use modtype_derive::From;
 
     pub use modtype_derive::Into;
@@ -1330,4 +1393,42 @@ pub mod derive {
     pub use modtype_derive::CheckedRem;
 
     pub use modtype_derive::Pow;
+}
+
+/// Features.
+pub mod features {
+    /// Features.
+    pub trait Features {
+        type Addition: TypedBool;
+        type Subtraction: TypedBool;
+        type Multiplication: TypedBool;
+        type Division: TypedBool;
+    }
+
+    /// The default features.
+    pub enum DefaultFeatures {}
+
+    impl Features for DefaultFeatures {
+        type Addition = True;
+        type Subtraction = True;
+        type Multiplication = True;
+        type Division = True;
+    }
+
+    /// Type level boolean.
+    pub trait TypedBool {}
+
+    /// A [`TypedBool`] which represents "true".
+    ///
+    /// [`TypedBool`]: ./trait.TypedBool.html
+    pub enum True {}
+
+    impl TypedBool for True {}
+
+    /// A [`TypedBool`] which represents "false".
+    ///
+    /// [`TypedBool`]: ./trait.TypedBool.html
+    pub enum False {}
+
+    impl TypedBool for False {}
 }

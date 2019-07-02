@@ -33,6 +33,36 @@ pub(crate) struct Context {
 }
 
 impl Context {
+    fn with_features(&self, features: &[Ident], generics: &Generics) -> Generics {
+        let Self {
+            implementation,
+            modtype,
+            ..
+        } = self;
+
+        let bindings = {
+            let mut bindings = quote!();
+            for feature in features {
+                if !bindings.is_empty() {
+                    bindings.extend(quote!(,));
+                }
+                bindings.extend(quote!(#feature = #modtype::True));
+            }
+            bindings
+        };
+
+        let mut generics = generics.clone();
+        generics
+            .where_clause
+            .get_or_insert_with(|| parse_quote!(where))
+            .predicates
+            .push(parse_quote! {
+                <#implementation as #modtype::Impl>::Features: #modtype::Features<#bindings>
+            });
+
+        generics
+    }
+
     fn struct_expr(&self, path_is_self: bool, value_expr: Option<Expr>) -> ExprStruct {
         let Self {
             std,
@@ -105,9 +135,6 @@ impl Context {
             let #field_ident = <#implementation as #modtype::Impl>::#method(#(#args, )*)?;
         };
         let mut update_copy = quote! {
-            fn static_assert_copy<T: #std::marker::Copy>() {}
-            static_assert_copy::<Self>();
-
             let #field_ident = <#implementation as #modtype::Impl>::#method(#(#args, )*)?;
         };
 

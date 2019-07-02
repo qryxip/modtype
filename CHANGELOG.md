@@ -8,6 +8,7 @@
 
 ### Changed
 
+- Introduce `Features`.
 - Modify the default `Impl::rem`.
 - Rename `Impl::Uint` to `Target`.
 
