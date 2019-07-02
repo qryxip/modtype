@@ -6,7 +6,11 @@ use quote::quote;
 use syn::parse_quote;
 
 impl Context {
-    pub(crate) fn derive_num(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_num(&self) -> proc_macro2::TokenStream {
+        if self.non_static_modulus {
+            return quote!();
+        }
+
         let Self {
             modulus,
             implementation,
@@ -31,7 +35,7 @@ impl Context {
 
         let struct_expr = self.struct_expr(true, None);
 
-        quote!(
+        quote! {
             impl#impl_generics #num_traits::Num for #struct_ident#ty_generics
             #where_clause
             {
@@ -47,7 +51,6 @@ impl Context {
                     Ok(#struct_expr)
                 }
             }
-        )
-        .into()
+        }
     }
 }

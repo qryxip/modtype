@@ -1,4 +1,3 @@
-mod methods;
 mod num;
 mod std;
 
@@ -24,7 +23,7 @@ pub(crate) struct Context {
     num_traits: Path,
     num_bigint: Path,
     modtype: Path,
-    struct_vis: Visibility,
+    non_static_modulus: bool,
     struct_ident: Ident,
     generics: Generics,
     field_ident: Ident,
@@ -198,6 +197,14 @@ impl TryFrom<DeriveInput> for Context {
             }
         }
 
+        fn put_true(word: Span, dist: &mut bool) -> syn::Result<()> {
+            if mem::replace(dist, true) {
+                Err(syn::Error::new(word, "multiple definitions"))
+            } else {
+                Ok(())
+            }
+        }
+
         trait SpannedExt {
             fn to_error(&self, mes: impl ::std::fmt::Display) -> syn::Error;
         }
@@ -210,10 +217,10 @@ impl TryFrom<DeriveInput> for Context {
 
         let DeriveInput {
             attrs,
-            vis: struct_vis,
             ident: struct_ident,
             generics,
             data,
+            ..
         } = input;
 
         let mut modulus = None;
@@ -223,6 +230,7 @@ impl TryFrom<DeriveInput> for Context {
         let mut num_integer = None;
         let mut num_bigint = None;
         let mut modtype = None;
+        let mut non_static_modulus = false;
 
         fn error_on_ident(ident: &Ident) -> syn::Error {
             match ident.to_string().as_ref() {
@@ -233,13 +241,17 @@ impl TryFrom<DeriveInput> for Context {
                 "num_integer" => ident.to_error("expected `num_integer = $LitStr`"),
                 "num_bigint" => ident.to_error("expected `num_bigint = $LitStr`"),
                 "modtype" => ident.to_error("expected `modtype = $LitStr`"),
+                "non_static_modulus" => ident.to_error("expected `non_static_modulus`"),
                 _ => ident.to_error("unknown identifier"),
             }
         }
 
-        fn on_word(word: &Ident) -> syn::Result<()> {
-            Err(error_on_ident(word))
-        }
+        let mut on_word = |word: &Ident| -> syn::Result<()> {
+            match word.to_string().as_ref() {
+                "non_static_modulus" => put_true(word.span(), &mut non_static_modulus),
+                _ => Err(error_on_ident(word)),
+            }
+        };
 
         fn on_list(list: &MetaList) -> syn::Result<()> {
             Err(error_on_ident(&list.ident))
@@ -349,7 +361,7 @@ impl TryFrom<DeriveInput> for Context {
             num_traits,
             num_bigint,
             modtype,
-            struct_vis,
+            non_static_modulus,
             struct_ident,
             generics,
             field_ident,

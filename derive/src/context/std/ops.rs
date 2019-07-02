@@ -4,7 +4,7 @@ use quote::quote;
 use syn::{parse_quote, Ident};
 
 impl Context {
-    pub(crate) fn derive_deref(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_deref(&self) -> proc_macro2::TokenStream {
         let Context {
             std,
             struct_ident,
@@ -15,7 +15,7 @@ impl Context {
         } = self;
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        quote!(
+        quote! {
             impl#impl_generics #std::ops::Deref for #struct_ident#ty_generics
             #where_clause
             {
@@ -26,11 +26,10 @@ impl Context {
                     &self.#field_ident
                 }
             }
-        )
-        .into()
+        }
     }
 
-    pub(crate) fn derive_neg(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_neg(&self) -> proc_macro2::TokenStream {
         let Context {
             modulus,
             std,
@@ -47,7 +46,7 @@ impl Context {
             &[parse_quote!(self.#field_ident), modulus.clone()],
         );
 
-        quote!(
+        quote! {
             impl#impl_generics #std::ops::Neg for #struct_ident#ty_generics
             #where_clause
             {
@@ -69,15 +68,14 @@ impl Context {
                     #struct_update_deref
                 }
             }
-        )
-        .into()
+        }
     }
 
-    pub(crate) fn derive_add(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_add(&self) -> proc_macro2::TokenStream {
         self.derive_bin(parse_quote!(Add), parse_quote!(add), parse_quote!(Addition))
     }
 
-    pub(crate) fn derive_add_assign(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_add_assign(&self) -> proc_macro2::TokenStream {
         self.derive_bin_assign(
             parse_quote!(AddAssign),
             parse_quote!(add_assign),
@@ -86,7 +84,7 @@ impl Context {
         )
     }
 
-    pub(crate) fn derive_sub(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_sub(&self) -> proc_macro2::TokenStream {
         self.derive_bin(
             parse_quote!(Sub),
             parse_quote!(sub),
@@ -94,7 +92,7 @@ impl Context {
         )
     }
 
-    pub(crate) fn derive_sub_assign(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_sub_assign(&self) -> proc_macro2::TokenStream {
         self.derive_bin_assign(
             parse_quote!(SubAssign),
             parse_quote!(sub_assign),
@@ -103,7 +101,7 @@ impl Context {
         )
     }
 
-    pub(crate) fn derive_mul(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_mul(&self) -> proc_macro2::TokenStream {
         self.derive_bin(
             parse_quote!(Mul),
             parse_quote!(mul),
@@ -111,7 +109,7 @@ impl Context {
         )
     }
 
-    pub(crate) fn derive_mul_assign(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_mul_assign(&self) -> proc_macro2::TokenStream {
         self.derive_bin_assign(
             parse_quote!(MulAssign),
             parse_quote!(mul_assign),
@@ -120,11 +118,11 @@ impl Context {
         )
     }
 
-    pub(crate) fn derive_div(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_div(&self) -> proc_macro2::TokenStream {
         self.derive_bin(parse_quote!(Div), parse_quote!(div), parse_quote!(Division))
     }
 
-    pub(crate) fn derive_div_assign(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_div_assign(&self) -> proc_macro2::TokenStream {
         self.derive_bin_assign(
             parse_quote!(DivAssign),
             parse_quote!(div_assign),
@@ -133,11 +131,11 @@ impl Context {
         )
     }
 
-    pub(crate) fn derive_rem(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_rem(&self) -> proc_macro2::TokenStream {
         self.derive_bin(parse_quote!(Rem), parse_quote!(rem), parse_quote!(Division))
     }
 
-    pub(crate) fn derive_rem_assign(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_rem_assign(&self) -> proc_macro2::TokenStream {
         self.derive_bin_assign(
             parse_quote!(RemAssign),
             parse_quote!(rem_assign),
@@ -151,7 +149,7 @@ impl Context {
         trait_ident: Ident,
         method: Ident,
         feature: Ident,
-    ) -> proc_macro::TokenStream {
+    ) -> proc_macro2::TokenStream {
         let Context {
             modulus,
             std,
@@ -172,7 +170,7 @@ impl Context {
             ],
         );
 
-        quote!(
+        quote! {
             impl
                 #impl_generics
             #std::ops::#trait_ident<#struct_ident#ty_generics> for #struct_ident#ty_generics
@@ -224,8 +222,7 @@ impl Context {
                     #struct_update_deref
                 }
             }
-        )
-        .into()
+        }
     }
 
     fn derive_bin_assign(
@@ -234,7 +231,7 @@ impl Context {
         fn_ident: Ident,
         impl_method: Ident,
         feature: Ident,
-    ) -> proc_macro::TokenStream {
+    ) -> proc_macro2::TokenStream {
         let Context {
             modulus,
             std,
@@ -255,7 +252,7 @@ impl Context {
             ],
         );
 
-        quote!(
+        quote! {
             impl#impl_generics #std::ops::#trait_ident<Self> for #struct_ident#ty_generics
             #where_clause
             {
@@ -273,7 +270,6 @@ impl Context {
                     *self = #update;
                 }
             }
-        )
-        .into()
+        }
     }
 }

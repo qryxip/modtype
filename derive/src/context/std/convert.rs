@@ -4,7 +4,11 @@ use quote::quote;
 use syn::parse_quote;
 
 impl Context {
-    pub(crate) fn derive_from(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_from(&self) -> proc_macro2::TokenStream {
+        if self.non_static_modulus {
+            return quote!();
+        }
+
         let Context {
             modulus,
             implementation,
@@ -63,30 +67,6 @@ impl Context {
                 }
             }
         });
-        acc.into()
-    }
-
-    pub(crate) fn derive_into(&self) -> proc_macro::TokenStream {
-        let Context {
-            std,
-            struct_ident,
-            generics,
-            field_ident,
-            field_ty,
-            ..
-        } = self;
-        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-        quote!(
-            impl #impl_generics #std::convert::From<#struct_ident#ty_generics> for #field_ty
-            #where_clause
-            {
-                #[inline]
-                fn from(from: #struct_ident#ty_generics) -> Self {
-                    from.#field_ident
-                }
-            }
-        )
-        .into()
+        acc
     }
 }

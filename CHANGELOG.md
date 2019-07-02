@@ -9,6 +9,7 @@
 ### Changed
 
 - Introduce `Features`.
+- Unify derive macros.
 - Modify the default `Impl::rem`.
 - Rename `Impl::Uint` to `Target`.
 

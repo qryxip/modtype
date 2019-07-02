@@ -4,7 +4,11 @@ use quote::quote;
 use syn::parse_quote;
 
 impl Context {
-    pub(crate) fn derive_bounded(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_bounded(&self) -> proc_macro2::TokenStream {
+        if self.non_static_modulus {
+            return quote!();
+        }
+
         let Self {
             modulus,
             implementation,
@@ -21,7 +25,7 @@ impl Context {
         let max_value = parse_quote!(<#implementation as #modtype::Impl>::max_value(#modulus));
         let max_value = self.struct_expr(true, Some(max_value));
 
-        quote!(
+        quote! {
             impl#impl_generics #num_traits::Bounded for #struct_ident#ty_generics
             #where_clause
             {
@@ -35,7 +39,6 @@ impl Context {
                     #max_value
                 }
             }
-        )
-        .into()
+        }
     }
 }

@@ -64,7 +64,7 @@
 //! [`modtype::Impl`]: ./trait.Impl.html
 //! [`use_modtype`]: https://docs.rs/modtype_derive/0.5/modtype_derive/attr.use_modtype.html
 
-pub use modtype_derive::use_modtype;
+pub use modtype_derive::{use_modtype, ConstValue, ModType};
 
 #[doc(inline)]
 pub use crate::features::{DefaultFeatures, False, Features, True};
@@ -192,8 +192,7 @@ impl FloatPrimitive for f64 {}
 /// # Example
 ///
 /// ```
-/// use modtype::derive::ConstValue;
-/// use modtype::ConstValue as _;
+/// use modtype::ConstValue;
 ///
 /// #[derive(ConstValue)]
 /// #[modtype(const_value = 17u32)]
@@ -811,48 +810,7 @@ impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
 /// assert_eq!(F(3).pow(-2i128), F(4));
 /// assert_eq!(F(3).pow(-2isize), F(4));
 /// ```
-#[derive(
-    crate::derive::new,
-    crate::derive::new_unchecked,
-    crate::derive::get,
-    crate::derive::Clone,
-    crate::derive::Copy,
-    crate::derive::Default,
-    crate::derive::PartialEq,
-    crate::derive::Eq,
-    crate::derive::PartialOrd,
-    crate::derive::Ord,
-    crate::derive::From,
-    crate::derive::Display,
-    crate::derive::Debug,
-    crate::derive::FromStr,
-    crate::derive::Deref,
-    crate::derive::Neg,
-    crate::derive::Add,
-    crate::derive::AddAssign,
-    crate::derive::Sub,
-    crate::derive::SubAssign,
-    crate::derive::Mul,
-    crate::derive::MulAssign,
-    crate::derive::Div,
-    crate::derive::DivAssign,
-    crate::derive::Rem,
-    crate::derive::RemAssign,
-    crate::derive::Num,
-    crate::derive::Unsigned,
-    crate::derive::Bounded,
-    crate::derive::Zero,
-    crate::derive::One,
-    crate::derive::FromPrimitive,
-    crate::derive::Inv,
-    crate::derive::CheckedNeg,
-    crate::derive::CheckedAdd,
-    crate::derive::CheckedSub,
-    crate::derive::CheckedMul,
-    crate::derive::CheckedDiv,
-    crate::derive::CheckedRem,
-    crate::derive::Pow,
-)]
+#[derive(ModType)]
 #[modtype(modulus = "M::VALUE", implementation = "I", modtype = "crate")]
 pub struct Z<T: UnsignedPrimitive, I: Impl<Target = T>, M: ConstValue<Value = T>> {
     #[modtype(value)]
@@ -865,6 +823,36 @@ impl<T: UnsignedPrimitive, I: Impl<Target = T>, M: ConstValue<Value = T>> Z<T, I
     #[inline]
     pub fn modulus() -> T {
         <M as ConstValue>::VALUE
+    }
+
+    /// Creates a new `Z`.
+    #[inline]
+    pub fn new(value: T) -> Self {
+        Self {
+            value: I::new(value, Self::modulus()),
+            phantom: PhantomData,
+        }
+    }
+
+    /// Creates a new `Z` without checking `value`.
+    #[inline]
+    pub fn new_unchecked(value: T) -> Self {
+        Self {
+            value,
+            phantom: PhantomData,
+        }
+    }
+
+    /// Gets the inner value.
+    #[inline]
+    pub fn get(self) -> T {
+        self.value
+    }
+
+    /// Returns a mutable reference to the inner value.
+    #[inline]
+    pub fn get_mut_unchecked(&mut self) -> &mut T {
+        &mut self.value
     }
 }
 
@@ -918,7 +906,7 @@ pub mod usize {
 
 /// A modular arithmetic integer type which modulus is **a `struct` field**.
 pub mod field_param {
-    use crate::{Impl, UnsignedPrimitive};
+    use crate::{Impl, ModType, UnsignedPrimitive};
 
     use std::marker::PhantomData;
 
@@ -934,37 +922,13 @@ pub mod field_param {
     ///
     /// assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
     /// ```
-    #[derive(
-        crate::derive::Clone,
-        crate::derive::Copy,
-        crate::derive::PartialEq,
-        crate::derive::Eq,
-        crate::derive::PartialOrd,
-        crate::derive::Ord,
-        crate::derive::Display,
-        crate::derive::Debug,
-        crate::derive::Deref,
-        crate::derive::Neg,
-        crate::derive::Add,
-        crate::derive::AddAssign,
-        crate::derive::Sub,
-        crate::derive::SubAssign,
-        crate::derive::Mul,
-        crate::derive::MulAssign,
-        crate::derive::Div,
-        crate::derive::DivAssign,
-        crate::derive::Rem,
-        crate::derive::RemAssign,
-        crate::derive::Inv,
-        crate::derive::CheckedNeg,
-        crate::derive::CheckedAdd,
-        crate::derive::CheckedSub,
-        crate::derive::CheckedMul,
-        crate::derive::CheckedDiv,
-        crate::derive::CheckedRem,
-        crate::derive::Pow,
+    #[derive(ModType)]
+    #[modtype(
+        modulus = "self.modulus",
+        implementation = "I",
+        modtype = "crate",
+        non_static_modulus
     )]
-    #[modtype(modulus = "self.modulus", implementation = "I", modtype = "crate")]
     pub struct Z<T: UnsignedPrimitive, I: Impl<Target = T>> {
         #[modtype(value)]
         value: T,
@@ -996,6 +960,7 @@ pub mod field_param {
         /// Same as `move |n| Self::`[`new`]`(n, modulus)`.
         ///
         /// [`new`]: ./struct.Z.html#method.new
+        #[inline]
         pub fn factory(modulus: T) -> impl Fn(T) -> Self {
             move |n| Self::new(n, modulus)
         }
@@ -1064,7 +1029,7 @@ pub mod field_param {
 
 /// A modular arithmetic integer type which modulus is **`thread_local`**.
 pub mod thread_local {
-    use crate::{Impl, UnsignedPrimitive};
+    use crate::{Impl, ModType, UnsignedPrimitive};
 
     use std::cell::UnsafeCell;
     use std::marker::PhantomData;
@@ -1080,48 +1045,7 @@ pub mod thread_local {
     ///     assert_eq!(Z(42) + Z(15), Z(0));
     /// });
     /// ```
-    #[derive(
-        crate::derive::new,
-        crate::derive::new_unchecked,
-        crate::derive::get,
-        crate::derive::Clone,
-        crate::derive::Copy,
-        crate::derive::Default,
-        crate::derive::PartialEq,
-        crate::derive::Eq,
-        crate::derive::PartialOrd,
-        crate::derive::Ord,
-        crate::derive::From,
-        crate::derive::Display,
-        crate::derive::Debug,
-        crate::derive::FromStr,
-        crate::derive::Deref,
-        crate::derive::Neg,
-        crate::derive::Add,
-        crate::derive::AddAssign,
-        crate::derive::Sub,
-        crate::derive::SubAssign,
-        crate::derive::Mul,
-        crate::derive::MulAssign,
-        crate::derive::Div,
-        crate::derive::DivAssign,
-        crate::derive::Rem,
-        crate::derive::RemAssign,
-        crate::derive::Num,
-        crate::derive::Unsigned,
-        crate::derive::Bounded,
-        crate::derive::Zero,
-        crate::derive::One,
-        crate::derive::FromPrimitive,
-        crate::derive::Inv,
-        crate::derive::CheckedNeg,
-        crate::derive::CheckedAdd,
-        crate::derive::CheckedSub,
-        crate::derive::CheckedMul,
-        crate::derive::CheckedDiv,
-        crate::derive::CheckedRem,
-        crate::derive::Pow,
-    )]
+    #[derive(ModType)]
     #[modtype(
         modulus = "unsafe { T::modulus() }",
         implementation = "I",
@@ -1138,6 +1062,36 @@ pub mod thread_local {
         #[inline]
         pub fn modulus() -> T {
             unsafe { T::modulus() }
+        }
+
+        /// Creates a new `Z`.
+        #[inline]
+        pub fn new(value: T) -> Self {
+            Self {
+                value: I::new(value, Self::modulus()),
+                phantom: PhantomData,
+            }
+        }
+
+        /// Creates a new `Z` without checking `value`.
+        #[inline]
+        pub fn new_unchecked(value: T) -> Self {
+            Self {
+                value,
+                phantom: PhantomData,
+            }
+        }
+
+        /// Gets the inner value.
+        #[inline]
+        pub fn get(self) -> T {
+            self.value
+        }
+
+        /// Returns a mutable reference to the inner value.
+        #[inline]
+        pub fn get_mut_unchecked(&mut self) -> &mut T {
+            &mut self.value
         }
     }
 
@@ -1269,130 +1223,6 @@ pub mod thread_local {
         /// A type alias.
         pub type Z = crate::thread_local::Z<usize, DefaultImpl<usize>>;
     }
-}
-
-pub mod derive {
-    //! Derive macros.
-    //!
-    //! # Attributes
-    //!
-    //! ## Struct
-    //!
-    //! | Name             | Format                                                                     | Optional                         |
-    //! | :--------------- | :------------------------------------------------------------------------- | :------------------------------- |
-    //! | `modulus`        | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`]   | No                               |
-    //! | `implementation` | `implementation = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`] | No                               |
-    //! | `std`            | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]            | Yes (default = `::std`)          |
-    //! | `num_traits`     | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]     | Yes (default = `::num::traits`)  |
-    //! | `num_integer`    | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]    | Yes (default = `::num::integer`) |
-    //! | `num_bigint`     | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]     | Yes (default = `::num::bigint`)  |
-    //! | `modtype`        | `modtype = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]        | Yes (default = `::modtype`)      |
-    //!
-    //! ## Field
-    //!
-    //! | Name                 | Format  | Optional |
-    //! | :------------------- | :------ | :------- |
-    //! | `value`              | `value` | No       |
-    //!
-    //! # [`ConstValue`]
-    //!
-    //! ## Struct
-    //!
-    //! | Name                 | Format                                                       | Optional  |
-    //! | :------------------- | :----------------------------------------------------------- | :-------- |
-    //! | `const_value`        | `const_value = $`[`LitInt`] where `$`[`LitInt`] has a suffix | No        |
-    //!
-    //! [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
-    //! [`Lit`]: https://docs.rs/syn/0.15/syn/enum.Lit.html
-    //! [`LitStr`]: https://docs.rs/syn/0.15/syn/struct.LitStr.html
-    //! [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
-    //! [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
-    //! [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
-    //! [`ConstValue`]: https://docs.rs/modtype_derive/0.5/modtype_derive/derive.ConstValue.html
-
-    pub use modtype_derive::ConstValue;
-
-    pub use modtype_derive::new;
-
-    pub use modtype_derive::new_unchecked;
-
-    pub use modtype_derive::get;
-
-    pub use modtype_derive::From;
-
-    pub use modtype_derive::Into;
-
-    pub use modtype_derive::ModtypeClone as Clone;
-
-    pub use modtype_derive::ModtypeCopy as Copy;
-
-    pub use modtype_derive::ModtypeDefault as Default;
-
-    pub use modtype_derive::ModtypePartialEq as PartialEq;
-
-    pub use modtype_derive::ModtypeEq as Eq;
-
-    pub use modtype_derive::ModtypePartialOrd as PartialOrd;
-
-    pub use modtype_derive::ModtypeOrd as Ord;
-
-    pub use modtype_derive::Display;
-
-    pub use modtype_derive::ModtypeDebug as Debug;
-
-    pub use modtype_derive::FromStr;
-
-    pub use modtype_derive::Deref;
-
-    pub use modtype_derive::Neg;
-
-    pub use modtype_derive::Add;
-
-    pub use modtype_derive::AddAssign;
-
-    pub use modtype_derive::Sub;
-
-    pub use modtype_derive::SubAssign;
-
-    pub use modtype_derive::Mul;
-
-    pub use modtype_derive::MulAssign;
-
-    pub use modtype_derive::Div;
-
-    pub use modtype_derive::DivAssign;
-
-    pub use modtype_derive::Rem;
-
-    pub use modtype_derive::RemAssign;
-
-    pub use modtype_derive::Num;
-
-    pub use modtype_derive::Unsigned;
-
-    pub use modtype_derive::Bounded;
-
-    pub use modtype_derive::Zero;
-
-    pub use modtype_derive::One;
-
-    pub use modtype_derive::FromPrimitive;
-
-    pub use modtype_derive::Inv;
-
-    pub use modtype_derive::CheckedNeg;
-
-    pub use modtype_derive::CheckedAdd;
-
-    pub use modtype_derive::CheckedSub;
-
-    pub use modtype_derive::CheckedMul;
-
-    pub use modtype_derive::CheckedDiv;
-
-    pub use modtype_derive::CheckedRem;
-
-    pub use modtype_derive::Pow;
 }
 
 /// Features.

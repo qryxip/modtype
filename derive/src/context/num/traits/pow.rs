@@ -4,7 +4,7 @@ use quote::quote;
 use syn::{parse_quote, Ident};
 
 impl Context {
-    pub(crate) fn derive_pow(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_pow(&self) -> proc_macro2::TokenStream {
         let Context {
             modulus,
             num_traits,
@@ -101,6 +101,6 @@ impl Context {
                 }
             });
         }
-        acc.into()
+        acc
     }
 }

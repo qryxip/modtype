@@ -4,7 +4,11 @@ use quote::quote;
 use syn::parse_quote;
 
 impl Context {
-    pub(crate) fn derive_unsigned(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_unsigned(&self) -> proc_macro2::TokenStream {
+        if self.non_static_modulus {
+            return quote!();
+        }
+
         let Self {
             num_traits,
             struct_ident,
@@ -22,10 +26,9 @@ impl Context {
         );
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        quote!(
+        quote! {
             impl#impl_generics #num_traits::Unsigned for #struct_ident#ty_generics
             #where_clause {}
-        )
-        .into()
+        }
     }
 }

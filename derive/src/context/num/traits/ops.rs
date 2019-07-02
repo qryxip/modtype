@@ -4,7 +4,7 @@ use quote::quote;
 use syn::{parse_quote, Ident};
 
 impl Context {
-    pub(crate) fn derive_inv(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_inv(&self) -> proc_macro2::TokenStream {
         let Context {
             modulus,
             num_traits,
@@ -21,7 +21,7 @@ impl Context {
             &[parse_quote!(self.#field_ident), modulus.clone()],
         );
 
-        quote!(
+        quote! {
             impl#impl_generics #num_traits::Inv for #struct_ident#ty_generics
             #where_clause
             {
@@ -43,11 +43,10 @@ impl Context {
                     #struct_update_deref
                 }
             }
-        )
-        .into()
+        }
     }
 
-    pub(crate) fn derive_checked_neg(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_checked_neg(&self) -> proc_macro2::TokenStream {
         let Context {
             modulus,
             std,
@@ -65,18 +64,17 @@ impl Context {
             &[parse_quote!(self.#field_ident), parse_quote!(#modulus)],
         );
 
-        quote!(
+        quote! {
             impl#impl_generics #num_traits::CheckedNeg for #struct_ident#ty_generics
             #where_clause
             {
                 #[inline]
                 fn checked_neg(&self) -> #std::option::Option<Self> #update
             }
-        )
-        .into()
+        }
     }
 
-    pub(crate) fn derive_checked_add(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_checked_add(&self) -> proc_macro2::TokenStream {
         self.derive_checked_bin(
             parse_quote!(CheckedAdd),
             parse_quote!(checked_add),
@@ -84,7 +82,7 @@ impl Context {
         )
     }
 
-    pub(crate) fn derive_checked_sub(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_checked_sub(&self) -> proc_macro2::TokenStream {
         self.derive_checked_bin(
             parse_quote!(CheckedSub),
             parse_quote!(checked_sub),
@@ -92,7 +90,7 @@ impl Context {
         )
     }
 
-    pub(crate) fn derive_checked_mul(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_checked_mul(&self) -> proc_macro2::TokenStream {
         self.derive_checked_bin(
             parse_quote!(CheckedMul),
             parse_quote!(checked_mul),
@@ -100,7 +98,7 @@ impl Context {
         )
     }
 
-    pub(crate) fn derive_checked_div(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_checked_div(&self) -> proc_macro2::TokenStream {
         self.derive_checked_bin(
             parse_quote!(CheckedDiv),
             parse_quote!(checked_div),
@@ -108,7 +106,7 @@ impl Context {
         )
     }
 
-    pub(crate) fn derive_checked_rem(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_checked_rem(&self) -> proc_macro2::TokenStream {
         self.derive_checked_bin(
             parse_quote!(CheckedRem),
             parse_quote!(checked_rem),
@@ -121,7 +119,7 @@ impl Context {
         trait_ident: Ident,
         method: Ident,
         feature: Ident,
-    ) -> proc_macro::TokenStream {
+    ) -> proc_macro2::TokenStream {
         let Context {
             modulus,
             std,
@@ -143,14 +141,13 @@ impl Context {
             ],
         );
 
-        quote!(
+        quote! {
             impl#impl_generics #num_traits::#trait_ident for #struct_ident#ty_generics
             #where_clause
             {
                 #[inline]
                 fn #method(&self, rhs: &Self) -> #std::option::Option<Self> #update
             }
-        )
-        .into()
+        }
     }
 }
