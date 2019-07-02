@@ -6,6 +6,10 @@
 
 - `{modtype::Z, modtype::thread_local::Z, modtype::field_param}::modulus`
 
+### Changed
+
+- Modify the default `Impl::rem`.
+
 ## [0.5.0] - 2019-06-30Z
 
 ### Added

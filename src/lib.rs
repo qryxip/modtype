@@ -66,8 +66,8 @@
 pub use modtype_derive::use_modtype;
 
 use num::{
-    BigInt, BigUint, CheckedAdd as _, CheckedMul as _, CheckedSub as _, Float, FromPrimitive,
-    Integer, Num, One as _, PrimInt, Signed, ToPrimitive as _, Unsigned, Zero as _,
+    integer, BigInt, BigUint, CheckedAdd as _, CheckedMul as _, CheckedSub as _, Float,
+    FromPrimitive, Integer, Num, One as _, PrimInt, Signed, ToPrimitive as _, Unsigned, Zero as _,
 };
 
 use std::convert::Infallible;
@@ -207,11 +207,27 @@ pub trait ConstValue {
 
 /// Actual implementation.
 ///
-/// Note that the default implementations assumes:
-/// - The inner value is always smaller than the modulus.
+/// Note that the default implementation assumes:
+/// - Given/Return values are always smaller than the modulus.
 /// - The modulus is larger than `1`.
 /// - `modulus + modulus` does not overflow.
 /// - `modulus * modulus` does not overflow.
+/// - If any of the following methods is used, the modulus is a prime.
+///     - [`Div`]`::div` (`/` operator. not [`CheckedDiv`]`::checked_div`)
+///     - [`DivAssign`]`::div_assign` (`/=` operator)
+///     - [`Rem`]`::rem` (`%` operator. not [`CheckedRem`]`::checked_rem`)
+///     - [`RemAssign`]`::rem_assign` (`%=` operator)
+///     - [`Inv`]`::inv`
+///     - [`FromPrimitive`]`::{from_f32, from_f64}`
+///
+/// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
+/// [`CheckedDiv`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedDiv.html
+/// [`DivAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.DivAssign.html
+/// [`Rem`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Rem.html
+/// [`CheckedRem`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedRem.html
+/// [`RemAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.RemAssign.html
+/// [`Inv`]: https://docs.rs/num-traits/0.2/num_traits/ops/inv/trait.Inv.html
+/// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
 pub trait Impl {
     type Uint: UnsignedPrimitive;
 
@@ -307,13 +323,17 @@ pub trait Impl {
         if rhs == Self::Uint::zero() {
             panic!("attempt to divide by zero");
         }
-        Self::checked_div(lhs, rhs, modulus).expect("could not divide. is the modulus is a prime?")
+        Self::checked_div(lhs, rhs, modulus)
+            .expect("could not divide. if the modulus is a prime, THIS IS A BUG.")
     }
 
     #[inline]
-    fn rem(_lhs: Self::Uint, rhs: Self::Uint, _modulus: Self::Uint) -> Self::Uint {
+    fn rem(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Self::Uint {
         if rhs == Self::Uint::zero() {
             panic!("attempt to calculate the remainder with a divisor of zero");
+        }
+        if integer::gcd(rhs, modulus) != Self::Uint::one() {
+            panic!("{}/{} (mod {}) does not exist", lhs, rhs, modulus);
         }
         Self::Uint::zero()
     }
@@ -500,11 +520,11 @@ pub trait Impl {
     }
 
     #[inline]
-    fn checked_rem(_lhs: Self::Uint, rhs: Self::Uint, _modulus: Self::Uint) -> Option<Self::Uint> {
-        if rhs == Self::Uint::zero() {
-            None
-        } else {
+    fn checked_rem(_lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+        if integer::gcd(rhs, modulus) == Self::Uint::one() {
             Some(Self::Uint::zero())
+        } else {
+            None
         }
     }
 
