@@ -18,7 +18,7 @@ use ::std::mem;
 
 pub(crate) struct Context {
     modulus: Expr,
-    implementation: Path,
+    cartridge: Path,
     std: Path,
     num_traits: Path,
     num_bigint: Path,
@@ -34,9 +34,7 @@ pub(crate) struct Context {
 impl Context {
     fn with_features(&self, features: &[Ident], generics: &Generics) -> Generics {
         let Self {
-            implementation,
-            modtype,
-            ..
+            cartridge, modtype, ..
         } = self;
 
         let bindings = {
@@ -56,7 +54,7 @@ impl Context {
             .get_or_insert_with(|| parse_quote!(where))
             .predicates
             .push(parse_quote! {
-                <#implementation as #modtype::Impl>::Features: #modtype::Features<#bindings>
+                <#cartridge as #modtype::Cartridge>::Features: #modtype::Features<#bindings>
             });
 
         generics
@@ -96,7 +94,7 @@ impl Context {
 
     fn struct_update(&self, method: Ident, args: &[Expr]) -> (ExprStruct, ExprStruct) {
         let Self {
-            implementation,
+            cartridge,
             modtype,
             struct_ident,
             field_ident,
@@ -104,7 +102,7 @@ impl Context {
             ..
         } = self;
 
-        let value = quote!(<#implementation as #modtype::Impl>::#method(#(#args, )*));
+        let value = quote!(<#cartridge as #modtype::Cartridge>::#method(#(#args, )*));
 
         if other_fields.is_empty() {
             (
@@ -121,7 +119,7 @@ impl Context {
 
     fn struct_update_option(&self, method: Ident, args: &[Expr]) -> (Block, Block) {
         let Self {
-            implementation,
+            cartridge,
             std,
             modtype,
             struct_ident,
@@ -131,10 +129,10 @@ impl Context {
         } = self;
 
         let mut update_move = quote! {
-            let #field_ident = <#implementation as #modtype::Impl>::#method(#(#args, )*)?;
+            let #field_ident = <#cartridge as #modtype::Cartridge>::#method(#(#args, )*)?;
         };
         let mut update_copy = quote! {
-            let #field_ident = <#implementation as #modtype::Impl>::#method(#(#args, )*)?;
+            let #field_ident = <#cartridge as #modtype::Cartridge>::#method(#(#args, )*)?;
         };
 
         if other_fields.is_empty() {
@@ -224,7 +222,7 @@ impl TryFrom<DeriveInput> for Context {
         } = input;
 
         let mut modulus = None;
-        let mut implementation = None;
+        let mut cartridge = None;
         let mut std = None;
         let mut num_traits = None;
         let mut num_integer = None;
@@ -235,7 +233,7 @@ impl TryFrom<DeriveInput> for Context {
         fn error_on_ident(ident: &Ident) -> syn::Error {
             match ident.to_string().as_ref() {
                 "modulus" => ident.to_error("expected `modulus = $LitStr`"),
-                "implementation" => ident.to_error("expected `implementation = $LitStr`"),
+                "cartridge" => ident.to_error("expected `cartridge = $LitStr`"),
                 "std" => ident.to_error("expected `std = $LitStr`"),
                 "num_traits" => ident.to_error("expected `num_traits = $LitStr`"),
                 "num_integer" => ident.to_error("expected `num_integer = $LitStr`"),
@@ -261,7 +259,7 @@ impl TryFrom<DeriveInput> for Context {
             let MetaNameValue { ident, lit, .. } = name_value;
             match ident.to_string().as_ref() {
                 "modulus" => put_expr(ident.span(), lit, &mut modulus),
-                "implementation" => put_path(ident.span(), lit, &mut implementation),
+                "cartridge" => put_path(ident.span(), lit, &mut cartridge),
                 "std" => put_path(ident.span(), lit, &mut std),
                 "num_traits" => put_path(ident.span(), lit, &mut num_traits),
                 "num_integer" => put_path(ident.span(), lit, &mut num_integer),
@@ -295,8 +293,7 @@ impl TryFrom<DeriveInput> for Context {
         })?;
 
         let modulus = modulus.ok_or_else(|| struct_ident.to_error("`modulus` required"))?;
-        let implementation =
-            implementation.ok_or_else(|| struct_ident.to_error("`implementation` required"))?;
+        let cartridge = cartridge.ok_or_else(|| struct_ident.to_error("`cartridge` required"))?;
 
         let std = std.unwrap_or_else(|| parse_quote!(::std));
         let num_traits = num_traits.unwrap_or_else(|| parse_quote!(::num::traits));
@@ -356,7 +353,7 @@ impl TryFrom<DeriveInput> for Context {
 
         Ok(Self {
             modulus,
-            implementation,
+            cartridge,
             std,
             num_traits,
             num_bigint,

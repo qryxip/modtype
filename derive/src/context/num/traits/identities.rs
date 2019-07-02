@@ -11,7 +11,7 @@ impl Context {
 
         let Context {
             modulus,
-            implementation,
+            cartridge,
             num_traits,
             modtype,
             struct_ident,
@@ -22,7 +22,7 @@ impl Context {
         let generics = self.with_features(&[parse_quote!(Addition)], &generics);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let zero = parse_quote!(<#implementation as #modtype::Impl>::zero(#modulus));
+        let zero = parse_quote!(<#cartridge as #modtype::Cartridge>::zero(#modulus));
         let zero = self.struct_expr(true, Some(zero));
 
         quote! {
@@ -36,7 +36,7 @@ impl Context {
 
                 #[inline]
                 fn is_zero(&self) -> bool {
-                    <#implementation as #modtype::Impl>::is_zero(self.#field_ident, #modulus)
+                    <#cartridge as #modtype::Cartridge>::is_zero(self.#field_ident, #modulus)
                 }
             }
         }
@@ -49,7 +49,7 @@ impl Context {
 
         let Context {
             modulus,
-            implementation,
+            cartridge,
             num_traits,
             modtype,
             struct_ident,
@@ -60,7 +60,7 @@ impl Context {
         let generics = self.with_features(&[parse_quote!(Multiplication)], &generics);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let one = parse_quote!(<#implementation as #modtype::Impl>::one(#modulus));
+        let one = parse_quote!(<#cartridge as #modtype::Cartridge>::one(#modulus));
         let one = self.struct_expr(true, Some(one));
 
         quote! {
@@ -74,7 +74,7 @@ impl Context {
 
                 #[inline]
                 fn is_one(&self) -> bool {
-                    <#implementation as #modtype::Impl>::is_one(self.#field_ident, #modulus)
+                    <#cartridge as #modtype::Cartridge>::is_one(self.#field_ident, #modulus)
                 }
             }
         }

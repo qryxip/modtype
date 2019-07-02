@@ -40,11 +40,11 @@ use std::convert::TryFrom as _;
 /// # Usage
 ///
 /// ```
-/// use modtype::use_modtype;
+/// use modtype::{use_modtype, DefaultModType};
 ///
 /// // #[use_modtype(constant(_1000000007U64), constructor(F))]
 /// #[use_modtype]
-/// type F = modtype::u64::Z<1_000_000_007u64>;
+/// type F = DefaultModType<1_000_000_007u64>;
 ///
 /// assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 /// ```
@@ -52,7 +52,9 @@ use std::convert::TryFrom as _;
 /// ↓
 ///
 /// ```
-/// type F = modtype::u64::Z<_1000000007U64>;
+/// use modtype::DefaultModType;
+///
+/// type F = DefaultModType<_1000000007U64>;
 ///
 /// enum _1000000007U64 {}
 ///
@@ -153,7 +155,7 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// | Name                 | Format                                                                     | Optional                         |
 /// | :------------------- | :------------------------------------------------------------------------- | :------------------------------- |
 /// | `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`]   | No                               |
-/// | `implementation`     | `implementation = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`] | No                               |
+/// | `cartridge`          | `cartridge = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]      | No                               |
 /// | `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]            | Yes (default = `::std`)          |
 /// | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]     | Yes (default = `::num::traits`)  |
 /// | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]    | Yes (default = `::num::integer`) |

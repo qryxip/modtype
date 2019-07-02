@@ -5,7 +5,7 @@ use num::BigUint;
 use once_cell::sync::Lazy;
 
 #[use_modtype]
-type F = modtype::u64::Z<1_000_000_007u64>;
+type F = modtype::DefaultModType<1_000_000_007u64>;
 
 #[test]
 fn unsigned() {

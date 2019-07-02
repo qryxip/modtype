@@ -11,7 +11,7 @@ impl Context {
 
         let Context {
             modulus,
-            implementation,
+            cartridge,
             std,
             num_bigint,
             modtype,
@@ -22,7 +22,7 @@ impl Context {
         } = self;
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let value_expr = parse_quote!(<#implementation as #modtype::Impl>::new(from, #modulus));
+        let value_expr = parse_quote!(<#cartridge as #modtype::Cartridge>::new(from, #modulus));
         let struct_expr = self.struct_expr(true, Some(value_expr));
 
         let mut acc = quote! {
@@ -37,7 +37,7 @@ impl Context {
         };
 
         let value_expr =
-            parse_quote!(<#implementation as #modtype::Impl>::from_biguint(from, #modulus));
+            parse_quote!(<#cartridge as #modtype::Cartridge>::from_biguint(from, #modulus));
         let struct_expr = self.struct_expr(true, Some(value_expr));
 
         acc.extend(quote! {
@@ -53,7 +53,7 @@ impl Context {
         });
 
         let value_expr =
-            parse_quote!(<#implementation as #modtype::Impl>::from_bigint(from, #modulus));
+            parse_quote!(<#cartridge as #modtype::Cartridge>::from_bigint(from, #modulus));
         let struct_expr = self.struct_expr(true, Some(value_expr));
 
         acc.extend(quote! {

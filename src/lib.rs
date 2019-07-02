@@ -2,47 +2,46 @@
 //!
 //! # Usage
 //!
-//! ## [`modtype::Z`]
+//! ## [`modtype::ModType`]
 //!
 //! ```
 //! #[modtype::use_modtype]
-//! type F = modtype::u64::Z<1_000_000_007u64>;
+//! type F = modtype::DefaultModType<1_000_000_007u64>;
 //!
 //! assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 //! ```
 //!
-//! ## [`modtype::thread_local::Z`]
+//! ## [`modtype::thread_local::ModType`]
 //!
 //! ```
 //! #[allow(non_snake_case)]
-//! modtype::thread_local::u32::Z::with(57, |Z| {
+//! modtype::thread_local::DefaultModType::with(57u32, |Z| {
 //!     assert_eq!(Z(42) + Z(15), Z(0));
 //! });
 //! ```
 //!
-//! ## [`modtype::field_param::Z`]
+//! ## [`modtype::field_param::ModType`]
 //!
 //! ```
-//! use modtype::field_param::u32::Z;
 //! use num::CheckedDiv as _;
 //!
 //! #[allow(non_snake_case)]
-//! let Z = Z::factory(1000);
+//! let Z = modtype::field_param::DefaultModType::factory(1000u32);
 //!
 //! assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
 //! ```
 //!
 //! # Customization
 //!
-//! `Z`s can be customized via [`modtype::Impl`].
+//! `ModType`s can be customized via [`modtype::Cartridge`].
 //!
 //! ```
 //! #[modtype::use_modtype]
-//! type F = modtype::Z<u64, Impl, 1_000_000_007u64>;
+//! type F = modtype::ModType<u64, Cartridge, 1_000_000_007u64>;
 //!
-//! enum Impl {}
+//! enum Cartridge {}
 //!
-//! impl modtype::Impl for Impl {
+//! impl modtype::Cartridge for Cartridge {
 //!     type Target = u64;
 //!     type Features = modtype::DefaultFeatures;
 //!
@@ -50,24 +49,12 @@
 //! }
 //! ```
 //!
-//! # Attributes for [`use_modtype`]
-//!
-//! | Name          | Format                         | Optional                                                |
-//! | :------------ | :----------------------------- | :------------------------------------------------------ |
-//! | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $value, $type_pascal_case)`) |
-//! | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                          |
-//!
-//! [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
-//! [`modtype::Z`]: ./struct.Z.html
-//! [`modtype::thread_local::Z`]: ./thread_local/struct.Z.html
-//! [`modtype::field_param::Z`]: ./field_param/struct.Z.html
-//! [`modtype::Impl`]: ./trait.Impl.html
-//! [`use_modtype`]: https://docs.rs/modtype_derive/0.5/modtype_derive/attr.use_modtype.html
+//! [`modtype::ModType`]: ./struct.ModType.html
+//! [`modtype::thread_local::ModType`]: ./thread_local/struct.ModType.html
+//! [`modtype::field_param::ModType`]: ./field_param/struct.ModType.html
+//! [`modtype::Cartridge`]: ./trait.Cartridge.html
 
 pub use modtype_derive::{use_modtype, ConstValue, ModType};
-
-#[doc(inline)]
-pub use crate::features::{DefaultFeatures, False, Features, True};
 
 use num::{
     integer, BigInt, BigUint, CheckedAdd as _, CheckedMul as _, CheckedSub as _, Float,
@@ -231,7 +218,7 @@ pub trait ConstValue {
 /// [`RemAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.RemAssign.html
 /// [`Inv`]: https://docs.rs/num-traits/0.2/num_traits/ops/inv/trait.Inv.html
 /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-pub trait Impl {
+pub trait Cartridge {
     type Target: UnsignedPrimitive;
     type Features: Features;
 
@@ -698,21 +685,73 @@ pub trait Impl {
 }
 
 /// The default implementation.
-pub enum DefaultImpl<T: UnsignedPrimitive> {
+pub enum DefaultCartridge<T: UnsignedPrimitive> {
     Infallible(Infallible, PhantomData<fn() -> T>),
 }
 
-impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
+impl<T: UnsignedPrimitive> Cartridge for DefaultCartridge<T> {
     type Target = T;
     type Features = DefaultFeatures;
 }
+
+/// The implementation for non prime moduluses.
+pub enum NonPrime<T: UnsignedPrimitive> {
+    Infallible(Infallible, PhantomData<fn() -> T>),
+}
+
+impl<T: UnsignedPrimitive> Cartridge for NonPrime<T> {
+    type Target = T;
+    type Features = DefaultFeatures;
+}
+
+/// Features.
+pub trait Features {
+    type Addition: TypedBool;
+    type Subtraction: TypedBool;
+    type Multiplication: TypedBool;
+    type Division: TypedBool;
+}
+
+/// The default features.
+pub enum DefaultFeatures {}
+
+impl Features for DefaultFeatures {
+    type Addition = True;
+    type Subtraction = True;
+    type Multiplication = True;
+    type Division = True;
+}
+
+/// Type level boolean.
+pub trait TypedBool {}
+
+/// A [`TypedBool`] which represents "true".
+///
+/// [`TypedBool`]: ./trait.TypedBool.html
+pub enum True {}
+
+impl TypedBool for True {}
+
+/// A [`TypedBool`] which represents "false".
+///
+/// [`TypedBool`]: ./trait.TypedBool.html
+pub enum False {}
+
+impl TypedBool for False {}
+
+/// A type alias which [`Cartridge`] is [`DefaultCartridge`]`<M::Value>`.
+///
+/// [`Cartridge`]: ./trait.Cartridge.html
+/// [`DefaultCartridge`]: ./enum.DefaultCartridge.html
+pub type DefaultModType<M> =
+    ModType<<M as ConstValue>::Value, DefaultCartridge<<M as ConstValue>::Value>, M>;
 
 /// A modular arithmetic integer type which modulus is **a constant**.
 ///
 /// # Examples
 ///
 /// ```
-/// use modtype::use_modtype;
+/// use modtype::{use_modtype, DefaultModType};
 /// use num::bigint::{Sign, ToBigInt as _, ToBigUint as _};
 /// use num::pow::Pow as _;
 /// use num::traits::{CheckedNeg as _, CheckedRem as _, Inv as _};
@@ -723,7 +762,7 @@ impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
 /// };
 ///
 /// #[use_modtype]
-/// type F = modtype::u32::Z<7u32>;
+/// type F = DefaultModType<7u32>;
 ///
 /// fn static_assert_unsigned<T: Unsigned>() {}
 ///
@@ -810,31 +849,31 @@ impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
 /// assert_eq!(F(3).pow(-2i128), F(4));
 /// assert_eq!(F(3).pow(-2isize), F(4));
 /// ```
-#[derive(ModType)]
-#[modtype(modulus = "M::VALUE", implementation = "I", modtype = "crate")]
-pub struct Z<T: UnsignedPrimitive, I: Impl<Target = T>, M: ConstValue<Value = T>> {
+#[derive(crate::ModType)]
+#[modtype(modulus = "M::VALUE", cartridge = "C", modtype = "crate")]
+pub struct ModType<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> {
     #[modtype(value)]
     value: T,
-    phantom: PhantomData<fn() -> (M, I)>,
+    phantom: PhantomData<fn() -> (C, M)>,
 }
 
-impl<T: UnsignedPrimitive, I: Impl<Target = T>, M: ConstValue<Value = T>> Z<T, I, M> {
+impl<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> ModType<T, C, M> {
     /// Gets the modulus.
     #[inline]
     pub fn modulus() -> T {
         <M as ConstValue>::VALUE
     }
 
-    /// Creates a new `Z`.
+    /// Creates a new `ModType`.
     #[inline]
     pub fn new(value: T) -> Self {
         Self {
-            value: I::new(value, Self::modulus()),
+            value: C::new(value, Self::modulus()),
             phantom: PhantomData,
         }
     }
 
-    /// Creates a new `Z` without checking `value`.
+    /// Creates a new `ModType` without checking `value`.
     #[inline]
     pub fn new_unchecked(value: T) -> Self {
         Self {
@@ -856,59 +895,17 @@ impl<T: UnsignedPrimitive, I: Impl<Target = T>, M: ConstValue<Value = T>> Z<T, I
     }
 }
 
-/// A type alias.
-pub mod u8 {
-    use crate::DefaultImpl;
-
-    /// A type alias.
-    pub type Z<M> = crate::Z<u8, DefaultImpl<u8>, M>;
-}
-
-/// A type alias.
-pub mod u16 {
-    use crate::DefaultImpl;
-
-    /// A type alias.
-    pub type Z<M> = crate::Z<u16, DefaultImpl<u16>, M>;
-}
-
-/// A type alias.
-pub mod u32 {
-    use crate::DefaultImpl;
-
-    /// A type alias.
-    pub type Z<M> = crate::Z<u32, DefaultImpl<u32>, M>;
-}
-
-/// A type alias.
-pub mod u64 {
-    use crate::DefaultImpl;
-
-    /// A type alias.
-    pub type Z<M> = crate::Z<u64, DefaultImpl<u64>, M>;
-}
-
-/// A type alias.
-pub mod u128 {
-    use crate::DefaultImpl;
-
-    /// A type alias.
-    pub type Z<M> = crate::Z<u128, DefaultImpl<u128>, M>;
-}
-
-/// A type alias.
-pub mod usize {
-    use crate::DefaultImpl;
-
-    /// A type alias.
-    pub type Z<M> = crate::Z<usize, DefaultImpl<usize>, M>;
-}
-
 /// A modular arithmetic integer type which modulus is **a `struct` field**.
 pub mod field_param {
-    use crate::{Impl, ModType, UnsignedPrimitive};
+    use crate::{Cartridge, DefaultCartridge, UnsignedPrimitive};
 
     use std::marker::PhantomData;
+
+    /// A type alias which [`Cartridge`] is [`DefaultCartridge`]`<T>`.
+    ///
+    /// [`Cartridge`]: ../trait.Cartridge.html
+    /// [`DefaultCartridge`]: ../enum.DefaultCartridge.html
+    pub type DefaultModType<T> = ModType<T, DefaultCartridge<T>>;
 
     /// A modular arithmetic integer type which modulus is **a `struct` field**.
     ///
@@ -918,36 +915,36 @@ pub mod field_param {
     /// use num::CheckedDiv as _;
     ///
     /// #[allow(non_snake_case)]
-    /// let Z = modtype::field_param::u32::Z::factory(1000);
+    /// let Z = modtype::field_param::DefaultModType::factory(1000u32);
     ///
     /// assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
     /// ```
-    #[derive(ModType)]
+    #[derive(crate::ModType)]
     #[modtype(
         modulus = "self.modulus",
-        implementation = "I",
+        cartridge = "C",
         modtype = "crate",
         non_static_modulus
     )]
-    pub struct Z<T: UnsignedPrimitive, I: Impl<Target = T>> {
+    pub struct ModType<T: UnsignedPrimitive, C: Cartridge<Target = T>> {
         #[modtype(value)]
         value: T,
         modulus: T,
-        phantom: PhantomData<fn() -> I>,
+        phantom: PhantomData<fn() -> C>,
     }
 
-    impl<T: UnsignedPrimitive, I: Impl<Target = T>> Z<T, I> {
-        /// Constructs a new `Z`.
+    impl<T: UnsignedPrimitive, C: Cartridge<Target = T>> ModType<T, C> {
+        /// Constructs a new `ModType`.
         #[inline]
         pub fn new(value: T, modulus: T) -> Self {
             Self {
-                value: I::new(value, modulus),
+                value: C::new(value, modulus),
                 modulus,
                 phantom: PhantomData,
             }
         }
 
-        /// Constructs a new `Z` without checking the value.
+        /// Constructs a new `ModType` without checking the value.
         #[inline]
         pub fn new_unchecked(value: T, modulus: T) -> Self {
             Self {
@@ -977,63 +974,21 @@ pub mod field_param {
             self.modulus
         }
     }
-
-    /// A type alias.
-    pub mod u8 {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::field_param::Z<u8, DefaultImpl<u8>>;
-    }
-
-    /// A type alias.
-    pub mod u16 {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::field_param::Z<u16, DefaultImpl<u16>>;
-    }
-
-    /// A type alias.
-    pub mod u32 {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::field_param::Z<u32, DefaultImpl<u32>>;
-    }
-
-    /// A type alias.
-    pub mod u64 {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::field_param::Z<u64, DefaultImpl<u64>>;
-    }
-
-    /// A type alias.
-    pub mod u128 {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::field_param::Z<u128, DefaultImpl<u128>>;
-    }
-
-    /// A type alias.
-    pub mod usize {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::field_param::Z<usize, DefaultImpl<usize>>;
-    }
 }
 
 /// A modular arithmetic integer type which modulus is **`thread_local`**.
 pub mod thread_local {
-    use crate::{Impl, ModType, UnsignedPrimitive};
+    use crate::{Cartridge, DefaultCartridge, UnsignedPrimitive};
 
     use std::cell::UnsafeCell;
     use std::marker::PhantomData;
     use std::thread::LocalKey;
+
+    /// A type alias which [`Cartridge`] is [`DefaultCartridge`]`<T>`.
+    ///
+    /// [`Cartridge`]: ../trait.Cartridge.html
+    /// [`DefaultCartridge`]: ../enum.DefaultCartridge.html
+    pub type DefaultModType<T> = ModType<T, DefaultCartridge<T>>;
 
     /// A modular arithmetic integer type which modulus is **`thread_local`**.
     ///
@@ -1041,39 +996,49 @@ pub mod thread_local {
     ///
     /// ```
     /// #[allow(non_snake_case)]
-    /// modtype::thread_local::u32::Z::with(57, |Z| {
+    /// modtype::thread_local::DefaultModType::with(57u32, |Z| {
     ///     assert_eq!(Z(42) + Z(15), Z(0));
     /// });
     /// ```
-    #[derive(ModType)]
+    #[derive(crate::ModType)]
     #[modtype(
         modulus = "unsafe { T::modulus() }",
-        implementation = "I",
+        cartridge = "C",
         modtype = "crate"
     )]
-    pub struct Z<T: HasThreadLocalModulus, I: Impl<Target = T>> {
+    pub struct ModType<T: HasThreadLocalModulus, C: Cartridge<Target = T>> {
         #[modtype(value)]
         value: T,
-        phantom: PhantomData<fn() -> I>,
+        phantom: PhantomData<fn() -> C>,
     }
 
-    impl<T: HasThreadLocalModulus, I: Impl<Target = T>> Z<T, I> {
+    impl<T: HasThreadLocalModulus, C: Cartridge<Target = T>> ModType<T, C> {
+        /// Sets `modulus` and run `f`.
+        ///
+        /// The modulus is set to `0` when `f` finished.
+        pub fn with<O, F: FnOnce(fn(T) -> Self) -> O>(modulus: T, f: F) -> O {
+            unsafe { T::set_modulus(modulus) };
+            let ret = f(Self::new);
+            unsafe { T::set_modulus(T::zero()) };
+            ret
+        }
+
         /// Gets the modulus.
         #[inline]
         pub fn modulus() -> T {
             unsafe { T::modulus() }
         }
 
-        /// Creates a new `Z`.
+        /// Creates a new `ModType`.
         #[inline]
         pub fn new(value: T) -> Self {
             Self {
-                value: I::new(value, Self::modulus()),
+                value: C::new(value, Self::modulus()),
                 phantom: PhantomData,
             }
         }
 
-        /// Creates a new `Z` without checking `value`.
+        /// Creates a new `ModType` without checking `value`.
         #[inline]
         pub fn new_unchecked(value: T) -> Self {
             Self {
@@ -1092,18 +1057,6 @@ pub mod thread_local {
         #[inline]
         pub fn get_mut_unchecked(&mut self) -> &mut T {
             &mut self.value
-        }
-    }
-
-    impl<T: HasThreadLocalModulus, I: Impl<Target = T>> Z<T, I> {
-        /// Sets `modulus` and run `f`.
-        ///
-        /// The modulus is set to `0` when `f` finished.
-        pub fn with<O, C: FnOnce(fn(T) -> Self) -> O>(modulus: T, f: C) -> O {
-            unsafe { T::set_modulus(modulus) };
-            let ret = f(Self::new);
-            unsafe { T::set_modulus(T::zero()) };
-            ret
         }
     }
 
@@ -1175,90 +1128,4 @@ pub mod thread_local {
         static MODULUS_U128: UnsafeCell<u128> = UnsafeCell::new(0);
         static MODULUS_USIZE: UnsafeCell<usize> = UnsafeCell::new(0);
     }
-
-    /// A type alias.
-    pub mod u8 {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::thread_local::Z<u8, DefaultImpl<u8>>;
-    }
-
-    /// A type alias.
-    pub mod u16 {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::thread_local::Z<u16, DefaultImpl<u16>>;
-    }
-
-    /// A type alias.
-    pub mod u32 {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::thread_local::Z<u32, DefaultImpl<u32>>;
-    }
-
-    /// A type alias.
-    pub mod u64 {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::thread_local::Z<u64, DefaultImpl<u64>>;
-    }
-
-    /// A type alias.
-    pub mod u128 {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::thread_local::Z<u128, DefaultImpl<u128>>;
-    }
-
-    /// A type alias.
-    pub mod usize {
-        use crate::DefaultImpl;
-
-        /// A type alias.
-        pub type Z = crate::thread_local::Z<usize, DefaultImpl<usize>>;
-    }
-}
-
-/// Features.
-pub mod features {
-    /// Features.
-    pub trait Features {
-        type Addition: TypedBool;
-        type Subtraction: TypedBool;
-        type Multiplication: TypedBool;
-        type Division: TypedBool;
-    }
-
-    /// The default features.
-    pub enum DefaultFeatures {}
-
-    impl Features for DefaultFeatures {
-        type Addition = True;
-        type Subtraction = True;
-        type Multiplication = True;
-        type Division = True;
-    }
-
-    /// Type level boolean.
-    pub trait TypedBool {}
-
-    /// A [`TypedBool`] which represents "true".
-    ///
-    /// [`TypedBool`]: ./trait.TypedBool.html
-    pub enum True {}
-
-    impl TypedBool for True {}
-
-    /// A [`TypedBool`] which represents "false".
-    ///
-    /// [`TypedBool`]: ./trait.TypedBool.html
-    pub enum False {}
-
-    impl TypedBool for False {}
 }

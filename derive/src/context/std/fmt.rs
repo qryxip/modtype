@@ -7,7 +7,7 @@ impl Context {
     pub(crate) fn derive_display(&self) -> proc_macro2::TokenStream {
         let Context {
             modulus,
-            implementation,
+            cartridge,
             std,
             modtype,
             struct_ident,
@@ -23,7 +23,7 @@ impl Context {
             {
                 #[inline]
                 fn fmt(&self, fmt: &mut #std::fmt::Formatter) -> #std::fmt::Result {
-                    <#implementation as #modtype::Impl>::fmt_display(
+                    <#cartridge as #modtype::Cartridge>::fmt_display(
                         self.#field_ident,
                         #modulus,
                         fmt,
@@ -36,7 +36,7 @@ impl Context {
     pub(crate) fn derive_debug(&self) -> proc_macro2::TokenStream {
         let Context {
             modulus,
-            implementation,
+            cartridge,
             std,
             modtype,
             struct_ident,
@@ -54,7 +54,7 @@ impl Context {
             {
                 #[inline]
                 fn fmt(&self, fmt: &mut #std::fmt::Formatter) -> #std::fmt::Result {
-                    <#implementation as #modtype::Impl>::fmt_debug(
+                    <#cartridge as #modtype::Cartridge>::fmt_debug(
                         self.#field_ident,
                         #modulus,
                         #tuple_name,

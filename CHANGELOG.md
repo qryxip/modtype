@@ -4,14 +4,21 @@
 
 ### Added
 
-- `{modtype::Z, modtype::thread_local::Z, modtype::field_param}::modulus`
+- `{modtype, modtype::thread_local, modtype::field_param}::ModType::modulus`
 
 ### Changed
 
 - Introduce `Features`.
+- Rename `Impl` to `Cartridge`.
+- Rename `Z`s to `ModType`.
 - Unify derive macros.
-- Modify the default `Impl::rem`.
-- Rename `Impl::Uint` to `Target`.
+- Modify the default `Cartridge::rem`.
+- Rename `Cartridge::Uint` to `Target`.
+
+### Removed
+
+- `modtype::{..}::{u8, u16, u32, u64, u128, usize}::Z` aliases
+- Method macros
 
 ## [0.5.0] - 2019-06-30Z
 

@@ -11,7 +11,7 @@ impl Context {
 
         let Self {
             modulus,
-            implementation,
+            cartridge,
             num_traits,
             modtype,
             struct_ident,
@@ -20,9 +20,9 @@ impl Context {
         } = self;
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let min_value = parse_quote!(<#implementation as #modtype::Impl>::min_value(#modulus));
+        let min_value = parse_quote!(<#cartridge as #modtype::Cartridge>::min_value(#modulus));
         let min_value = self.struct_expr(true, Some(min_value));
-        let max_value = parse_quote!(<#implementation as #modtype::Impl>::max_value(#modulus));
+        let max_value = parse_quote!(<#cartridge as #modtype::Cartridge>::max_value(#modulus));
         let max_value = self.struct_expr(true, Some(max_value));
 
         quote! {

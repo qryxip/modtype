@@ -13,7 +13,7 @@ impl Context {
 
         let Self {
             modulus,
-            implementation,
+            cartridge,
             std,
             modtype,
             num_traits,
@@ -47,7 +47,7 @@ impl Context {
                     radix: u32,
                 ) -> #std::result::Result<Self, #std::num::ParseIntError> {
                     let #field_ident =
-                        <#implementation as #modtype::Impl>::from_str_radix(str, radix, #modulus)?;
+                        <#cartridge as #modtype::Cartridge>::from_str_radix(str, radix, #modulus)?;
                     Ok(#struct_expr)
                 }
             }
