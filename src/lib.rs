@@ -43,7 +43,7 @@
 //! enum Impl {}
 //!
 //! impl modtype::Impl for Impl {
-//!     type Uint = u64;
+//!     type Target = u64;
 //!
 //!     // your implementation here
 //! }
@@ -229,10 +229,10 @@ pub trait ConstValue {
 /// [`Inv`]: https://docs.rs/num-traits/0.2/num_traits/ops/inv/trait.Inv.html
 /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
 pub trait Impl {
-    type Uint: UnsignedPrimitive;
+    type Target: UnsignedPrimitive;
 
     #[inline]
-    fn new(value: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+    fn new(value: Self::Target, modulus: Self::Target) -> Self::Target {
         if value >= modulus {
             value % modulus
         } else {
@@ -241,18 +241,18 @@ pub trait Impl {
     }
 
     #[inline]
-    fn get(value: Self::Uint, _modulus: Self::Uint) -> Self::Uint {
+    fn get(value: Self::Target, _modulus: Self::Target) -> Self::Target {
         value
     }
 
     #[inline]
-    fn from_biguint(value: BigUint, modulus: Self::Uint) -> Self::Uint {
+    fn from_biguint(value: BigUint, modulus: Self::Target) -> Self::Target {
         let modulus = Into::<BigUint>::into(modulus);
         (value % modulus).to_string().parse().unwrap()
     }
 
     #[inline]
-    fn from_bigint(mut value: BigInt, modulus: Self::Uint) -> Self::Uint {
+    fn from_bigint(mut value: BigInt, modulus: Self::Target) -> Self::Target {
         let is_neg = value.is_negative();
         if is_neg {
             value = -value;
@@ -260,7 +260,7 @@ pub trait Impl {
         let modulus_big = Into::<BigInt>::into(modulus);
         let acc = (value % modulus_big)
             .to_string()
-            .parse::<Self::Uint>()
+            .parse::<Self::Target>()
             .unwrap();
         if is_neg {
             modulus - acc
@@ -271,40 +271,40 @@ pub trait Impl {
 
     #[inline]
     fn fmt_display(
-        value: Self::Uint,
-        _modulus: Self::Uint,
+        value: Self::Target,
+        _modulus: Self::Target,
         fmt: &mut fmt::Formatter,
     ) -> fmt::Result {
-        <Self::Uint as fmt::Display>::fmt(&value, fmt)
+        <Self::Target as fmt::Display>::fmt(&value, fmt)
     }
 
     #[inline]
     fn fmt_debug(
-        value: Self::Uint,
-        _modulus: Self::Uint,
+        value: Self::Target,
+        _modulus: Self::Target,
         _ty: &'static str,
         fmt: &mut fmt::Formatter,
     ) -> fmt::Result {
-        <Self::Uint as fmt::Debug>::fmt(&value, fmt)
+        <Self::Target as fmt::Debug>::fmt(&value, fmt)
     }
 
     #[inline]
-    fn from_str(str: &str, modulus: Self::Uint) -> Result<Self::Uint, ParseIntError> {
+    fn from_str(str: &str, modulus: Self::Target) -> Result<Self::Target, ParseIntError> {
         str.parse().map(|v| Self::new(v, modulus))
     }
 
     #[inline]
-    fn neg(value: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+    fn neg(value: Self::Target, modulus: Self::Target) -> Self::Target {
         modulus - value
     }
 
     #[inline]
-    fn add(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+    fn add(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
         Self::new(lhs + rhs, modulus)
     }
 
     #[inline]
-    fn sub(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+    fn sub(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
         let acc = if lhs < rhs {
             modulus + lhs - rhs
         } else {
@@ -314,13 +314,13 @@ pub trait Impl {
     }
 
     #[inline]
-    fn mul(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Self::Uint {
+    fn mul(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
         Self::new(lhs * rhs, modulus)
     }
 
     #[inline]
-    fn div(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Self::Uint {
-        if rhs == Self::Uint::zero() {
+    fn div(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+        if rhs == Self::Target::zero() {
             panic!("attempt to divide by zero");
         }
         Self::checked_div(lhs, rhs, modulus)
@@ -328,92 +328,92 @@ pub trait Impl {
     }
 
     #[inline]
-    fn rem(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Self::Uint {
-        if rhs == Self::Uint::zero() {
+    fn rem(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+        if rhs == Self::Target::zero() {
             panic!("attempt to calculate the remainder with a divisor of zero");
         }
-        if integer::gcd(rhs, modulus) != Self::Uint::one() {
+        if integer::gcd(rhs, modulus) != Self::Target::one() {
             panic!("{}/{} (mod {}) does not exist", lhs, rhs, modulus);
         }
-        Self::Uint::zero()
+        Self::Target::zero()
     }
 
     #[inline]
-    fn inv(value: Self::Uint, modulus: Self::Uint) -> Self::Uint {
-        Self::div(Self::Uint::one(), value, modulus)
+    fn inv(value: Self::Target, modulus: Self::Target) -> Self::Target {
+        Self::div(Self::Target::one(), value, modulus)
     }
 
     #[inline]
     fn from_str_radix(
         str: &str,
         radix: u32,
-        modulus: Self::Uint,
-    ) -> Result<Self::Uint, ParseIntError> {
-        Self::Uint::from_str_radix(str, radix).map(|v| Self::new(v, modulus))
+        modulus: Self::Target,
+    ) -> Result<Self::Target, ParseIntError> {
+        Self::Target::from_str_radix(str, radix).map(|v| Self::new(v, modulus))
     }
 
     #[inline]
-    fn min_value(_modulus: Self::Uint) -> Self::Uint {
-        Self::Uint::zero()
+    fn min_value(_modulus: Self::Target) -> Self::Target {
+        Self::Target::zero()
     }
 
     #[inline]
-    fn max_value(modulus: Self::Uint) -> Self::Uint {
-        modulus - Self::Uint::one()
+    fn max_value(modulus: Self::Target) -> Self::Target {
+        modulus - Self::Target::one()
     }
 
     #[inline]
-    fn zero(_modulus: Self::Uint) -> Self::Uint {
-        Self::Uint::zero()
+    fn zero(_modulus: Self::Target) -> Self::Target {
+        Self::Target::zero()
     }
 
     #[inline]
-    fn is_zero(value: Self::Uint, _modulus: Self::Uint) -> bool {
-        value == Self::Uint::zero()
+    fn is_zero(value: Self::Target, _modulus: Self::Target) -> bool {
+        value == Self::Target::zero()
     }
 
     #[inline]
-    fn one(_modulus: Self::Uint) -> Self::Uint {
-        Self::Uint::one()
+    fn one(_modulus: Self::Target) -> Self::Target {
+        Self::Target::one()
     }
 
     #[inline]
-    fn is_one(value: Self::Uint, _modulus: Self::Uint) -> bool {
-        value == Self::Uint::one()
+    fn is_one(value: Self::Target, _modulus: Self::Target) -> bool {
+        value == Self::Target::one()
     }
 
     #[inline]
-    fn from_i64(value: i64, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_i64(value: i64, modulus: Self::Target) -> Option<Self::Target> {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
     #[inline]
-    fn from_u64(value: u64, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_u64(value: u64, modulus: Self::Target) -> Option<Self::Target> {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
     #[inline]
-    fn from_isize(value: isize, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_isize(value: isize, modulus: Self::Target) -> Option<Self::Target> {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
     #[inline]
-    fn from_i8(value: i8, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_i8(value: i8, modulus: Self::Target) -> Option<Self::Target> {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
     #[inline]
-    fn from_i16(value: i16, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_i16(value: i16, modulus: Self::Target) -> Option<Self::Target> {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
     #[inline]
-    fn from_i32(value: i32, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_i32(value: i32, modulus: Self::Target) -> Option<Self::Target> {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
     #[inline]
-    fn from_i128(value: i128, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_i128(value: i128, modulus: Self::Target) -> Option<Self::Target> {
         if value < 0 {
             Self::from_u128((-value).to_u128()?, modulus).map(|v| Self::neg(v, modulus))
         } else {
@@ -422,40 +422,40 @@ pub trait Impl {
     }
 
     #[inline]
-    fn from_usize(value: usize, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_usize(value: usize, modulus: Self::Target) -> Option<Self::Target> {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
     #[inline]
-    fn from_u8(value: u8, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_u8(value: u8, modulus: Self::Target) -> Option<Self::Target> {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
     #[inline]
-    fn from_u16(value: u16, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_u16(value: u16, modulus: Self::Target) -> Option<Self::Target> {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
     #[inline]
-    fn from_u32(value: u32, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_u32(value: u32, modulus: Self::Target) -> Option<Self::Target> {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
     #[inline]
-    fn from_u128(mut value: u128, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_u128(mut value: u128, modulus: Self::Target) -> Option<Self::Target> {
         let modulus = modulus.to_u128()?;
         if value >= modulus {
             value %= modulus;
         }
-        Self::Uint::from_u128(value)
+        Self::Target::from_u128(value)
     }
 
     #[inline]
-    fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Target) -> Option<Self::Target> {
         let (man, exp, sign) = value.integer_decode();
         let acc = Self::mul(
             Self::from_u64(man, modulus)?,
-            Self::pow_signed(Self::Uint::one() + Self::Uint::one(), exp, modulus),
+            Self::pow_signed(Self::Target::one() + Self::Target::one(), exp, modulus),
             modulus,
         );
         Some(match sign {
@@ -465,29 +465,45 @@ pub trait Impl {
     }
 
     #[inline]
-    fn checked_neg(value: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn checked_neg(value: Self::Target, modulus: Self::Target) -> Option<Self::Target> {
         Some(Self::neg(value, modulus))
     }
 
     #[inline]
-    fn checked_add(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn checked_add(
+        lhs: Self::Target,
+        rhs: Self::Target,
+        modulus: Self::Target,
+    ) -> Option<Self::Target> {
         lhs.checked_add(&rhs).map(|v| Self::new(v, modulus))
     }
 
     #[inline]
-    fn checked_sub(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn checked_sub(
+        lhs: Self::Target,
+        rhs: Self::Target,
+        modulus: Self::Target,
+    ) -> Option<Self::Target> {
         (lhs + modulus)
             .checked_sub(&rhs)
             .map(|v| Self::new(v, modulus))
     }
 
     #[inline]
-    fn checked_mul(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn checked_mul(
+        lhs: Self::Target,
+        rhs: Self::Target,
+        modulus: Self::Target,
+    ) -> Option<Self::Target> {
         lhs.checked_mul(&rhs).map(|v| Self::new(v, modulus))
     }
 
     #[inline]
-    fn checked_div(lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
+    fn checked_div(
+        lhs: Self::Target,
+        rhs: Self::Target,
+        modulus: Self::Target,
+    ) -> Option<Self::Target> {
         #[allow(clippy::many_single_char_names)]
         fn egcd(a: i128, b: i128) -> (i128, i128, i128) {
             if a == 0 {
@@ -516,13 +532,17 @@ pub trait Impl {
         if acc < 0 {
             acc += modulus;
         }
-        Self::Uint::from_i128(acc)
+        Self::Target::from_i128(acc)
     }
 
     #[inline]
-    fn checked_rem(_lhs: Self::Uint, rhs: Self::Uint, modulus: Self::Uint) -> Option<Self::Uint> {
-        if integer::gcd(rhs, modulus) == Self::Uint::one() {
-            Some(Self::Uint::zero())
+    fn checked_rem(
+        _lhs: Self::Target,
+        rhs: Self::Target,
+        modulus: Self::Target,
+    ) -> Option<Self::Target> {
+        if integer::gcd(rhs, modulus) == Self::Target::one() {
+            Some(Self::Target::zero())
         } else {
             None
         }
@@ -530,11 +550,11 @@ pub trait Impl {
 
     #[inline]
     fn pow_unsigned<E: UnsignedPrimitive>(
-        base: Self::Uint,
+        base: Self::Target,
         exp: E,
-        modulus: Self::Uint,
-    ) -> Self::Uint {
-        let (mut base, mut exp, mut acc) = (base, exp, Self::Uint::one());
+        modulus: Self::Target,
+    ) -> Self::Target {
+        let (mut base, mut exp, mut acc) = (base, exp, Self::Target::one());
 
         while exp > E::zero() {
             if (exp & E::one()) == E::one() {
@@ -548,8 +568,12 @@ pub trait Impl {
     }
 
     #[inline]
-    fn pow_signed<E: SignedPrimitive>(base: Self::Uint, exp: E, modulus: Self::Uint) -> Self::Uint {
-        let (mut base, mut exp, mut acc) = (base, exp, Self::Uint::one());
+    fn pow_signed<E: SignedPrimitive>(
+        base: Self::Target,
+        exp: E,
+        modulus: Self::Target,
+    ) -> Self::Target {
+        let (mut base, mut exp, mut acc) = (base, exp, Self::Target::one());
 
         let exp_neg = exp < E::zero();
         if exp_neg {
@@ -578,7 +602,7 @@ pub enum DefaultImpl<T: UnsignedPrimitive> {
 }
 
 impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
-    type Uint = T;
+    type Target = T;
 }
 
 /// A modular arithmetic integer type which modulus is **a constant**.
@@ -727,13 +751,13 @@ impl<T: UnsignedPrimitive> Impl for DefaultImpl<T> {
     crate::derive::Pow,
 )]
 #[modtype(modulus = "M::VALUE", implementation = "I", modtype = "crate")]
-pub struct Z<T: UnsignedPrimitive, I: Impl<Uint = T>, M: ConstValue<Value = T>> {
+pub struct Z<T: UnsignedPrimitive, I: Impl<Target = T>, M: ConstValue<Value = T>> {
     #[modtype(value)]
     value: T,
     phantom: PhantomData<fn() -> (M, I)>,
 }
 
-impl<T: UnsignedPrimitive, I: Impl<Uint = T>, M: ConstValue<Value = T>> Z<T, I, M> {
+impl<T: UnsignedPrimitive, I: Impl<Target = T>, M: ConstValue<Value = T>> Z<T, I, M> {
     /// Gets the modulus.
     #[inline]
     pub fn modulus() -> T {
@@ -838,14 +862,14 @@ pub mod field_param {
         crate::derive::Pow,
     )]
     #[modtype(modulus = "self.modulus", implementation = "I", modtype = "crate")]
-    pub struct Z<T: UnsignedPrimitive, I: Impl<Uint = T>> {
+    pub struct Z<T: UnsignedPrimitive, I: Impl<Target = T>> {
         #[modtype(value)]
         value: T,
         modulus: T,
         phantom: PhantomData<fn() -> I>,
     }
 
-    impl<T: UnsignedPrimitive, I: Impl<Uint = T>> Z<T, I> {
+    impl<T: UnsignedPrimitive, I: Impl<Target = T>> Z<T, I> {
         /// Constructs a new `Z`.
         #[inline]
         pub fn new(value: T, modulus: T) -> Self {
@@ -1000,13 +1024,13 @@ pub mod thread_local {
         implementation = "I",
         modtype = "crate"
     )]
-    pub struct Z<T: HasThreadLocalModulus, I: Impl<Uint = T>> {
+    pub struct Z<T: HasThreadLocalModulus, I: Impl<Target = T>> {
         #[modtype(value)]
         value: T,
         phantom: PhantomData<fn() -> I>,
     }
 
-    impl<T: HasThreadLocalModulus, I: Impl<Uint = T>> Z<T, I> {
+    impl<T: HasThreadLocalModulus, I: Impl<Target = T>> Z<T, I> {
         /// Gets the modulus.
         #[inline]
         pub fn modulus() -> T {
@@ -1014,7 +1038,7 @@ pub mod thread_local {
         }
     }
 
-    impl<T: HasThreadLocalModulus, I: Impl<Uint = T>> Z<T, I> {
+    impl<T: HasThreadLocalModulus, I: Impl<Target = T>> Z<T, I> {
         /// Sets `modulus` and run `f`.
         ///
         /// The modulus is set to `0` when `f` finished.

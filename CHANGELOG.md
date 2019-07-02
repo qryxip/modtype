@@ -9,6 +9,7 @@
 ### Changed
 
 - Modify the default `Impl::rem`.
+- Rename `Impl::Uint` to `Target`.
 
 ## [0.5.0] - 2019-06-30Z
 
