@@ -3,7 +3,7 @@ use crate::context::Context;
 use quote::quote;
 
 impl Context {
-    pub(crate) fn derive_partial_eq(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_partial_eq(&self) -> proc_macro2::TokenStream {
         let Self {
             std,
             struct_ident,
@@ -21,7 +21,7 @@ impl Context {
             .iter()
             .map(|(ident, _)| quote!(self.#ident != other.#ident));
 
-        quote!(
+        quote! {
             #[automatically_derived]
             impl#impl_generics #std::cmp::PartialEq for #struct_ident#ty_generics
             #where_clause
@@ -39,11 +39,10 @@ impl Context {
                         #(|| #other_nes)*
                 }
             }
-        )
-        .into()
+        }
     }
 
-    pub(crate) fn derive_eq(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_eq(&self) -> proc_macro2::TokenStream {
         let Self {
             std,
             struct_ident,
@@ -52,17 +51,16 @@ impl Context {
         } = self;
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        quote!(
+        quote! {
             #[automatically_derived]
             impl#impl_generics #std::cmp::Eq for #struct_ident#ty_generics
             #where_clause
             {
             }
-        )
-        .into()
+        }
     }
 
-    pub(crate) fn derive_partial_ord(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_partial_ord(&self) -> proc_macro2::TokenStream {
         let Self {
             std,
             struct_ident,
@@ -87,7 +85,7 @@ impl Context {
             };
         }
 
-        quote!(
+        quote! {
             #[automatically_derived]
             impl#impl_generics #std::cmp::PartialOrd for #struct_ident#ty_generics
             #where_clause
@@ -117,11 +115,10 @@ impl Context {
                     #l_g_t_e != #std::cmp::Ordering::Less
                 }
             }
-        )
-        .into()
+        }
     }
 
-    pub(crate) fn derive_ord(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_ord(&self) -> proc_macro2::TokenStream {
         let Self {
             std,
             struct_ident,
@@ -145,7 +142,7 @@ impl Context {
             };
         }
 
-        quote!(
+        quote! {
             #[automatically_derived]
             impl#impl_generics #std::cmp::Ord for #struct_ident#ty_generics
             #where_clause
@@ -155,7 +152,6 @@ impl Context {
                     #cmp
                 }
             }
-        )
-        .into()
+        }
     }
 }

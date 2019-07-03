@@ -4,6 +4,26 @@
 
 ### Added
 
+- `{modtype, modtype::thread_local, modtype::field_param}::ModType::modulus`
+
+### Changed
+
+- Introduce `Features`.
+- Rename `Impl` to `Cartridge`.
+- Rename `Z`s to `ModType`.
+- Unify derive macros.
+- Modify the default `Cartridge::rem`.
+- Rename `Cartridge::Uint` to `Target`.
+
+### Removed
+
+- `modtype::{..}::{u8, u16, u32, u64, u128, usize}::Z` aliases
+- Method macros
+
+## [0.5.0] - 2019-06-30Z
+
+### Added
+
 - `Clone`, `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord` derive macros.
 - `UnsignedPrimitive`, `SignedPrimitive`, `FloatPrimitive`.
 - Documents.

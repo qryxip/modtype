@@ -4,10 +4,14 @@ use quote::quote;
 use syn::parse_quote;
 
 impl Context {
-    pub(crate) fn derive_from(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_from(&self) -> proc_macro2::TokenStream {
+        if self.non_static_modulus {
+            return quote!();
+        }
+
         let Context {
             modulus,
-            implementation,
+            cartridge,
             std,
             num_bigint,
             modtype,
@@ -18,7 +22,7 @@ impl Context {
         } = self;
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let value_expr = parse_quote!(<#implementation as #modtype::Impl>::new(from, #modulus));
+        let value_expr = parse_quote!(<#cartridge as #modtype::Cartridge>::new(from, #modulus));
         let struct_expr = self.struct_expr(true, Some(value_expr));
 
         let mut acc = quote! {
@@ -33,7 +37,7 @@ impl Context {
         };
 
         let value_expr =
-            parse_quote!(<#implementation as #modtype::Impl>::from_biguint(from, #modulus));
+            parse_quote!(<#cartridge as #modtype::Cartridge>::from_biguint(from, #modulus));
         let struct_expr = self.struct_expr(true, Some(value_expr));
 
         acc.extend(quote! {
@@ -49,7 +53,7 @@ impl Context {
         });
 
         let value_expr =
-            parse_quote!(<#implementation as #modtype::Impl>::from_bigint(from, #modulus));
+            parse_quote!(<#cartridge as #modtype::Cartridge>::from_bigint(from, #modulus));
         let struct_expr = self.struct_expr(true, Some(value_expr));
 
         acc.extend(quote! {
@@ -63,30 +67,6 @@ impl Context {
                 }
             }
         });
-        acc.into()
-    }
-
-    pub(crate) fn derive_into(&self) -> proc_macro::TokenStream {
-        let Context {
-            std,
-            struct_ident,
-            generics,
-            field_ident,
-            field_ty,
-            ..
-        } = self;
-        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-        quote!(
-            impl #impl_generics #std::convert::From<#struct_ident#ty_generics> for #field_ty
-            #where_clause
-            {
-                #[inline]
-                fn from(from: #struct_ident#ty_generics) -> Self {
-                    from.#field_ident
-                }
-            }
-        )
-        .into()
+        acc
     }
 }

@@ -1,4 +1,3 @@
-mod methods;
 mod num;
 mod std;
 
@@ -19,12 +18,12 @@ use ::std::mem;
 
 pub(crate) struct Context {
     modulus: Expr,
-    implementation: Path,
+    cartridge: Path,
     std: Path,
     num_traits: Path,
     num_bigint: Path,
     modtype: Path,
-    struct_vis: Visibility,
+    non_static_modulus: bool,
     struct_ident: Ident,
     generics: Generics,
     field_ident: Ident,
@@ -33,6 +32,34 @@ pub(crate) struct Context {
 }
 
 impl Context {
+    fn with_features(&self, features: &[Ident], generics: &Generics) -> Generics {
+        let Self {
+            cartridge, modtype, ..
+        } = self;
+
+        let bindings = {
+            let mut bindings = quote!();
+            for feature in features {
+                if !bindings.is_empty() {
+                    bindings.extend(quote!(,));
+                }
+                bindings.extend(quote!(#feature = #modtype::True));
+            }
+            bindings
+        };
+
+        let mut generics = generics.clone();
+        generics
+            .where_clause
+            .get_or_insert_with(|| parse_quote!(where))
+            .predicates
+            .push(parse_quote! {
+                <#cartridge as #modtype::Cartridge>::Features: #modtype::Features<#bindings>
+            });
+
+        generics
+    }
+
     fn struct_expr(&self, path_is_self: bool, value_expr: Option<Expr>) -> ExprStruct {
         let Self {
             std,
@@ -67,7 +94,7 @@ impl Context {
 
     fn struct_update(&self, method: Ident, args: &[Expr]) -> (ExprStruct, ExprStruct) {
         let Self {
-            implementation,
+            cartridge,
             modtype,
             struct_ident,
             field_ident,
@@ -75,7 +102,7 @@ impl Context {
             ..
         } = self;
 
-        let value = quote!(<#implementation as #modtype::Impl>::#method(#(#args, )*));
+        let value = quote!(<#cartridge as #modtype::Cartridge>::#method(#(#args, )*));
 
         if other_fields.is_empty() {
             (
@@ -92,7 +119,7 @@ impl Context {
 
     fn struct_update_option(&self, method: Ident, args: &[Expr]) -> (Block, Block) {
         let Self {
-            implementation,
+            cartridge,
             std,
             modtype,
             struct_ident,
@@ -102,13 +129,10 @@ impl Context {
         } = self;
 
         let mut update_move = quote! {
-            let #field_ident = <#implementation as #modtype::Impl>::#method(#(#args, )*)?;
+            let #field_ident = <#cartridge as #modtype::Cartridge>::#method(#(#args, )*)?;
         };
         let mut update_copy = quote! {
-            fn static_assert_copy<T: #std::marker::Copy>() {}
-            static_assert_copy::<Self>();
-
-            let #field_ident = <#implementation as #modtype::Impl>::#method(#(#args, )*)?;
+            let #field_ident = <#cartridge as #modtype::Cartridge>::#method(#(#args, )*)?;
         };
 
         if other_fields.is_empty() {
@@ -171,6 +195,14 @@ impl TryFrom<DeriveInput> for Context {
             }
         }
 
+        fn put_true(word: Span, dist: &mut bool) -> syn::Result<()> {
+            if mem::replace(dist, true) {
+                Err(syn::Error::new(word, "multiple definitions"))
+            } else {
+                Ok(())
+            }
+        }
+
         trait SpannedExt {
             fn to_error(&self, mes: impl ::std::fmt::Display) -> syn::Error;
         }
@@ -183,36 +215,41 @@ impl TryFrom<DeriveInput> for Context {
 
         let DeriveInput {
             attrs,
-            vis: struct_vis,
             ident: struct_ident,
             generics,
             data,
+            ..
         } = input;
 
         let mut modulus = None;
-        let mut implementation = None;
+        let mut cartridge = None;
         let mut std = None;
         let mut num_traits = None;
         let mut num_integer = None;
         let mut num_bigint = None;
         let mut modtype = None;
+        let mut non_static_modulus = false;
 
         fn error_on_ident(ident: &Ident) -> syn::Error {
             match ident.to_string().as_ref() {
                 "modulus" => ident.to_error("expected `modulus = $LitStr`"),
-                "implementation" => ident.to_error("expected `implementation = $LitStr`"),
+                "cartridge" => ident.to_error("expected `cartridge = $LitStr`"),
                 "std" => ident.to_error("expected `std = $LitStr`"),
                 "num_traits" => ident.to_error("expected `num_traits = $LitStr`"),
                 "num_integer" => ident.to_error("expected `num_integer = $LitStr`"),
                 "num_bigint" => ident.to_error("expected `num_bigint = $LitStr`"),
                 "modtype" => ident.to_error("expected `modtype = $LitStr`"),
+                "non_static_modulus" => ident.to_error("expected `non_static_modulus`"),
                 _ => ident.to_error("unknown identifier"),
             }
         }
 
-        fn on_word(word: &Ident) -> syn::Result<()> {
-            Err(error_on_ident(word))
-        }
+        let mut on_word = |word: &Ident| -> syn::Result<()> {
+            match word.to_string().as_ref() {
+                "non_static_modulus" => put_true(word.span(), &mut non_static_modulus),
+                _ => Err(error_on_ident(word)),
+            }
+        };
 
         fn on_list(list: &MetaList) -> syn::Result<()> {
             Err(error_on_ident(&list.ident))
@@ -222,7 +259,7 @@ impl TryFrom<DeriveInput> for Context {
             let MetaNameValue { ident, lit, .. } = name_value;
             match ident.to_string().as_ref() {
                 "modulus" => put_expr(ident.span(), lit, &mut modulus),
-                "implementation" => put_path(ident.span(), lit, &mut implementation),
+                "cartridge" => put_path(ident.span(), lit, &mut cartridge),
                 "std" => put_path(ident.span(), lit, &mut std),
                 "num_traits" => put_path(ident.span(), lit, &mut num_traits),
                 "num_integer" => put_path(ident.span(), lit, &mut num_integer),
@@ -256,8 +293,7 @@ impl TryFrom<DeriveInput> for Context {
         })?;
 
         let modulus = modulus.ok_or_else(|| struct_ident.to_error("`modulus` required"))?;
-        let implementation =
-            implementation.ok_or_else(|| struct_ident.to_error("`implementation` required"))?;
+        let cartridge = cartridge.ok_or_else(|| struct_ident.to_error("`cartridge` required"))?;
 
         let std = std.unwrap_or_else(|| parse_quote!(::std));
         let num_traits = num_traits.unwrap_or_else(|| parse_quote!(::num::traits));
@@ -315,18 +351,14 @@ impl TryFrom<DeriveInput> for Context {
             return Err(vis.to_error("the field visibility must be `Inherited`"));
         }
 
-        if !field_ident.to_string().starts_with("__") {
-            return Err(field_ident.to_error("the field name must start with \"__\""));
-        }
-
         Ok(Self {
             modulus,
-            implementation,
+            cartridge,
             std,
             num_traits,
             num_bigint,
             modtype,
-            struct_vis,
+            non_static_modulus,
             struct_ident,
             generics,
             field_ident,

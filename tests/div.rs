@@ -3,9 +3,9 @@ use modtype::use_modtype;
 use num::traits::Inv as _;
 
 #[test]
-fn test_div_for_mod17() {
+fn mod17() {
     #[use_modtype]
-    type F = modtype::u32::Z<17u32>;
+    type F = modtype::DefaultModType<17u32>;
 
     for a in 0..=16 {
         for b in 1..=16 {
@@ -15,9 +15,18 @@ fn test_div_for_mod17() {
 }
 
 #[test]
-fn test_div_for_mod1000000007() {
+fn mod1009() {
     #[use_modtype]
-    type F = modtype::u64::Z<1_000_000_007u64>;
+    type F = modtype::DefaultModType<1009u32>;
+    for x in 1..=1008 {
+        assert_eq!(F(x) * F(x).inv(), F(1));
+    }
+}
+
+#[test]
+fn mod1000000007() {
+    #[use_modtype]
+    type F = modtype::DefaultModType<1_000_000_007u64>;
 
     assert_eq!(F(13).inv(), F(153_846_155));
 }

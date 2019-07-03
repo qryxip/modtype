@@ -4,10 +4,14 @@ use quote::quote;
 use syn::parse_quote;
 
 impl Context {
-    pub(crate) fn derive_zero(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_zero(&self) -> proc_macro2::TokenStream {
+        if self.non_static_modulus {
+            return quote!();
+        }
+
         let Context {
             modulus,
-            implementation,
+            cartridge,
             num_traits,
             modtype,
             struct_ident,
@@ -15,12 +19,13 @@ impl Context {
             field_ident,
             ..
         } = self;
+        let generics = self.with_features(&[parse_quote!(Addition)], &generics);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let zero = parse_quote!(<#implementation as #modtype::Impl>::zero(#modulus));
+        let zero = parse_quote!(<#cartridge as #modtype::Cartridge>::zero(#modulus));
         let zero = self.struct_expr(true, Some(zero));
 
-        quote!(
+        quote! {
             impl#impl_generics #num_traits::Zero for #struct_ident#ty_generics
             #where_clause
             {
@@ -31,17 +36,20 @@ impl Context {
 
                 #[inline]
                 fn is_zero(&self) -> bool {
-                    <#implementation as #modtype::Impl>::is_zero(self.#field_ident, #modulus)
+                    <#cartridge as #modtype::Cartridge>::is_zero(self.#field_ident, #modulus)
                 }
             }
-        )
-        .into()
+        }
     }
 
-    pub(crate) fn derive_one(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_one(&self) -> proc_macro2::TokenStream {
+        if self.non_static_modulus {
+            return quote!();
+        }
+
         let Context {
             modulus,
-            implementation,
+            cartridge,
             num_traits,
             modtype,
             struct_ident,
@@ -49,12 +57,13 @@ impl Context {
             field_ident,
             ..
         } = self;
+        let generics = self.with_features(&[parse_quote!(Multiplication)], &generics);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let one = parse_quote!(<#implementation as #modtype::Impl>::one(#modulus));
+        let one = parse_quote!(<#cartridge as #modtype::Cartridge>::one(#modulus));
         let one = self.struct_expr(true, Some(one));
 
-        quote!(
+        quote! {
             impl#impl_generics #num_traits::One for #struct_ident#ty_generics
             #where_clause
             {
@@ -65,10 +74,9 @@ impl Context {
 
                 #[inline]
                 fn is_one(&self) -> bool {
-                    <#implementation as #modtype::Impl>::is_one(self.#field_ident, #modulus)
+                    <#cartridge as #modtype::Cartridge>::is_one(self.#field_ident, #modulus)
                 }
             }
-        )
-        .into()
+        }
     }
 }

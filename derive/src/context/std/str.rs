@@ -3,10 +3,14 @@ use crate::context::Context;
 use quote::quote;
 
 impl Context {
-    pub(crate) fn derive_from_str(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_from_str(&self) -> proc_macro2::TokenStream {
+        if self.non_static_modulus {
+            return quote!();
+        }
+
         let Context {
             modulus,
-            implementation,
+            cartridge,
             std,
             modtype,
             struct_ident,
@@ -18,7 +22,7 @@ impl Context {
 
         let struct_expr = self.struct_expr(true, None);
 
-        quote!(
+        quote! {
             impl#impl_generics #std::str::FromStr for #struct_ident#ty_generics
             #where_clause
             {
@@ -26,11 +30,10 @@ impl Context {
 
                 #[inline]
                 fn from_str(s: &str) -> #std::result::Result<Self, #std::num::ParseIntError> {
-                    let #field_ident = <#implementation as #modtype::Impl>::from_str(s, #modulus)?;
+                    let #field_ident = <#cartridge as #modtype::Cartridge>::from_str(s, #modulus)?;
                     #std::result::Result::Ok(#struct_expr)
                 }
             }
-        )
-        .into()
+        }
     }
 }

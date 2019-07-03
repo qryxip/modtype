@@ -3,7 +3,11 @@ use crate::context::Context;
 use quote::quote;
 
 impl Context {
-    pub(crate) fn derive_default(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_default(&self) -> proc_macro2::TokenStream {
+        if self.non_static_modulus {
+            return quote!();
+        }
+
         let Self {
             std,
             struct_ident,
@@ -22,7 +26,7 @@ impl Context {
             updates.push(quote!(#ident: #std::default::Default::default()));
         }
 
-        quote!(
+        quote! {
             #[automatically_derived]
             impl#impl_generics #std::default::Default for #struct_ident#ty_generics
             #where_clause
@@ -34,7 +38,6 @@ impl Context {
                     }
                 }
             }
-        )
-        .into()
+        }
     }
 }

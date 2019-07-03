@@ -6,64 +6,56 @@
 
 This crate provides modular arithmetic integer types.
 
-## Usage
+# Usage
 
-### [`modtype::Z`]
+## [`modtype::ModType`]
 
 ```
 #[modtype::use_modtype]
-type F = modtype::u64::Z<1_000_000_007u64>;
+type F = modtype::DefaultModType<1_000_000_007u64>;
 
 assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 ```
 
-### [`modtype::thread_local::Z`]
+## [`modtype::thread_local::ModType`]
 
 ```
 #[allow(non_snake_case)]
-modtype::thread_local::u32::Z::with(7, |F| {
-    assert_eq!(F(6) + F(1), F(0));
+modtype::thread_local::DefaultModType::with(57u32, |Z| {
+    assert_eq!(Z(42) + Z(15), Z(0));
 });
 ```
 
-### [`modtype::field_param::Z`]
+## [`modtype::field_param::ModType`]
 
 ```
-use modtype::field_param::u32::Z;
 use num::CheckedDiv as _;
 
 #[allow(non_snake_case)]
-let Z = Z::factory(1000);
+let Z = modtype::field_param::DefaultModType::factory(1000u32);
 
 assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
 ```
 
-## Customization
+# Customization
 
-`Z`s can be customized via [`modtype::Impl`].
+`ModType`s can be customized via [`modtype::Cartridge`].
 
 ```
 #[modtype::use_modtype]
-type F = modtype::Z<u64, Impl, 1_000_000_007u64>;
+type F = modtype::ModType<u64, Cartridge, 1_000_000_007u64>;
 
-enum Impl {}
+enum Cartridge {}
 
-impl modtype::Impl for Impl {
-    type Uint = u64;
+impl modtype::Cartridge for Cartridge {
+    type Target = u64;
+    type Features = modtype::DefaultFeatures;
 
     // your implementation here
 }
 ```
 
-## Attributes for `use_modtype`
-
-| Name          | Format                         | Optional                                              |
-| :------------ | :----------------------------- | :---------------------------------------------------- |
-| `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $value, $type_uppercase)`) |
-| `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                        |
-
-[`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
-[`modtype::Z`]: https://docs.rs/modtype/0.5/modtype/struct.Z.html
-[`modtype::thread_local::Z`]: https://docs.rs/modtype/0.5/modtype/thread_local/struct.Z.html
-[`modtype::field_param::Z`]: https://docs.rs/modtype/0.5/modtype/field_param/struct.Z.html
-[`modtype::Impl`]: https://docs.rs/modtype/0.5/modtype/trait.Impl.html
+[`modtype::ModType`]: https://docs.rs/modtype/0.6/modtype/struct.ModType.html
+[`modtype::thread_local::ModType`]: https://docs.rs/modtype/0.6/modtype/thread_local/struct.ModType.html
+[`modtype::field_param::ModType`]: https://docs.rs/modtype/0.6/modtype/field_param/struct.ModType.html
+[`modtype::Cartridge`]: https://docs.rs/modtype/0.6/modtype/trait.Cartridge.html

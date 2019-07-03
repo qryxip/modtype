@@ -3,7 +3,7 @@ use crate::context::Context;
 use quote::quote;
 
 impl Context {
-    pub(crate) fn derive_clone(&self) -> proc_macro::TokenStream {
+    pub(crate) fn derive_clone(&self) -> proc_macro2::TokenStream {
         let Self {
             std,
             struct_ident,
@@ -18,7 +18,7 @@ impl Context {
         let other_tys = other_fields.iter().map(|(_, t)| quote!(#t));
         let other_copies = other_fields.iter().map(|(i, _)| quote!(#i: self.#i));
 
-        quote!(
+        quote! {
             #[automatically_derived]
             impl#impl_generics #std::clone::Clone for #struct_ident#ty_generics
             #where_clause
@@ -35,7 +35,6 @@ impl Context {
                     }
                 }
             }
-        )
-        .into()
+        }
     }
 }
