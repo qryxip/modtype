@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `sqrt` methods.
+
 ### Changed
 
 - Add `Features::Deref`.

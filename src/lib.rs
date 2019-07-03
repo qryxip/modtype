@@ -56,6 +56,8 @@
 
 pub use modtype_derive::{use_modtype, ConstValue, ModType};
 
+use crate::util::UnsignedPrimitiveUtil as _;
+
 use num::{
     integer, BigInt, BigUint, CheckedAdd as _, CheckedMul as _, CheckedSub as _, Float,
     FromPrimitive, Integer, Num, One as _, PrimInt, Signed, ToPrimitive as _, Unsigned, Zero as _,
@@ -73,7 +75,8 @@ use std::str::FromStr;
 
 /// A trait for `u8`, `u16`, `u32`, `u64`, `u128`, and `usize`.
 pub trait UnsignedPrimitive:
-    Unsigned
+    hidden::YouCannotImplThisTrait
+    + Unsigned
     + PrimInt
     + Integer
     + Num<FromStrRadixErr = ParseIntError>
@@ -98,39 +101,22 @@ pub trait UnsignedPrimitive:
     + BitXorAssign
     + Send
     + Sync
+    + util::UnsignedPrimitiveUtil
     + 'static
 {
-    /// You cannot `impl` this trait.
-    type YouCannotImplThisTrait: hidden::YouCannotImplThisTrait;
 }
 
-impl UnsignedPrimitive for u8 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl UnsignedPrimitive for u16 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl UnsignedPrimitive for u32 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl UnsignedPrimitive for u64 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl UnsignedPrimitive for u128 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl UnsignedPrimitive for usize {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
+impl UnsignedPrimitive for u8 {}
+impl UnsignedPrimitive for u16 {}
+impl UnsignedPrimitive for u32 {}
+impl UnsignedPrimitive for u64 {}
+impl UnsignedPrimitive for u128 {}
+impl UnsignedPrimitive for usize {}
 
 /// A trait for `i8`, `i16`, `i32`, `i64`, `i128`, and `isize`.
 pub trait SignedPrimitive:
-    Signed
+    hidden::YouCannotImplThisTrait
+    + Signed
     + PrimInt
     + Integer
     + Num<FromStrRadixErr = ParseIntError>
@@ -156,37 +142,19 @@ pub trait SignedPrimitive:
     + Sync
     + 'static
 {
-    /// You cannot `impl` this trait.
-    type YouCannotImplThisTrait: hidden::YouCannotImplThisTrait;
 }
 
-impl SignedPrimitive for i8 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl SignedPrimitive for i16 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl SignedPrimitive for i32 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl SignedPrimitive for i64 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl SignedPrimitive for i128 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl SignedPrimitive for isize {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
+impl SignedPrimitive for i8 {}
+impl SignedPrimitive for i16 {}
+impl SignedPrimitive for i32 {}
+impl SignedPrimitive for i64 {}
+impl SignedPrimitive for i128 {}
+impl SignedPrimitive for isize {}
 
 /// A trait for `f32` and `f64`.
 pub trait FloatPrimitive:
-    Signed
+    hidden::YouCannotImplThisTrait
+    + Signed
     + Float
     + Num<FromStrRadixErr = num::traits::ParseFloatError>
     + FromStr<Err = std::num::ParseFloatError>
@@ -205,17 +173,10 @@ pub trait FloatPrimitive:
     + Sync
     + 'static
 {
-    /// You cannot `impl` this trait.
-    type YouCannotImplThisTrait: hidden::YouCannotImplThisTrait;
 }
 
-impl FloatPrimitive for f32 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
-
-impl FloatPrimitive for f64 {
-    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
-}
+impl FloatPrimitive for f32 {}
+impl FloatPrimitive for f64 {}
 
 /// A trait that has one associated constant value.
 ///
@@ -248,6 +209,7 @@ pub trait ConstValue {
 /// - `modulus + modulus` does not overflow.
 /// - `modulus * modulus` does not overflow.
 /// - If any of the following methods is used, the modulus is a prime.
+///     - `{..}::ModType::sqrt`
 ///     - [`Div`]`::div` (`/` operator. not [`CheckedDiv`]`::checked_div`)
 ///     - [`DivAssign`]`::div_assign` (`/=` operator)
 ///     - [`Rem`]`::rem` (`%` operator. not [`CheckedRem`]`::checked_rem`)
@@ -279,6 +241,93 @@ pub trait Cartridge {
     #[inline(always)]
     fn get(value: Self::Target, _modulus: Self::Target) -> Self::Target {
         value
+    }
+
+    /// Returns `r` such that `r * r % modulus == value` if it exists.
+    ///
+    /// The default implementation uses [Tonelli–Shanks algorithm].
+    ///
+    /// [Tonelli–Shanks algorithm]: https://en.wikipedia.org/wiki/Tonelli%E2%80%93Shanks_algorithm
+    #[inline(always)]
+    fn sqrt(value: Self::Target, modulus: Self::Target) -> Option<Self::Target>
+    where
+        Self::Features: Features<Multiplication = True, Division = True>,
+    {
+        macro_rules! id {
+            (0) => {
+                Self::Target::zero()
+            };
+            (1) => {
+                Self::Target::one()
+            };
+            (2) => {{
+                id!(1) + id!(1)
+            }};
+        }
+
+        let (n, p) = (value, modulus);
+
+        let (q, s) = {
+            let (mut q, mut s) = (p - id!(1), id!(0));
+            while q & id!(1) == id!(0) {
+                q /= id!(2);
+                s += id!(1);
+            }
+            (q, s)
+        };
+
+        let z = {
+            let mut rng = rand::thread_rng();
+            loop {
+                let z = Self::Target::random(&mut rng) % p;
+                if Self::pow_unsigned(z, (p - id!(1)) / id!(2), p) == p - id!(1) {
+                    break z;
+                }
+            }
+        };
+
+        let mut m = s;
+        let mut c = Self::pow_unsigned(z, q, p);
+        let mut t = Self::pow_unsigned(n, q, p);
+        let mut r = Self::pow_unsigned(n, (q + id!(1)) / id!(2), p);
+
+        Some(loop {
+            if t == id!(0) {
+                break id!(0);
+            }
+            if t == id!(1) {
+                break r;
+            }
+
+            let i = {
+                let (mut acc, mut i) = (Self::mul(t, t, p), id!(1));
+                loop {
+                    if i == m {
+                        return None;
+                    }
+                    if acc == id!(1) {
+                        break i;
+                    }
+                    acc = Self::mul(acc, acc, p);
+                    i += id!(1);
+                }
+            };
+
+            let b = {
+                // `std::iter::Step` is unstable.
+                let (mut b, mut exp_exp) = (c, m - i - id!(1));
+                while exp_exp > id!(0) {
+                    b = Self::mul(b, b, p);
+                    exp_exp -= id!(1);
+                }
+                b
+            };
+
+            m = i;
+            c = Self::mul(b, b, p);
+            t = Self::mul(t, Self::mul(b, b, p), p);
+            r = Self::mul(r, b, p);
+        })
     }
 
     #[inline(always)]
@@ -813,10 +862,11 @@ pub type DefaultModType<M> =
 ///
 /// fn static_assert_unsigned<T: Unsigned>() {}
 ///
-/// // Constructor, `new`, `new_unchecked`, `get`
+/// // Constructor, `new`, `new_unchecked`, `get`, `sqrt`
 /// assert_eq!(F::new(8), F(1));
 /// assert_ne!(F::new_unchecked(8), F(1));
 /// assert_eq!(F(3).get(), 3u32);
+/// assert_eq!(F(2).sqrt(), Some(F(4)));
 ///
 /// // `From<{T, BigUint, BigInt}>`
 /// assert_eq!(F::from(3), F(3));
@@ -940,11 +990,20 @@ impl<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> M
     pub fn get_mut_unchecked(&mut self) -> &mut T {
         &mut self.value
     }
+
+    /// Returns `r` such that `r * r == self` if it exists.
+    #[inline]
+    pub fn sqrt(self) -> Option<Self>
+    where
+        C::Features: Features<Multiplication = True, Division = True>,
+    {
+        C::sqrt(self.value, M::VALUE).map(Self::new_unchecked)
+    }
 }
 
 /// A modular arithmetic integer type which modulus is **a `struct` field**.
 pub mod field_param {
-    use crate::{Cartridge, DefaultCartridge, UnsignedPrimitive};
+    use crate::{Cartridge, DefaultCartridge, Features, True, UnsignedPrimitive};
 
     use std::marker::PhantomData;
 
@@ -1015,17 +1074,32 @@ pub mod field_param {
             self.value
         }
 
+        /// Returns a mutable reference to the inner value.
+        #[inline]
+        pub fn get_mut_unchecked(&mut self) -> &mut T {
+            &mut self.value
+        }
+
         /// Gets the modulus.
         #[inline]
         pub fn modulus(self) -> T {
             self.modulus
+        }
+
+        /// Returns `r` such that `r * r == self` if it exists.
+        #[inline]
+        pub fn sqrt(self) -> Option<Self>
+        where
+            C::Features: Features<Multiplication = True, Division = True>,
+        {
+            C::sqrt(self.value, self.modulus).map(|v| Self::new_unchecked(v, self.modulus))
         }
     }
 }
 
 /// A modular arithmetic integer type which modulus is **`thread_local`**.
 pub mod thread_local {
-    use crate::{Cartridge, DefaultCartridge, UnsignedPrimitive};
+    use crate::{Cartridge, DefaultCartridge, Features, True, UnsignedPrimitive};
 
     use std::cell::UnsafeCell;
     use std::marker::PhantomData;
@@ -1105,6 +1179,15 @@ pub mod thread_local {
         pub fn get_mut_unchecked(&mut self) -> &mut T {
             &mut self.value
         }
+
+        /// Returns `r` such that `r * r == self` if it exists.
+        #[inline]
+        pub fn sqrt(self) -> Option<Self>
+        where
+            C::Features: Features<Multiplication = True, Division = True>,
+        {
+            C::sqrt(self.value, unsafe { T::modulus() }).map(Self::new_unchecked)
+        }
     }
 
     /// A trait that represents an associated `LocalKey<UnsafeCell<Self>>`.
@@ -1177,10 +1260,65 @@ pub mod thread_local {
     }
 }
 
+pub mod util {
+    use rand::Rng;
+
+    pub trait UnsignedPrimitiveUtil {
+        fn random<R: Rng>(rng: &mut R) -> Self;
+    }
+
+    impl UnsignedPrimitiveUtil for u8 {
+        fn random<R: Rng>(rng: &mut R) -> Self {
+            rng.gen()
+        }
+    }
+
+    impl UnsignedPrimitiveUtil for u16 {
+        fn random<R: Rng>(rng: &mut R) -> Self {
+            rng.gen()
+        }
+    }
+
+    impl UnsignedPrimitiveUtil for u32 {
+        fn random<R: Rng>(rng: &mut R) -> Self {
+            rng.gen()
+        }
+    }
+
+    impl UnsignedPrimitiveUtil for u64 {
+        fn random<R: Rng>(rng: &mut R) -> Self {
+            rng.gen()
+        }
+    }
+
+    impl UnsignedPrimitiveUtil for u128 {
+        fn random<R: Rng>(rng: &mut R) -> Self {
+            rng.gen()
+        }
+    }
+
+    impl UnsignedPrimitiveUtil for usize {
+        fn random<R: Rng>(rng: &mut R) -> Self {
+            rng.gen()
+        }
+    }
+}
+
 mod hidden {
     pub trait YouCannotImplThisTrait {}
 
-    pub enum ImplementedInModtype {}
-
-    impl YouCannotImplThisTrait for ImplementedInModtype {}
+    impl YouCannotImplThisTrait for u8 {}
+    impl YouCannotImplThisTrait for u16 {}
+    impl YouCannotImplThisTrait for u32 {}
+    impl YouCannotImplThisTrait for u64 {}
+    impl YouCannotImplThisTrait for u128 {}
+    impl YouCannotImplThisTrait for usize {}
+    impl YouCannotImplThisTrait for i8 {}
+    impl YouCannotImplThisTrait for i16 {}
+    impl YouCannotImplThisTrait for i32 {}
+    impl YouCannotImplThisTrait for i64 {}
+    impl YouCannotImplThisTrait for i128 {}
+    impl YouCannotImplThisTrait for isize {}
+    impl YouCannotImplThisTrait for f32 {}
+    impl YouCannotImplThisTrait for f64 {}
 }
