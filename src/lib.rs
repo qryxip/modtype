@@ -222,7 +222,7 @@ pub trait Cartridge {
     type Target: UnsignedPrimitive;
     type Features: Features;
 
-    #[inline]
+    #[inline(always)]
     fn new(value: Self::Target, modulus: Self::Target) -> Self::Target {
         if value >= modulus {
             value % modulus
@@ -231,18 +231,18 @@ pub trait Cartridge {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn get(value: Self::Target, _modulus: Self::Target) -> Self::Target {
         value
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_biguint(value: BigUint, modulus: Self::Target) -> Self::Target {
         let modulus = Into::<BigUint>::into(modulus);
         (value % modulus).to_string().parse().unwrap()
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_bigint(mut value: BigInt, modulus: Self::Target) -> Self::Target {
         let is_neg = value.is_negative();
         if is_neg {
@@ -260,7 +260,7 @@ pub trait Cartridge {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn fmt_display(
         value: Self::Target,
         _modulus: Self::Target,
@@ -269,7 +269,7 @@ pub trait Cartridge {
         <Self::Target as fmt::Display>::fmt(&value, fmt)
     }
 
-    #[inline]
+    #[inline(always)]
     fn fmt_debug(
         value: Self::Target,
         _modulus: Self::Target,
@@ -279,12 +279,12 @@ pub trait Cartridge {
         <Self::Target as fmt::Debug>::fmt(&value, fmt)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_str(str: &str, modulus: Self::Target) -> Result<Self::Target, ParseIntError> {
         str.parse().map(|v| Self::new(v, modulus))
     }
 
-    #[inline]
+    #[inline(always)]
     fn neg(value: Self::Target, modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<Subtraction = True>,
@@ -292,7 +292,7 @@ pub trait Cartridge {
         modulus - value
     }
 
-    #[inline]
+    #[inline(always)]
     fn add(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<Addition = True>,
@@ -300,7 +300,7 @@ pub trait Cartridge {
         Self::new(lhs + rhs, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn sub(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<Subtraction = True>,
@@ -313,7 +313,7 @@ pub trait Cartridge {
         Self::new(acc, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn mul(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<Multiplication = True>,
@@ -321,7 +321,7 @@ pub trait Cartridge {
         Self::new(lhs * rhs, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn div(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<Division = True>,
@@ -333,7 +333,7 @@ pub trait Cartridge {
             .expect("could not divide. if the modulus is a prime, THIS IS A BUG.")
     }
 
-    #[inline]
+    #[inline(always)]
     fn rem(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<Division = True>,
@@ -347,7 +347,7 @@ pub trait Cartridge {
         Self::Target::zero()
     }
 
-    #[inline]
+    #[inline(always)]
     fn inv(value: Self::Target, modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<Division = True>,
@@ -355,7 +355,7 @@ pub trait Cartridge {
         Self::div(Self::Target::one(), value, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_str_radix(
         str: &str,
         radix: u32,
@@ -368,17 +368,17 @@ pub trait Cartridge {
         Self::Target::from_str_radix(str, radix).map(|v| Self::new(v, modulus))
     }
 
-    #[inline]
+    #[inline(always)]
     fn min_value(_modulus: Self::Target) -> Self::Target {
         Self::Target::zero()
     }
 
-    #[inline]
+    #[inline(always)]
     fn max_value(modulus: Self::Target) -> Self::Target {
         modulus - Self::Target::one()
     }
 
-    #[inline]
+    #[inline(always)]
     fn zero(_modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<Addition = True>,
@@ -386,7 +386,7 @@ pub trait Cartridge {
         Self::Target::zero()
     }
 
-    #[inline]
+    #[inline(always)]
     fn is_zero(value: Self::Target, _modulus: Self::Target) -> bool
     where
         Self::Features: Features<Addition = True>,
@@ -394,7 +394,7 @@ pub trait Cartridge {
         value == Self::Target::zero()
     }
 
-    #[inline]
+    #[inline(always)]
     fn one(_modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<Multiplication = True>,
@@ -402,7 +402,7 @@ pub trait Cartridge {
         Self::Target::one()
     }
 
-    #[inline]
+    #[inline(always)]
     fn is_one(value: Self::Target, _modulus: Self::Target) -> bool
     where
         Self::Features: Features<Multiplication = True>,
@@ -410,7 +410,7 @@ pub trait Cartridge {
         value == Self::Target::one()
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_i64(value: i64, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -418,7 +418,7 @@ pub trait Cartridge {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_u64(value: u64, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -426,7 +426,7 @@ pub trait Cartridge {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_isize(value: isize, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -434,7 +434,7 @@ pub trait Cartridge {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_i8(value: i8, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -442,7 +442,7 @@ pub trait Cartridge {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_i16(value: i16, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -450,7 +450,7 @@ pub trait Cartridge {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_i32(value: i32, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -458,7 +458,7 @@ pub trait Cartridge {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_i128(value: i128, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -470,7 +470,7 @@ pub trait Cartridge {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_usize(value: usize, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -478,7 +478,7 @@ pub trait Cartridge {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_u8(value: u8, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -486,7 +486,7 @@ pub trait Cartridge {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_u16(value: u16, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -494,7 +494,7 @@ pub trait Cartridge {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_u32(value: u32, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -502,7 +502,7 @@ pub trait Cartridge {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_u128(mut value: u128, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -514,7 +514,7 @@ pub trait Cartridge {
         Self::Target::from_u128(value)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
@@ -531,7 +531,7 @@ pub trait Cartridge {
         })
     }
 
-    #[inline]
+    #[inline(always)]
     fn checked_neg(value: Self::Target, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<Subtraction = True>,
@@ -539,7 +539,7 @@ pub trait Cartridge {
         Some(Self::neg(value, modulus))
     }
 
-    #[inline]
+    #[inline(always)]
     fn checked_add(
         lhs: Self::Target,
         rhs: Self::Target,
@@ -551,7 +551,7 @@ pub trait Cartridge {
         lhs.checked_add(&rhs).map(|v| Self::new(v, modulus))
     }
 
-    #[inline]
+    #[inline(always)]
     fn checked_sub(
         lhs: Self::Target,
         rhs: Self::Target,
@@ -565,7 +565,7 @@ pub trait Cartridge {
             .map(|v| Self::new(v, modulus))
     }
 
-    #[inline]
+    #[inline(always)]
     fn checked_mul(
         lhs: Self::Target,
         rhs: Self::Target,
@@ -577,7 +577,7 @@ pub trait Cartridge {
         lhs.checked_mul(&rhs).map(|v| Self::new(v, modulus))
     }
 
-    #[inline]
+    #[inline(always)]
     fn checked_div(
         lhs: Self::Target,
         rhs: Self::Target,
@@ -617,7 +617,7 @@ pub trait Cartridge {
         Self::Target::from_i128(acc)
     }
 
-    #[inline]
+    #[inline(always)]
     fn checked_rem(
         _lhs: Self::Target,
         rhs: Self::Target,
@@ -630,7 +630,7 @@ pub trait Cartridge {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn pow_unsigned<E: UnsignedPrimitive>(
         base: Self::Target,
         exp: E,
@@ -652,7 +652,7 @@ pub trait Cartridge {
         acc
     }
 
-    #[inline]
+    #[inline(always)]
     fn pow_signed<E: SignedPrimitive>(
         base: Self::Target,
         exp: E,
