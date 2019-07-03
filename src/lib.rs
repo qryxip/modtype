@@ -71,7 +71,7 @@ use std::ops::{
 };
 use std::str::FromStr;
 
-/// A trait for primitive unsigned integer types. (i.e. `u8`, `u16`, `u32`, `u64`, `u128`, `usize`)
+/// A trait for `u8`, `u16`, `u32`, `u64`, `u128`, and `usize`.
 pub trait UnsignedPrimitive:
     Unsigned
     + PrimInt
@@ -100,16 +100,35 @@ pub trait UnsignedPrimitive:
     + Sync
     + 'static
 {
+    /// You cannot `impl` this trait.
+    type YouCannotImplThisTrait: hidden::YouCannotImplThisTrait;
 }
 
-impl UnsignedPrimitive for u8 {}
-impl UnsignedPrimitive for u16 {}
-impl UnsignedPrimitive for u32 {}
-impl UnsignedPrimitive for u64 {}
-impl UnsignedPrimitive for u128 {}
-impl UnsignedPrimitive for usize {}
+impl UnsignedPrimitive for u8 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
 
-/// A trait for primitive signed integer types. (i.e. `i8`, `i16`, `i32`, `i64`, `i128`, `isize`)
+impl UnsignedPrimitive for u16 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+impl UnsignedPrimitive for u32 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+impl UnsignedPrimitive for u64 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+impl UnsignedPrimitive for u128 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+impl UnsignedPrimitive for usize {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+/// A trait for `i8`, `i16`, `i32`, `i64`, `i128`, and `isize`.
 pub trait SignedPrimitive:
     Signed
     + PrimInt
@@ -137,16 +156,35 @@ pub trait SignedPrimitive:
     + Sync
     + 'static
 {
+    /// You cannot `impl` this trait.
+    type YouCannotImplThisTrait: hidden::YouCannotImplThisTrait;
 }
 
-impl SignedPrimitive for i8 {}
-impl SignedPrimitive for i16 {}
-impl SignedPrimitive for i32 {}
-impl SignedPrimitive for i64 {}
-impl SignedPrimitive for i128 {}
-impl SignedPrimitive for isize {}
+impl SignedPrimitive for i8 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
 
-/// A trait for primitive floating point number type. (i.e. `f32`, `f64`)
+impl SignedPrimitive for i16 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+impl SignedPrimitive for i32 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+impl SignedPrimitive for i64 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+impl SignedPrimitive for i128 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+impl SignedPrimitive for isize {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+/// A trait for `f32` and `f64`.
 pub trait FloatPrimitive:
     Signed
     + Float
@@ -167,10 +205,17 @@ pub trait FloatPrimitive:
     + Sync
     + 'static
 {
+    /// You cannot `impl` this trait.
+    type YouCannotImplThisTrait: hidden::YouCannotImplThisTrait;
 }
 
-impl FloatPrimitive for f32 {}
-impl FloatPrimitive for f64 {}
+impl FloatPrimitive for f32 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
+
+impl FloatPrimitive for f64 {
+    type YouCannotImplThisTrait = hidden::ImplementedInModtype;
+}
 
 /// A trait that has one associated constant value.
 ///
@@ -1130,4 +1175,12 @@ pub mod thread_local {
         static MODULUS_U128: UnsafeCell<u128> = UnsafeCell::new(0);
         static MODULUS_USIZE: UnsafeCell<usize> = UnsafeCell::new(0);
     }
+}
+
+mod hidden {
+    pub trait YouCannotImplThisTrait {}
+
+    pub enum ImplementedInModtype {}
+
+    impl YouCannotImplThisTrait for ImplementedInModtype {}
 }
