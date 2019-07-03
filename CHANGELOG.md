@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Add `Features::Deref`.
+
 ## [0.6.0] - 2019-07-02Z
 
 ### Added

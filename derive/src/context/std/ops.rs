@@ -13,6 +13,7 @@ impl Context {
             field_ty,
             ..
         } = self;
+        let generics = self.with_features(&[parse_quote!(Deref)], &generics);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         quote! {

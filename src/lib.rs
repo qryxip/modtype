@@ -706,6 +706,7 @@ impl<T: UnsignedPrimitive> Cartridge for NonPrime<T> {
 
 /// Features.
 pub trait Features {
+    type Deref: TypedBool;
     type Addition: TypedBool;
     type Subtraction: TypedBool;
     type Multiplication: TypedBool;
@@ -716,6 +717,7 @@ pub trait Features {
 pub enum DefaultFeatures {}
 
 impl Features for DefaultFeatures {
+    type Deref = True;
     type Addition = True;
     type Subtraction = True;
     type Multiplication = True;
