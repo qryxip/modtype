@@ -332,8 +332,7 @@ pub trait Cartridge {
 
     #[inline(always)]
     fn from_biguint(value: BigUint, modulus: Self::Target) -> Self::Target {
-        let modulus = Into::<BigUint>::into(modulus);
-        (value % modulus).to_string().parse().unwrap()
+        Self::Target::try_from_biguint(modulus.rem_biguint(value)).unwrap()
     }
 
     #[inline(always)]
@@ -342,11 +341,7 @@ pub trait Cartridge {
         if is_neg {
             value = -value;
         }
-        let modulus_big = Into::<BigInt>::into(modulus);
-        let acc = (value % modulus_big)
-            .to_string()
-            .parse::<Self::Target>()
-            .unwrap();
+        let acc = Self::Target::try_from_bigint(modulus.rem_bigint(value)).unwrap();
         if is_neg {
             modulus - acc
         } else {
@@ -1261,15 +1256,35 @@ pub mod thread_local {
 }
 
 pub mod util {
+    use num::{BigInt, BigUint, ToPrimitive as _};
     use rand::Rng;
 
-    pub trait UnsignedPrimitiveUtil {
+    pub trait UnsignedPrimitiveUtil: Sized {
         fn random<R: Rng>(rng: &mut R) -> Self;
+        fn try_from_biguint(biguint: BigUint) -> Option<Self>;
+        fn try_from_bigint(bigint: BigInt) -> Option<Self>;
+        fn rem_biguint(self, biguint: BigUint) -> BigUint;
+        fn rem_bigint(self, bigint: BigInt) -> BigInt;
     }
 
     impl UnsignedPrimitiveUtil for u8 {
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
+        }
+
+        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+            biguint.to_u8()
+        }
+        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+            bigint.to_u8()
+        }
+
+        fn rem_biguint(self, biguint: BigUint) -> BigUint {
+            biguint % self
+        }
+
+        fn rem_bigint(self, bigint: BigInt) -> BigInt {
+            bigint % self
         }
     }
 
@@ -1277,11 +1292,41 @@ pub mod util {
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
+
+        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+            biguint.to_u16()
+        }
+        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+            bigint.to_u16()
+        }
+
+        fn rem_biguint(self, biguint: BigUint) -> BigUint {
+            biguint % self
+        }
+
+        fn rem_bigint(self, bigint: BigInt) -> BigInt {
+            bigint % self
+        }
     }
 
     impl UnsignedPrimitiveUtil for u32 {
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
+        }
+
+        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+            biguint.to_u32()
+        }
+        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+            bigint.to_u32()
+        }
+
+        fn rem_biguint(self, biguint: BigUint) -> BigUint {
+            biguint % self
+        }
+
+        fn rem_bigint(self, bigint: BigInt) -> BigInt {
+            bigint % self
         }
     }
 
@@ -1289,17 +1334,62 @@ pub mod util {
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
+
+        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+            biguint.to_u64()
+        }
+        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+            bigint.to_u64()
+        }
+
+        fn rem_biguint(self, biguint: BigUint) -> BigUint {
+            biguint % self
+        }
+
+        fn rem_bigint(self, bigint: BigInt) -> BigInt {
+            bigint % self
+        }
     }
 
     impl UnsignedPrimitiveUtil for u128 {
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
+
+        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+            biguint.to_u128()
+        }
+        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+            bigint.to_u128()
+        }
+
+        fn rem_biguint(self, biguint: BigUint) -> BigUint {
+            biguint % self
+        }
+
+        fn rem_bigint(self, bigint: BigInt) -> BigInt {
+            bigint % self
+        }
     }
 
     impl UnsignedPrimitiveUtil for usize {
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
+        }
+
+        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+            biguint.to_usize()
+        }
+        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+            bigint.to_usize()
+        }
+
+        fn rem_biguint(self, biguint: BigUint) -> BigUint {
+            biguint % self
+        }
+
+        fn rem_bigint(self, bigint: BigInt) -> BigInt {
+            bigint % self
         }
     }
 }
