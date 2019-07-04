@@ -54,6 +54,17 @@
 //! [`modtype::field_param::ModType`]: ./field_param/struct.ModType.html
 //! [`modtype::Cartridge`]: ./trait.Cartridge.html
 
+macro_rules! expect_feature {
+    ($feature:ident $(, $extra:literal)? $(,)?) => {
+        <Self::Features as Features>::$feature::expect(concat!(
+            "this implementation always panics since `Self::Features::",
+            stringify!($feature),
+            " = False`.",
+            $(" ", $extra,)*
+        ))
+    };
+}
+
 pub use modtype_derive::{use_modtype, ConstValue, ModType};
 
 use crate::util::UnsignedPrimitiveUtil as _;
@@ -203,12 +214,12 @@ pub trait ConstValue {
 
 /// Actual implementation.
 ///
-/// Note that the default implementation assumes:
-/// - Given/Return values are always smaller than the modulus.
-/// - The modulus is larger than `1`.
-/// - `modulus + modulus` does not overflow.
-/// - `modulus * modulus` does not overflow.
-/// - If any of the following methods is used, the modulus is a prime.
+/// Note that in the default implementation:
+/// - It is assumed that given/return values are always smaller than the modulus.
+/// - It is assumed that the modulus is larger than `1`.
+/// - It is assumed that `modulus + modulus` does not overflow.
+/// - It is assumed that `modulus * modulus` does not overflow.
+/// - The following methods always panic if `Self::Features::`[`AssumePrimeModulus`]` = `[`False`].
 ///     - `{..}::ModType::sqrt`
 ///     - [`Div`]`::div` (`/` operator. not [`CheckedDiv`]`::checked_div`)
 ///     - [`DivAssign`]`::div_assign` (`/=` operator)
@@ -217,6 +228,8 @@ pub trait ConstValue {
 ///     - [`Inv`]`::inv`
 ///     - [`FromPrimitive`]`::{from_f32, from_f64}`
 ///
+/// [`AssumePrimeModulus`]: ./trait.Features.html#associatedtype.AssumePrimeModulus
+/// [`False`]: ./enum.False.html
 /// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
 /// [`CheckedDiv`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedDiv.html
 /// [`DivAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.DivAssign.html
@@ -251,7 +264,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn sqrt(value: Self::Target, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Multiplication = True, Division = True>,
+        Self::Features: Features<PartialMultiplication = True, PartialDivision = True>,
     {
         macro_rules! id {
             (0) => {
@@ -264,6 +277,8 @@ pub trait Cartridge {
                 id!(1) + id!(1)
             }};
         }
+
+        expect_feature!(AssumePrimeModulus);
 
         let (n, p) = (value, modulus);
 
@@ -376,7 +391,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn neg(value: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<Subtraction = True>,
+        Self::Features: Features<PartialSubtraction = True>,
     {
         modulus - value
     }
@@ -384,7 +399,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn add(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<Addition = True>,
+        Self::Features: Features<PartialAddition = True>,
     {
         Self::new(lhs + rhs, modulus)
     }
@@ -392,7 +407,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn sub(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<Subtraction = True>,
+        Self::Features: Features<PartialSubtraction = True>,
     {
         let acc = if lhs < rhs {
             modulus + lhs - rhs
@@ -405,7 +420,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn mul(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<Multiplication = True>,
+        Self::Features: Features<PartialMultiplication = True>,
     {
         Self::new(lhs * rhs, modulus)
     }
@@ -413,8 +428,13 @@ pub trait Cartridge {
     #[inline(always)]
     fn div(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<Division = True>,
+        Self::Features: Features<PartialDivision = True>,
     {
+        expect_feature!(
+            AssumePrimeModulus,
+            "use `num::CheckedDiv::checked_div` instead",
+        );
+
         if rhs == Self::Target::zero() {
             panic!("attempt to divide by zero");
         }
@@ -425,8 +445,13 @@ pub trait Cartridge {
     #[inline(always)]
     fn rem(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<Division = True>,
+        Self::Features: Features<PartialDivision = True>,
     {
+        expect_feature!(
+            AssumePrimeModulus,
+            "use `num::traits::CheckedRem::checked_rem` instead",
+        );
+
         if rhs == Self::Target::zero() {
             panic!("attempt to calculate the remainder with a divisor of zero");
         }
@@ -439,7 +464,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn inv(value: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<Division = True>,
+        Self::Features: Features<PartialDivision = True>,
     {
         Self::div(Self::Target::one(), value, modulus)
     }
@@ -451,8 +476,12 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Result<Self::Target, ParseIntError>
     where
-        Self::Features:
-            Features<Addition = True, Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialAddition = True,
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::Target::from_str_radix(str, radix).map(|v| Self::new(v, modulus))
     }
@@ -470,7 +499,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn zero(_modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<Addition = True>,
+        Self::Features: Features<PartialAddition = True>,
     {
         Self::Target::zero()
     }
@@ -478,7 +507,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn is_zero(value: Self::Target, _modulus: Self::Target) -> bool
     where
-        Self::Features: Features<Addition = True>,
+        Self::Features: Features<PartialAddition = True>,
     {
         value == Self::Target::zero()
     }
@@ -486,7 +515,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn one(_modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<Multiplication = True>,
+        Self::Features: Features<PartialMultiplication = True>,
     {
         Self::Target::one()
     }
@@ -494,7 +523,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn is_one(value: Self::Target, _modulus: Self::Target) -> bool
     where
-        Self::Features: Features<Multiplication = True>,
+        Self::Features: Features<PartialMultiplication = True>,
     {
         value == Self::Target::one()
     }
@@ -502,7 +531,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_i64(value: i64, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::from_i128(value.to_i128()?, modulus)
     }
@@ -510,7 +543,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_u64(value: u64, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::from_u128(value.to_u128()?, modulus)
     }
@@ -518,7 +555,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_isize(value: isize, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::from_i128(value.to_i128()?, modulus)
     }
@@ -526,7 +567,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_i8(value: i8, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::from_i128(value.to_i128()?, modulus)
     }
@@ -534,7 +579,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_i16(value: i16, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::from_i128(value.to_i128()?, modulus)
     }
@@ -542,7 +591,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_i32(value: i32, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::from_i128(value.to_i128()?, modulus)
     }
@@ -550,7 +603,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_i128(value: i128, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         if value < 0 {
             Self::from_u128((-value).to_u128()?, modulus).map(|v| Self::neg(v, modulus))
@@ -562,7 +619,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_usize(value: usize, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::from_u128(value.to_u128()?, modulus)
     }
@@ -570,7 +631,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_u8(value: u8, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::from_u128(value.to_u128()?, modulus)
     }
@@ -578,7 +643,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_u16(value: u16, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::from_u128(value.to_u128()?, modulus)
     }
@@ -586,7 +655,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_u32(value: u32, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         Self::from_u128(value.to_u128()?, modulus)
     }
@@ -594,7 +667,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_u128(mut value: u128, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         let modulus = modulus.to_u128()?;
         if value >= modulus {
@@ -606,7 +683,11 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True, Multiplication = True, Division = True>,
+        Self::Features: Features<
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         let (man, exp, sign) = value.integer_decode();
         let acc = Self::mul(
@@ -623,7 +704,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn checked_neg(value: Self::Target, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True>,
+        Self::Features: Features<PartialSubtraction = True>,
     {
         Some(Self::neg(value, modulus))
     }
@@ -635,7 +716,7 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Option<Self::Target>
     where
-        Self::Features: Features<Addition = True>,
+        Self::Features: Features<PartialAddition = True>,
     {
         lhs.checked_add(&rhs).map(|v| Self::new(v, modulus))
     }
@@ -647,7 +728,7 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Option<Self::Target>
     where
-        Self::Features: Features<Subtraction = True>,
+        Self::Features: Features<PartialSubtraction = True>,
     {
         (lhs + modulus)
             .checked_sub(&rhs)
@@ -661,7 +742,7 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Option<Self::Target>
     where
-        Self::Features: Features<Multiplication = True>,
+        Self::Features: Features<PartialMultiplication = True>,
     {
         lhs.checked_mul(&rhs).map(|v| Self::new(v, modulus))
     }
@@ -673,7 +754,7 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Option<Self::Target>
     where
-        Self::Features: Features<Division = True>,
+        Self::Features: Features<PartialDivision = True>,
     {
         #[allow(clippy::many_single_char_names)]
         fn egcd(a: i128, b: i128) -> (i128, i128, i128) {
@@ -726,7 +807,7 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Self::Target
     where
-        Self::Features: Features<Multiplication = True>,
+        Self::Features: Features<PartialMultiplication = True>,
     {
         let (mut base, mut exp, mut acc) = (base, exp, Self::Target::one());
 
@@ -748,7 +829,7 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Self::Target
     where
-        Self::Features: Features<Multiplication = True, Division = True>,
+        Self::Features: Features<PartialMultiplication = True, PartialDivision = True>,
     {
         let (mut base, mut exp, mut acc) = (base, exp, Self::Target::one());
 
@@ -795,40 +876,55 @@ impl<T: UnsignedPrimitive> Cartridge for NonPrime<T> {
 
 /// Features.
 pub trait Features {
+    type AssumePrimeModulus: TypedBool;
     type Deref: TypedBool;
-    type Addition: TypedBool;
-    type Subtraction: TypedBool;
-    type Multiplication: TypedBool;
-    type Division: TypedBool;
+    type PartialAddition: TypedBool;
+    type PartialSubtraction: TypedBool;
+    type PartialMultiplication: TypedBool;
+    type PartialDivision: TypedBool;
 }
 
 /// The default features.
 pub enum DefaultFeatures {}
 
 impl Features for DefaultFeatures {
+    type AssumePrimeModulus = True;
     type Deref = True;
-    type Addition = True;
-    type Subtraction = True;
-    type Multiplication = True;
-    type Division = True;
+    type PartialAddition = True;
+    type PartialSubtraction = True;
+    type PartialMultiplication = True;
+    type PartialDivision = True;
 }
 
 /// Type level boolean.
-pub trait TypedBool {}
-
-/// A [`TypedBool`] which represents "true".
-///
-/// [`TypedBool`]: ./trait.TypedBool.html
-pub enum True {}
-
-impl TypedBool for True {}
+pub trait TypedBool: hidden::YouCannotImplThisTrait {
+    /// `panic!(msg)` if `Self` is [`False`].
+    ///
+    /// [`False`]: ./enum.False.html
+    fn expect(msg: &'static str);
+}
 
 /// A [`TypedBool`] which represents "false".
 ///
 /// [`TypedBool`]: ./trait.TypedBool.html
 pub enum False {}
 
-impl TypedBool for False {}
+impl TypedBool for False {
+    #[inline(always)]
+    fn expect(msg: &'static str) {
+        panic!(msg);
+    }
+}
+
+/// A [`TypedBool`] which represents "true".
+///
+/// [`TypedBool`]: ./trait.TypedBool.html
+pub enum True {}
+
+impl TypedBool for True {
+    #[inline(always)]
+    fn expect(_: &'static str) {}
+}
 
 /// A type alias which [`Cartridge`] is [`DefaultCartridge`]`<M::Value>`.
 ///
@@ -990,7 +1086,7 @@ impl<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> M
     #[inline]
     pub fn sqrt(self) -> Option<Self>
     where
-        C::Features: Features<Multiplication = True, Division = True>,
+        C::Features: Features<PartialMultiplication = True, PartialDivision = True>,
     {
         C::sqrt(self.value, M::VALUE).map(Self::new_unchecked)
     }
@@ -1085,7 +1181,7 @@ pub mod field_param {
         #[inline]
         pub fn sqrt(self) -> Option<Self>
         where
-            C::Features: Features<Multiplication = True, Division = True>,
+            C::Features: Features<PartialMultiplication = True, PartialDivision = True>,
         {
             C::sqrt(self.value, self.modulus).map(|v| Self::new_unchecked(v, self.modulus))
         }
@@ -1179,7 +1275,7 @@ pub mod thread_local {
         #[inline]
         pub fn sqrt(self) -> Option<Self>
         where
-            C::Features: Features<Multiplication = True, Division = True>,
+            C::Features: Features<PartialMultiplication = True, PartialDivision = True>,
         {
             C::sqrt(self.value, unsafe { T::modulus() }).map(Self::new_unchecked)
         }
@@ -1395,8 +1491,12 @@ pub mod util {
 }
 
 mod hidden {
+    use crate::{False, True};
+
     pub trait YouCannotImplThisTrait {}
 
+    impl YouCannotImplThisTrait for False {}
+    impl YouCannotImplThisTrait for True {}
     impl YouCannotImplThisTrait for u8 {}
     impl YouCannotImplThisTrait for u16 {}
     impl YouCannotImplThisTrait for u32 {}

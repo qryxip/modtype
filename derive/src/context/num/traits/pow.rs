@@ -9,15 +9,16 @@ impl Context {
             modulus,
             num_traits,
             struct_ident,
-            generics,
             field_ident,
             ..
         } = self;
 
-        let (impl_generics, ty_generics, _) = generics.split_for_impl();
-        let generics = self.with_features(&[parse_quote!(Multiplication)], &generics);
-        let (_, _, unsigned) = generics.split_for_impl();
-        let generics = self.with_features(&[parse_quote!(Division)], &generics);
+        let generics = self.with_features(&[parse_quote!(PartialMultiplication)]);
+        let (impl_generics, ty_generics, unsigned) = generics.split_for_impl();
+        let generics = self.with_features(&[
+            parse_quote!(PartialMultiplication),
+            parse_quote!(PartialDivision),
+        ]);
         let (_, _, signed) = generics.split_for_impl();
 
         let mut acc = quote!();

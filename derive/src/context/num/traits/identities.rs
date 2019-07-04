@@ -15,11 +15,10 @@ impl Context {
             num_traits,
             modtype,
             struct_ident,
-            generics,
             field_ident,
             ..
         } = self;
-        let generics = self.with_features(&[parse_quote!(Addition)], &generics);
+        let generics = self.with_features(&[parse_quote!(PartialAddition)]);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let zero = parse_quote!(<#cartridge as #modtype::Cartridge>::zero(#modulus));
@@ -53,11 +52,10 @@ impl Context {
             num_traits,
             modtype,
             struct_ident,
-            generics,
             field_ident,
             ..
         } = self;
-        let generics = self.with_features(&[parse_quote!(Multiplication)], &generics);
+        let generics = self.with_features(&[parse_quote!(PartialMultiplication)]);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let one = parse_quote!(<#cartridge as #modtype::Cartridge>::one(#modulus));

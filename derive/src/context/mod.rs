@@ -32,9 +32,12 @@ pub(crate) struct Context {
 }
 
 impl Context {
-    fn with_features(&self, features: &[Ident], generics: &Generics) -> Generics {
+    fn with_features(&self, features: &[Ident]) -> Generics {
         let Self {
-            cartridge, modtype, ..
+            cartridge,
+            modtype,
+            generics,
+            ..
         } = self;
 
         let bindings = {

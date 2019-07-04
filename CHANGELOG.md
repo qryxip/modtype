@@ -8,7 +8,8 @@
 
 ### Changed
 
-- Add `Features::Deref`.
+- Add `Features::{AssumePrimeModulus, Deref}`.
+- Rename `Features::{Addition, Subtraction, Multiplication, Division}` to `Partial{..}`.
 
 ## [0.6.0] - 2019-07-02Z
 
