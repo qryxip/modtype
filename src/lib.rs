@@ -242,6 +242,9 @@ pub trait Cartridge {
     type Target: UnsignedPrimitive;
     type Features: Features;
 
+    /// Implementation for [`From`]`<Self::Target>` and `modtype{, ::thread_local}::ModType::new`.
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
     #[inline(always)]
     fn new(value: Self::Target, modulus: Self::Target) -> Self::Target {
         if value >= modulus {
@@ -251,20 +254,27 @@ pub trait Cartridge {
         }
     }
 
+    /// Implementation for `modtype{, ::thread_local, ::field_param}::ModType::get`.
     #[inline(always)]
     fn get(value: Self::Target, _modulus: Self::Target) -> Self::Target {
         value
     }
 
-    /// Returns `r` such that `r * r % modulus == value` if it exists.
+    /// Implementation for `modtype{, ::thread_local, ::field_param}::ModType::sqrt`.
     ///
     /// The default implementation uses [Tonelli–Shanks algorithm].
     ///
+    /// # Panics
+    ///
+    /// The default implementation always panics if `Self::Features::`[`AssumePrimeModulus`] is [`False`].
+    ///
     /// [Tonelli–Shanks algorithm]: https://en.wikipedia.org/wiki/Tonelli%E2%80%93Shanks_algorithm
+    /// [`AssumePrimeModulus`]: ./trait.Features.html#associatedtype.AssumePrimeModulus
+    /// [`False`]: ./enum.False.html
     #[inline(always)]
     fn sqrt(value: Self::Target, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<PartialMultiplication = True, PartialDivision = True>,
+        Self::Features: Features<PartialMultiplication = True>,
     {
         macro_rules! id {
             (0) => {
@@ -295,16 +305,16 @@ pub trait Cartridge {
             let mut rng = rand::thread_rng();
             loop {
                 let z = Self::Target::random(&mut rng) % p;
-                if Self::pow_unsigned(z, (p - id!(1)) / id!(2), p) == p - id!(1) {
+                if DefaultCartridge::pow_unsigned(z, (p - id!(1)) / id!(2), p) == p - id!(1) {
                     break z;
                 }
             }
         };
 
         let mut m = s;
-        let mut c = Self::pow_unsigned(z, q, p);
-        let mut t = Self::pow_unsigned(n, q, p);
-        let mut r = Self::pow_unsigned(n, (q + id!(1)) / id!(2), p);
+        let mut c = DefaultCartridge::pow_unsigned(z, q, p);
+        let mut t = DefaultCartridge::pow_unsigned(n, q, p);
+        let mut r = DefaultCartridge::pow_unsigned(n, (q + id!(1)) / id!(2), p);
 
         Some(loop {
             if t == id!(0) {
@@ -315,7 +325,7 @@ pub trait Cartridge {
             }
 
             let i = {
-                let (mut acc, mut i) = (Self::mul(t, t, p), id!(1));
+                let (mut acc, mut i) = (DefaultCartridge::mul(t, t, p), id!(1));
                 loop {
                     if i == m {
                         return None;
@@ -323,7 +333,7 @@ pub trait Cartridge {
                     if acc == id!(1) {
                         break i;
                     }
-                    acc = Self::mul(acc, acc, p);
+                    acc = DefaultCartridge::mul(acc, acc, p);
                     i += id!(1);
                 }
             };
@@ -331,23 +341,31 @@ pub trait Cartridge {
             let b = {
                 let mut b = c;
                 for _ in util::range(id!(0), m - i - id!(1)) {
-                    b = Self::mul(b, b, p);
+                    b = DefaultCartridge::mul(b, b, p);
                 }
                 b
             };
 
             m = i;
-            c = Self::mul(b, b, p);
-            t = Self::mul(t, Self::mul(b, b, p), p);
-            r = Self::mul(r, b, p);
+            c = DefaultCartridge::mul(b, b, p);
+            t = DefaultCartridge::mul(t, DefaultCartridge::mul(b, b, p), p);
+            r = DefaultCartridge::mul(r, b, p);
         })
     }
 
+    /// Implementation for [`From`]`<`[`BigUint`]`>`.
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`BigUint`]: https://docs.rs/num-bigint/0.2/num_bigint/struct.BigUint.html
     #[inline(always)]
     fn from_biguint(value: BigUint, modulus: Self::Target) -> Self::Target {
         Self::Target::try_from_biguint(modulus.rem_biguint(value)).unwrap()
     }
 
+    /// Implementation for [`From`]`<`[`BigInt`]`>`.
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`BigInt`]: https://docs.rs/num-bigint/0.2/num_bigint/struct.BigInt.html
     #[inline(always)]
     fn from_bigint(mut value: BigInt, modulus: Self::Target) -> Self::Target {
         let is_neg = value.is_negative();
@@ -362,6 +380,9 @@ pub trait Cartridge {
         }
     }
 
+    /// Implementation for [`Display`].
+    ///
+    /// [`Display`]: https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html
     #[inline(always)]
     fn fmt_display(
         value: Self::Target,
@@ -371,6 +392,9 @@ pub trait Cartridge {
         <Self::Target as fmt::Display>::fmt(&value, fmt)
     }
 
+    /// Implementation for [`Debug`].
+    ///
+    /// [`Debug`]: https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html
     #[inline(always)]
     fn fmt_debug(
         value: Self::Target,
@@ -381,11 +405,17 @@ pub trait Cartridge {
         <Self::Target as fmt::Debug>::fmt(&value, fmt)
     }
 
+    /// Implementation for [`FromStr`].
+    ///
+    /// [`FromStr`]: https://doc.rust-lang.org/nightly/core/str/trait.FromStr.html
     #[inline(always)]
     fn from_str(str: &str, modulus: Self::Target) -> Result<Self::Target, ParseIntError> {
         str.parse().map(|v| Self::new(v, modulus))
     }
 
+    /// Implementation for [`Neg`].
+    ///
+    /// [`Neg`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Neg.html
     #[inline(always)]
     fn neg(value: Self::Target, modulus: Self::Target) -> Self::Target
     where
@@ -394,6 +424,9 @@ pub trait Cartridge {
         modulus - value
     }
 
+    /// Implementation for [`Add`].
+    ///
+    /// [`Add`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Add.html
     #[inline(always)]
     fn add(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
@@ -402,6 +435,9 @@ pub trait Cartridge {
         Self::new(lhs + rhs, modulus)
     }
 
+    /// Implementation for [`Sub`].
+    ///
+    /// [`Sub`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Sub.html
     #[inline(always)]
     fn sub(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
@@ -415,6 +451,9 @@ pub trait Cartridge {
         Self::new(acc, modulus)
     }
 
+    /// Implementation for [`Mul`].
+    ///
+    /// [`Mul`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Mul.html
     #[inline(always)]
     fn mul(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
@@ -423,6 +462,9 @@ pub trait Cartridge {
         Self::new(lhs * rhs, modulus)
     }
 
+    /// Implementation for [`Div`].
+    ///
+    /// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
     #[inline(always)]
     fn div(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
@@ -440,6 +482,9 @@ pub trait Cartridge {
             .expect("could not divide. if the modulus is a prime, THIS IS A BUG.")
     }
 
+    /// Implementation for [`Rem`].
+    ///
+    /// [`Rem`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Rem.html
     #[inline(always)]
     fn rem(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
@@ -459,6 +504,9 @@ pub trait Cartridge {
         Self::Target::zero()
     }
 
+    /// Implementation for [`Inv`].
+    ///
+    /// [`Inv`]: https://docs.rs/num-traits/0.2/num_traits/ops/inv/trait.Inv.html
     #[inline(always)]
     fn inv(value: Self::Target, modulus: Self::Target) -> Self::Target
     where
@@ -467,6 +515,9 @@ pub trait Cartridge {
         Self::div(Self::Target::one(), value, modulus)
     }
 
+    /// Implementation for [`Num`].
+    ///
+    /// [`Num`]: https://docs.rs/num-traits/0.2/num_traits/trait.Num.html
     #[inline(always)]
     fn from_str_radix(
         str: &str,
@@ -475,6 +526,7 @@ pub trait Cartridge {
     ) -> Result<Self::Target, ParseIntError>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialAddition = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
@@ -484,16 +536,28 @@ pub trait Cartridge {
         Self::Target::from_str_radix(str, radix).map(|v| Self::new(v, modulus))
     }
 
+    /// Implementation for [`Bounded`]`::`[`min_value`].
+    ///
+    /// [`Bounded`]: https://docs.rs/num-traits/0.2/num_traits/bounds/trait.Bounded.html
+    /// [`min_value`]: https://docs.rs/num-traits/0.2/num_traits/bounds/trait.Bounded.html#method.min_value
     #[inline(always)]
     fn min_value(_modulus: Self::Target) -> Self::Target {
         Self::Target::zero()
     }
 
+    /// Implementation for [`Bounded`]`::`[`max_value`].
+    ///
+    /// [`Bounded`]: https://docs.rs/num-traits/0.2/num_traits/bounds/trait.Bounded.html
+    /// [`max_value`]: https://docs.rs/num-traits/0.2/num_traits/bounds/trait.Bounded.html#method.max_value
     #[inline(always)]
     fn max_value(modulus: Self::Target) -> Self::Target {
         modulus - Self::Target::one()
     }
 
+    /// Implementation for [`Zero`]`::`[`zero`].
+    ///
+    /// [`Zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html
+    /// [`zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html#tymethod.zero
     #[inline(always)]
     fn zero(_modulus: Self::Target) -> Self::Target
     where
@@ -502,6 +566,10 @@ pub trait Cartridge {
         Self::Target::zero()
     }
 
+    /// Implementation for [`Zero`]`::`[`is_zero`].
+    ///
+    /// [`Zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html
+    /// [`is_zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html#tymethod.is_zero
     #[inline(always)]
     fn is_zero(value: Self::Target, _modulus: Self::Target) -> bool
     where
@@ -510,6 +578,10 @@ pub trait Cartridge {
         value == Self::Target::zero()
     }
 
+    /// Implementation for [`One`]`::`[`one`].
+    ///
+    /// [`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
+    /// [`one`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html#tymethod.one
     #[inline(always)]
     fn one(_modulus: Self::Target) -> Self::Target
     where
@@ -518,6 +590,10 @@ pub trait Cartridge {
         Self::Target::one()
     }
 
+    /// Implementation for [`One`]`::`[`is_one`].
+    ///
+    /// [`One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
+    /// [`is_one`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html#tymethod.is_one
     #[inline(always)]
     fn is_one(value: Self::Target, _modulus: Self::Target) -> bool
     where
@@ -526,10 +602,15 @@ pub trait Cartridge {
         value == Self::Target::one()
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_i64`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_i64`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#tymethod.from_i64
     #[inline(always)]
     fn from_i64(value: i64, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -538,10 +619,15 @@ pub trait Cartridge {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_u64`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_u64`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#tymethod.from_u64
     #[inline(always)]
     fn from_u64(value: u64, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -550,10 +636,15 @@ pub trait Cartridge {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_isize`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_isize`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#tymethod.from_isize
     #[inline(always)]
     fn from_isize(value: isize, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -562,10 +653,15 @@ pub trait Cartridge {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_isize`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_isize`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_isize
     #[inline(always)]
     fn from_i8(value: i8, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -574,10 +670,15 @@ pub trait Cartridge {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_i16`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_i16`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_i16
     #[inline(always)]
     fn from_i16(value: i16, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -586,10 +687,15 @@ pub trait Cartridge {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_i32`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_i32`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_i32
     #[inline(always)]
     fn from_i32(value: i32, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -598,10 +704,15 @@ pub trait Cartridge {
         Self::from_i128(value.to_i128()?, modulus)
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_i128`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_i128`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_i128
     #[inline(always)]
     fn from_i128(value: i128, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -614,10 +725,15 @@ pub trait Cartridge {
         }
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_usize`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_usize`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_usize
     #[inline(always)]
     fn from_usize(value: usize, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -626,10 +742,15 @@ pub trait Cartridge {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_u8`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_u8`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u8
     #[inline(always)]
     fn from_u8(value: u8, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -638,10 +759,15 @@ pub trait Cartridge {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_u16`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_u16`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u16
     #[inline(always)]
     fn from_u16(value: u16, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -650,10 +776,15 @@ pub trait Cartridge {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_u32`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_u32`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u32
     #[inline(always)]
     fn from_u32(value: u32, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -662,10 +793,15 @@ pub trait Cartridge {
         Self::from_u128(value.to_u128()?, modulus)
     }
 
+    /// Implementation for [`FromPrimitive`]`::`[`from_u128`].
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_u128`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u128
     #[inline(always)]
     fn from_u128(mut value: u128, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
@@ -678,19 +814,31 @@ pub trait Cartridge {
         Self::Target::from_u128(value)
     }
 
+    /// Implementation for [`FromPrimitive`]`::{`[`from_f32`]`, `[`from_f64`]`}`.
+    ///
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_f32`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_f32
+    /// [`from_f64`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_f64
     #[inline(always)]
     fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Target) -> Option<Self::Target>
     where
         Self::Features: Features<
+            AssumePrimeModulus = True,
             PartialSubtraction = True,
             PartialMultiplication = True,
             PartialDivision = True,
         >,
     {
+        macro_rules! id {
+            (2) => {
+                Self::Target::one() + Self::Target::one()
+            };
+        }
+
         let (man, exp, sign) = value.integer_decode();
         let acc = Self::mul(
             Self::from_u64(man, modulus)?,
-            Self::pow_signed(Self::Target::one() + Self::Target::one(), exp, modulus),
+            Self::pow_signed(id!(2), exp, modulus),
             modulus,
         );
         Some(match sign {
@@ -699,6 +847,9 @@ pub trait Cartridge {
         })
     }
 
+    /// Implementation for [`CheckedNeg`].
+    ///
+    /// [`CheckedNeg`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedNeg.html
     #[inline(always)]
     fn checked_neg(value: Self::Target, modulus: Self::Target) -> Option<Self::Target>
     where
@@ -707,6 +858,9 @@ pub trait Cartridge {
         Some(Self::neg(value, modulus))
     }
 
+    /// Implementation for [`CheckedAdd`].
+    ///
+    /// [`CheckedAdd`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedAdd.html
     #[inline(always)]
     fn checked_add(
         lhs: Self::Target,
@@ -719,6 +873,9 @@ pub trait Cartridge {
         lhs.checked_add(&rhs).map(|v| Self::new(v, modulus))
     }
 
+    /// Implementation for [`CheckedSub`].
+    ///
+    /// [`CheckedSub`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedSub.html
     #[inline(always)]
     fn checked_sub(
         lhs: Self::Target,
@@ -733,6 +890,9 @@ pub trait Cartridge {
             .map(|v| Self::new(v, modulus))
     }
 
+    /// Implementation for [`CheckedMul`].
+    ///
+    /// [`CheckedMul`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedMul.html
     #[inline(always)]
     fn checked_mul(
         lhs: Self::Target,
@@ -745,6 +905,9 @@ pub trait Cartridge {
         lhs.checked_mul(&rhs).map(|v| Self::new(v, modulus))
     }
 
+    /// Implementation for [`CheckedDiv`].
+    ///
+    /// [`CheckedDiv`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedDiv.html
     #[inline(always)]
     fn checked_div(
         lhs: Self::Target,
@@ -785,12 +948,18 @@ pub trait Cartridge {
         Self::Target::from_i128(acc)
     }
 
+    /// Implementation for [`CheckedRem`].
+    ///
+    /// [`CheckedRem`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedRem.html
     #[inline(always)]
     fn checked_rem(
         _lhs: Self::Target,
         rhs: Self::Target,
         modulus: Self::Target,
-    ) -> Option<Self::Target> {
+    ) -> Option<Self::Target>
+    where
+        Self::Features: Features<PartialDivision = True>,
+    {
         if integer::gcd(rhs, modulus) == Self::Target::one() {
             Some(Self::Target::zero())
         } else {
@@ -798,6 +967,15 @@ pub trait Cartridge {
         }
     }
 
+    /// Implementation for [`Pow`]`<{`[`u8`]`, `[`u16`]`, `[`u32`]`, `[`u64`]`, `[`u128`]`, `[`usize`]`}>`.
+    ///
+    /// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
+    /// [`u8`]: https://doc.rust-lang.org/nightly/std/primitive.u8.html
+    /// [`u16`]: https://doc.rust-lang.org/nightly/std/primitive.u16.html
+    /// [`u32`]: https://doc.rust-lang.org/nightly/std/primitive.u32.html
+    /// [`u64`]: https://doc.rust-lang.org/nightly/std/primitive.u64.html
+    /// [`u128`]: https://doc.rust-lang.org/nightly/std/primitive.u128.html
+    /// [`usize`]: https://doc.rust-lang.org/nightly/std/primitive.usize.html
     #[inline(always)]
     fn pow_unsigned<E: UnsignedPrimitive>(
         base: Self::Target,
@@ -820,6 +998,15 @@ pub trait Cartridge {
         acc
     }
 
+    /// Implementation for [`Pow`]`<{`[`i8`]`, `[`i16`]`, `[`i32`]`, `[`i64`]`, `[`i128`]`, `[`isize`]`}>`.
+    ///
+    /// [`Pow`]: https://docs.rs/num-traits/0.2/num_traits/pow/trait.Pow.html
+    /// [`i8`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html
+    /// [`i16`]: https://doc.rust-lang.org/nightly/std/primitive.i16.html
+    /// [`i32`]: https://doc.rust-lang.org/nightly/std/primitive.i32.html
+    /// [`i64`]: https://doc.rust-lang.org/nightly/std/primitive.i64.html
+    /// [`i128`]: https://doc.rust-lang.org/nightly/std/primitive.i128.html
+    /// [`isize`]: https://doc.rust-lang.org/nightly/std/primitive.isize.html
     #[inline(always)]
     fn pow_signed<E: SignedPrimitive>(
         base: Self::Target,
@@ -827,7 +1014,11 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Self::Target
     where
-        Self::Features: Features<PartialMultiplication = True, PartialDivision = True>,
+        Self::Features: Features<
+            AssumePrimeModulus = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
     {
         let (mut base, mut exp, mut acc) = (base, exp, Self::Target::one());
 
@@ -1084,7 +1275,7 @@ impl<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> M
     #[inline]
     pub fn sqrt(self) -> Option<Self>
     where
-        C::Features: Features<PartialMultiplication = True, PartialDivision = True>,
+        C::Features: Features<PartialMultiplication = True>,
     {
         C::sqrt(self.value, M::VALUE).map(Self::new_unchecked)
     }
@@ -1179,7 +1370,7 @@ pub mod field_param {
         #[inline]
         pub fn sqrt(self) -> Option<Self>
         where
-            C::Features: Features<PartialMultiplication = True, PartialDivision = True>,
+            C::Features: Features<PartialMultiplication = True>,
         {
             C::sqrt(self.value, self.modulus).map(|v| Self::new_unchecked(v, self.modulus))
         }
@@ -1273,7 +1464,7 @@ pub mod thread_local {
         #[inline]
         pub fn sqrt(self) -> Option<Self>
         where
-            C::Features: Features<PartialMultiplication = True, PartialDivision = True>,
+            C::Features: Features<PartialMultiplication = True>,
         {
             C::sqrt(self.value, unsafe { T::modulus() }).map(Self::new_unchecked)
         }

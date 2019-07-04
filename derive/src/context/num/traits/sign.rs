@@ -15,6 +15,7 @@ impl Context {
             ..
         } = self;
         let generics = self.with_features(&[
+            parse_quote!(AssumePrimeModulus),
             parse_quote!(PartialAddition),
             parse_quote!(PartialSubtraction),
             parse_quote!(PartialMultiplication),

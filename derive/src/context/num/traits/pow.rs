@@ -16,6 +16,7 @@ impl Context {
         let generics = self.with_features(&[parse_quote!(PartialMultiplication)]);
         let (impl_generics, ty_generics, unsigned) = generics.split_for_impl();
         let generics = self.with_features(&[
+            parse_quote!(AssumePrimeModulus),
             parse_quote!(PartialMultiplication),
             parse_quote!(PartialDivision),
         ]);
