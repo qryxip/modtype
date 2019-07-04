@@ -10,6 +10,7 @@
 
 - Add `Features::{AssumePrimeModulus, Deref}`.
 - Rename `Features::{Addition, Subtraction, Multiplication, Division}` to `Partial{..}`.
+- Modify the implementation of divisions.
 
 ## [0.6.0] - 2019-07-02Z
 

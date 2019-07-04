@@ -69,13 +69,13 @@ pub use modtype_derive::{use_modtype, ConstValue, ModType};
 
 use crate::util::UnsignedPrimitiveUtil as _;
 
+use num::integer::ExtendedGcd;
 use num::{
     integer, BigInt, BigUint, CheckedAdd as _, CheckedMul as _, CheckedSub as _, Float,
     FromPrimitive, Integer, Num, One as _, PrimInt, Signed, ToPrimitive as _, Unsigned, Zero as _,
 };
 
 use std::convert::Infallible;
-use std::fmt;
 use std::iter::{Product, Sum};
 use std::marker::PhantomData;
 use std::num::ParseIntError;
@@ -83,6 +83,7 @@ use std::ops::{
     AddAssign, BitAndAssign, BitOrAssign, BitXorAssign, DivAssign, MulAssign, RemAssign, SubAssign,
 };
 use std::str::FromStr;
+use std::{fmt, mem};
 
 /// A trait for `u8`, `u16`, `u32`, `u64`, `u128`, and `usize`.
 pub trait UnsignedPrimitive:
@@ -464,47 +465,89 @@ pub trait Cartridge {
 
     /// Implementation for [`Div`].
     ///
+    /// The default implementation is based on [this article].
+    ///
+    /// # Panics
+    ///
+    /// The default implementation panics if `rhs`⁻¹ does not exist.
+    ///
     /// [`Div`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Div.html
+    /// [this article]: https://topcoder.g.hatena.ne.jp/iwiwi/20130105/1357363348
     #[inline(always)]
     fn div(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<PartialDivision = True>,
     {
-        expect_feature!(
-            AssumePrimeModulus,
-            "use `num::CheckedDiv::checked_div` instead",
-        );
+        if !<Self::Features as Features>::AssumePrimeModulus::VALUE {
+            return DefaultCartridge::checked_div(lhs, rhs, modulus).expect("could not divide");
+        }
 
         if rhs == Self::Target::zero() {
             panic!("attempt to divide by zero");
         }
-        Self::checked_div(lhs, rhs, modulus)
-            .expect("could not divide. if the modulus is a prime, THIS IS A BUG.")
+
+        let lhs = lhs
+            .try_into_signed()
+            .expect("too large to convert into signed one");
+        let rhs = rhs
+            .try_into_signed()
+            .expect("too large to convert into signed one");
+        let modulus = modulus
+            .try_into_signed()
+            .expect("too large to convert into signed one");
+
+        let mut a = rhs;
+        let mut b = modulus;
+        let mut u = <Self::Target as util::UnsignedPrimitiveUtil>::Signed::one();
+        let mut v = <Self::Target as util::UnsignedPrimitiveUtil>::Signed::zero();
+
+        while !b.is_zero() {
+            let d = a / b;
+            a -= b * d;
+            u -= v * d;
+            mem::swap(&mut a, &mut b);
+            mem::swap(&mut u, &mut v);
+        }
+
+        let acc = if u.is_negative() {
+            (lhs * (u + modulus)) % modulus
+        } else {
+            (lhs * u) % modulus
+        };
+        Self::Target::try_from_signed(acc).unwrap()
     }
 
     /// Implementation for [`Rem`].
     ///
+    /// The default implementation always returns `0`.
+    ///
+    /// # Panics
+    ///
+    /// The default implementation panics if [`gcd`]`(lhs, rhs)` ≠ `1`.
+    ///
     /// [`Rem`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Rem.html
+    /// [`gcd`]: https://docs.rs/num-integer/0.1/num_integer/fn.gcd.html
     #[inline(always)]
-    fn rem(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
+    fn rem(_lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
         Self::Features: Features<PartialDivision = True>,
     {
-        expect_feature!(
-            AssumePrimeModulus,
-            "use `num::traits::CheckedRem::checked_rem` instead",
-        );
-
         if rhs == Self::Target::zero() {
             panic!("attempt to calculate the remainder with a divisor of zero");
         }
-        if integer::gcd(rhs, modulus) != Self::Target::one() {
-            panic!("{}/{} (mod {}) does not exist", lhs, rhs, modulus);
+        if !<Self::Features as Features>::AssumePrimeModulus::VALUE
+            && integer::gcd(rhs, modulus) != Self::Target::one()
+        {
+            panic!("cannot divide");
         }
         Self::Target::zero()
     }
 
     /// Implementation for [`Inv`].
+    ///
+    /// # Panics
+    ///
+    /// The default implementation panics if `value`⁻¹ does not exist.
     ///
     /// [`Inv`]: https://docs.rs/num-traits/0.2/num_traits/ops/inv/trait.Inv.html
     #[inline(always)]
@@ -917,35 +960,20 @@ pub trait Cartridge {
     where
         Self::Features: Features<PartialDivision = True>,
     {
-        #[allow(clippy::many_single_char_names)]
-        fn egcd(a: i128, b: i128) -> (i128, i128, i128) {
-            if a == 0 {
-                (b, 0, 1)
-            } else {
-                let (d, u, v) = egcd(b % a, a);
-                (d, v - (b / a) * u, u)
-            }
-        }
-
-        let lhs = lhs.to_i128()?;
-        let rhs = rhs.to_i128()?;
-        let modulus = modulus.to_i128()?;
-
-        if rhs == 0 {
+        if rhs.is_zero() {
             return None;
         }
 
-        let (d, u, _) = egcd(rhs, modulus);
+        let lhs_signed = lhs.try_into_signed()?;
+        let rhs_signed = rhs.try_into_signed()?;
+        let modulus_signed = modulus.try_into_signed()?;
+        let ExtendedGcd { gcd, x, .. } = rhs_signed.extended_gcd(&modulus_signed);
 
-        if rhs % d != 0 {
-            return None;
+        if lhs_signed % gcd > <Self::Target as util::UnsignedPrimitiveUtil>::Signed::zero() {
+            None
+        } else {
+            Self::Target::try_from_signed(lhs_signed * (x + modulus_signed) % modulus_signed)
         }
-
-        let mut acc = (lhs * u) % modulus;
-        if acc < 0 {
-            acc += modulus;
-        }
-        Self::Target::from_i128(acc)
     }
 
     /// Implementation for [`CheckedRem`].
@@ -1087,6 +1115,8 @@ impl Features for DefaultFeatures {
 
 /// Type level boolean.
 pub trait TypedBool: hidden::Sealed {
+    const VALUE: bool;
+
     /// `panic!(msg)` if `Self` is [`False`].
     ///
     /// [`False`]: ./enum.False.html
@@ -1099,6 +1129,8 @@ pub trait TypedBool: hidden::Sealed {
 pub enum False {}
 
 impl TypedBool for False {
+    const VALUE: bool = false;
+
     #[inline(always)]
     fn expect(msg: &'static str) {
         panic!(msg);
@@ -1111,6 +1143,8 @@ impl TypedBool for False {
 pub enum True {}
 
 impl TypedBool for True {
+    const VALUE: bool = true;
+
     #[inline(always)]
     fn expect(_: &'static str) {}
 }
@@ -1541,9 +1575,12 @@ pub mod thread_local {
 }
 
 pub mod util {
+    use crate::SignedPrimitive;
+
     use num::{BigInt, BigUint, ToPrimitive as _};
     use rand::Rng;
 
+    use std::convert::{TryFrom as _, TryInto as _};
     use std::ops::Range;
 
     pub fn range<T: UnsignedPrimitiveUtil>(start: T, end: T) -> T::Range {
@@ -1551,172 +1588,283 @@ pub mod util {
     }
 
     pub trait UnsignedPrimitiveUtil: Sized {
+        type Signed: SignedPrimitive;
         type Range: Iterator<Item = Self>;
         fn random<R: Rng>(rng: &mut R) -> Self;
         fn try_from_biguint(biguint: BigUint) -> Option<Self>;
         fn try_from_bigint(bigint: BigInt) -> Option<Self>;
+        fn try_from_signed(signed: Self::Signed) -> Option<Self>;
+        fn try_into_signed(self) -> Option<Self::Signed>;
         fn rem_biguint(self, biguint: BigUint) -> BigUint;
         fn rem_bigint(self, bigint: BigInt) -> BigInt;
         fn range(self, end: Self) -> Self::Range;
     }
 
     impl UnsignedPrimitiveUtil for u8 {
+        type Signed = i8;
         type Range = Range<u8>;
 
+        #[inline]
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
 
+        #[inline]
         fn try_from_biguint(biguint: BigUint) -> Option<Self> {
             biguint.to_u8()
         }
+
+        #[inline]
         fn try_from_bigint(bigint: BigInt) -> Option<Self> {
             bigint.to_u8()
         }
 
+        #[inline]
+        fn try_from_signed(signed: i8) -> Option<Self> {
+            Self::try_from(signed).ok()
+        }
+
+        #[inline]
+        fn try_into_signed(self) -> Option<i8> {
+            self.try_into().ok()
+        }
+
+        #[inline]
         fn rem_biguint(self, biguint: BigUint) -> BigUint {
             biguint % self
         }
 
+        #[inline]
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
 
+        #[inline]
         fn range(self, end: Self) -> Range<Self> {
             self..end
         }
     }
 
     impl UnsignedPrimitiveUtil for u16 {
+        type Signed = i16;
         type Range = Range<u16>;
 
+        #[inline]
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
 
+        #[inline]
         fn try_from_biguint(biguint: BigUint) -> Option<Self> {
             biguint.to_u16()
         }
+
+        #[inline]
         fn try_from_bigint(bigint: BigInt) -> Option<Self> {
             bigint.to_u16()
         }
 
+        #[inline]
+        fn try_from_signed(signed: i16) -> Option<Self> {
+            Self::try_from(signed).ok()
+        }
+
+        #[inline]
+        fn try_into_signed(self) -> Option<i16> {
+            self.try_into().ok()
+        }
+
+        #[inline]
         fn rem_biguint(self, biguint: BigUint) -> BigUint {
             biguint % self
         }
 
+        #[inline]
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
 
+        #[inline]
         fn range(self, end: Self) -> Range<Self> {
             self..end
         }
     }
 
     impl UnsignedPrimitiveUtil for u32 {
+        type Signed = i32;
         type Range = Range<u32>;
 
+        #[inline]
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
 
+        #[inline]
         fn try_from_biguint(biguint: BigUint) -> Option<Self> {
             biguint.to_u32()
         }
+
+        #[inline]
         fn try_from_bigint(bigint: BigInt) -> Option<Self> {
             bigint.to_u32()
         }
 
+        #[inline]
+        fn try_from_signed(signed: i32) -> Option<Self> {
+            Self::try_from(signed).ok()
+        }
+
+        #[inline]
+        fn try_into_signed(self) -> Option<i32> {
+            self.try_into().ok()
+        }
+
+        #[inline]
         fn rem_biguint(self, biguint: BigUint) -> BigUint {
             biguint % self
         }
 
+        #[inline]
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
 
+        #[inline]
         fn range(self, end: Self) -> Range<Self> {
             self..end
         }
     }
 
     impl UnsignedPrimitiveUtil for u64 {
+        type Signed = i64;
         type Range = Range<u64>;
 
+        #[inline]
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
 
+        #[inline]
         fn try_from_biguint(biguint: BigUint) -> Option<Self> {
             biguint.to_u64()
         }
+
+        #[inline]
         fn try_from_bigint(bigint: BigInt) -> Option<Self> {
             bigint.to_u64()
         }
 
+        #[inline]
+        fn try_from_signed(signed: i64) -> Option<Self> {
+            Self::try_from(signed).ok()
+        }
+
+        #[inline]
+        fn try_into_signed(self) -> Option<i64> {
+            self.try_into().ok()
+        }
+
+        #[inline]
         fn rem_biguint(self, biguint: BigUint) -> BigUint {
             biguint % self
         }
 
+        #[inline]
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
 
+        #[inline]
         fn range(self, end: Self) -> Range<Self> {
             self..end
         }
     }
 
     impl UnsignedPrimitiveUtil for u128 {
+        type Signed = i128;
         type Range = Range<u128>;
 
+        #[inline]
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
 
+        #[inline]
         fn try_from_biguint(biguint: BigUint) -> Option<Self> {
             biguint.to_u128()
         }
+
+        #[inline]
         fn try_from_bigint(bigint: BigInt) -> Option<Self> {
             bigint.to_u128()
         }
 
+        #[inline]
+        fn try_from_signed(signed: i128) -> Option<Self> {
+            Self::try_from(signed).ok()
+        }
+
+        #[inline]
+        fn try_into_signed(self) -> Option<i128> {
+            self.try_into().ok()
+        }
+
+        #[inline]
         fn rem_biguint(self, biguint: BigUint) -> BigUint {
             biguint % self
         }
 
+        #[inline]
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
 
+        #[inline]
         fn range(self, end: Self) -> Range<Self> {
             self..end
         }
     }
 
     impl UnsignedPrimitiveUtil for usize {
+        type Signed = isize;
         type Range = Range<usize>;
 
+        #[inline]
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
 
+        #[inline]
         fn try_from_biguint(biguint: BigUint) -> Option<Self> {
             biguint.to_usize()
         }
+
+        #[inline]
         fn try_from_bigint(bigint: BigInt) -> Option<Self> {
             bigint.to_usize()
         }
 
+        #[inline]
+        fn try_from_signed(signed: isize) -> Option<Self> {
+            Self::try_from(signed).ok()
+        }
+
+        #[inline]
+        fn try_into_signed(self) -> Option<isize> {
+            self.try_into().ok()
+        }
+
+        #[inline]
         fn rem_biguint(self, biguint: BigUint) -> BigUint {
             biguint % self
         }
 
+        #[inline]
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
 
+        #[inline]
         fn range(self, end: Self) -> Range<Self> {
             self..end
         }
