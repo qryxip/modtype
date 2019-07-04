@@ -86,7 +86,7 @@ use std::str::FromStr;
 
 /// A trait for `u8`, `u16`, `u32`, `u64`, `u128`, and `usize`.
 pub trait UnsignedPrimitive:
-    hidden::YouCannotImplThisTrait
+    hidden::Sealed
     + Unsigned
     + PrimInt
     + Integer
@@ -126,7 +126,7 @@ impl UnsignedPrimitive for usize {}
 
 /// A trait for `i8`, `i16`, `i32`, `i64`, `i128`, and `isize`.
 pub trait SignedPrimitive:
-    hidden::YouCannotImplThisTrait
+    hidden::Sealed
     + Signed
     + PrimInt
     + Integer
@@ -164,7 +164,7 @@ impl SignedPrimitive for isize {}
 
 /// A trait for `f32` and `f64`.
 pub trait FloatPrimitive:
-    hidden::YouCannotImplThisTrait
+    hidden::Sealed
     + Signed
     + Float
     + Num<FromStrRadixErr = num::traits::ParseFloatError>
@@ -329,11 +329,9 @@ pub trait Cartridge {
             };
 
             let b = {
-                // `std::iter::Step` is unstable.
-                let (mut b, mut exp_exp) = (c, m - i - id!(1));
-                while exp_exp > id!(0) {
+                let mut b = c;
+                for _ in util::range(id!(0), m - i - id!(1)) {
                     b = Self::mul(b, b, p);
-                    exp_exp -= id!(1);
                 }
                 b
             };
@@ -897,7 +895,7 @@ impl Features for DefaultFeatures {
 }
 
 /// Type level boolean.
-pub trait TypedBool: hidden::YouCannotImplThisTrait {
+pub trait TypedBool: hidden::Sealed {
     /// `panic!(msg)` if `Self` is [`False`].
     ///
     /// [`False`]: ./enum.False.html
@@ -1355,15 +1353,25 @@ pub mod util {
     use num::{BigInt, BigUint, ToPrimitive as _};
     use rand::Rng;
 
+    use std::ops::Range;
+
+    pub fn range<T: UnsignedPrimitiveUtil>(start: T, end: T) -> T::Range {
+        start.range(end)
+    }
+
     pub trait UnsignedPrimitiveUtil: Sized {
+        type Range: Iterator<Item = Self>;
         fn random<R: Rng>(rng: &mut R) -> Self;
         fn try_from_biguint(biguint: BigUint) -> Option<Self>;
         fn try_from_bigint(bigint: BigInt) -> Option<Self>;
         fn rem_biguint(self, biguint: BigUint) -> BigUint;
         fn rem_bigint(self, bigint: BigInt) -> BigInt;
+        fn range(self, end: Self) -> Self::Range;
     }
 
     impl UnsignedPrimitiveUtil for u8 {
+        type Range = Range<u8>;
+
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
@@ -1382,9 +1390,15 @@ pub mod util {
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
+
+        fn range(self, end: Self) -> Range<Self> {
+            self..end
+        }
     }
 
     impl UnsignedPrimitiveUtil for u16 {
+        type Range = Range<u16>;
+
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
@@ -1403,9 +1417,15 @@ pub mod util {
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
+
+        fn range(self, end: Self) -> Range<Self> {
+            self..end
+        }
     }
 
     impl UnsignedPrimitiveUtil for u32 {
+        type Range = Range<u32>;
+
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
@@ -1424,9 +1444,15 @@ pub mod util {
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
+
+        fn range(self, end: Self) -> Range<Self> {
+            self..end
+        }
     }
 
     impl UnsignedPrimitiveUtil for u64 {
+        type Range = Range<u64>;
+
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
@@ -1445,9 +1471,15 @@ pub mod util {
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
+
+        fn range(self, end: Self) -> Range<Self> {
+            self..end
+        }
     }
 
     impl UnsignedPrimitiveUtil for u128 {
+        type Range = Range<u128>;
+
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
@@ -1466,9 +1498,15 @@ pub mod util {
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
+
+        fn range(self, end: Self) -> Range<Self> {
+            self..end
+        }
     }
 
     impl UnsignedPrimitiveUtil for usize {
+        type Range = Range<usize>;
+
         fn random<R: Rng>(rng: &mut R) -> Self {
             rng.gen()
         }
@@ -1487,28 +1525,32 @@ pub mod util {
         fn rem_bigint(self, bigint: BigInt) -> BigInt {
             bigint % self
         }
+
+        fn range(self, end: Self) -> Range<Self> {
+            self..end
+        }
     }
 }
 
 mod hidden {
     use crate::{False, True};
 
-    pub trait YouCannotImplThisTrait {}
+    pub trait Sealed {}
 
-    impl YouCannotImplThisTrait for False {}
-    impl YouCannotImplThisTrait for True {}
-    impl YouCannotImplThisTrait for u8 {}
-    impl YouCannotImplThisTrait for u16 {}
-    impl YouCannotImplThisTrait for u32 {}
-    impl YouCannotImplThisTrait for u64 {}
-    impl YouCannotImplThisTrait for u128 {}
-    impl YouCannotImplThisTrait for usize {}
-    impl YouCannotImplThisTrait for i8 {}
-    impl YouCannotImplThisTrait for i16 {}
-    impl YouCannotImplThisTrait for i32 {}
-    impl YouCannotImplThisTrait for i64 {}
-    impl YouCannotImplThisTrait for i128 {}
-    impl YouCannotImplThisTrait for isize {}
-    impl YouCannotImplThisTrait for f32 {}
-    impl YouCannotImplThisTrait for f64 {}
+    impl Sealed for False {}
+    impl Sealed for True {}
+    impl Sealed for u8 {}
+    impl Sealed for u16 {}
+    impl Sealed for u32 {}
+    impl Sealed for u64 {}
+    impl Sealed for u128 {}
+    impl Sealed for usize {}
+    impl Sealed for i8 {}
+    impl Sealed for i16 {}
+    impl Sealed for i32 {}
+    impl Sealed for i64 {}
+    impl Sealed for i128 {}
+    impl Sealed for isize {}
+    impl Sealed for f32 {}
+    impl Sealed for f64 {}
 }
