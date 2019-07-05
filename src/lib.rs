@@ -307,16 +307,16 @@ pub trait Cartridge {
             let mut rng = rand::thread_rng();
             loop {
                 let z = Self::Target::random(&mut rng) % p;
-                if DefaultCartridge::pow_unsigned(z, (p - id!(1)) / id!(2), p) == p - id!(1) {
+                if Self::pow_unsigned(z, (p - id!(1)) / id!(2), p) == p - id!(1) {
                     break z;
                 }
             }
         };
 
         let mut m = s;
-        let mut c = DefaultCartridge::pow_unsigned(z, q, p);
-        let mut t = DefaultCartridge::pow_unsigned(n, q, p);
-        let mut r = DefaultCartridge::pow_unsigned(n, (q + id!(1)) / id!(2), p);
+        let mut c = Self::pow_unsigned(z, q, p);
+        let mut t = Self::pow_unsigned(n, q, p);
+        let mut r = Self::pow_unsigned(n, (q + id!(1)) / id!(2), p);
 
         Some(loop {
             if t == id!(0) {
@@ -327,7 +327,7 @@ pub trait Cartridge {
             }
 
             let i = {
-                let (mut acc, mut i) = (DefaultCartridge::mul(t, t, p), id!(1));
+                let (mut acc, mut i) = (Self::mul(t, t, p), id!(1));
                 loop {
                     if i == m {
                         return None;
@@ -335,7 +335,7 @@ pub trait Cartridge {
                     if acc == id!(1) {
                         break i;
                     }
-                    acc = DefaultCartridge::mul(acc, acc, p);
+                    acc = Self::mul(acc, acc, p);
                     i += id!(1);
                 }
             };
@@ -343,15 +343,15 @@ pub trait Cartridge {
             let b = {
                 let mut b = c;
                 for _ in util::range(id!(0), m - i - id!(1)) {
-                    b = DefaultCartridge::mul(b, b, p);
+                    b = Self::mul(b, b, p);
                 }
                 b
             };
 
             m = i;
-            c = DefaultCartridge::mul(b, b, p);
-            t = DefaultCartridge::mul(t, DefaultCartridge::mul(b, b, p), p);
-            r = DefaultCartridge::mul(r, b, p);
+            c = Self::mul(b, b, p);
+            t = Self::mul(t, Self::mul(b, b, p), p);
+            r = Self::mul(r, b, p);
         })
     }
 
@@ -480,7 +480,7 @@ pub trait Cartridge {
         Self::Features: Features<PartialDivision = True>,
     {
         if !<Self::Features as Features>::AssumePrimeModulus::VALUE {
-            return DefaultCartridge::checked_div(lhs, rhs, modulus).expect("could not divide");
+            return Self::checked_div(lhs, rhs, modulus).expect("could not divide");
         }
 
         if rhs == Self::Target::zero() {
@@ -1073,13 +1073,13 @@ pub trait Cartridge {
 }
 
 /// The default implementation.
-pub enum DefaultCartridge<T: UnsignedPrimitive> {
-    Infallible(Infallible, PhantomData<fn() -> T>),
+pub enum DefaultCartridge<T: UnsignedPrimitive, F: Features> {
+    Infallible(Infallible, PhantomData<fn() -> (T, F)>),
 }
 
-impl<T: UnsignedPrimitive> Cartridge for DefaultCartridge<T> {
+impl<T: UnsignedPrimitive, F: Features> Cartridge for DefaultCartridge<T, F> {
     type Target = T;
-    type Features = DefaultFeatures;
+    type Features = F;
 }
 
 /// The implementation for non prime moduluses.
@@ -1154,8 +1154,11 @@ impl TypedBool for True {
 ///
 /// [`Cartridge`]: ./trait.Cartridge.html
 /// [`DefaultCartridge`]: ./enum.DefaultCartridge.html
-pub type DefaultModType<M> =
-    ModType<<M as ConstValue>::Value, DefaultCartridge<<M as ConstValue>::Value>, M>;
+pub type DefaultModType<M> = ModType<
+    <M as ConstValue>::Value,
+    DefaultCartridge<<M as ConstValue>::Value, DefaultFeatures>,
+    M,
+>;
 
 /// A modular arithmetic integer type which modulus is **a constant**.
 ///
@@ -1318,7 +1321,7 @@ impl<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> M
 
 /// A modular arithmetic integer type which modulus is **a `struct` field**.
 pub mod field_param {
-    use crate::{Cartridge, DefaultCartridge, Features, True, UnsignedPrimitive};
+    use crate::{Cartridge, DefaultCartridge, DefaultFeatures, Features, True, UnsignedPrimitive};
 
     use std::marker::PhantomData;
 
@@ -1326,7 +1329,7 @@ pub mod field_param {
     ///
     /// [`Cartridge`]: ../trait.Cartridge.html
     /// [`DefaultCartridge`]: ../enum.DefaultCartridge.html
-    pub type DefaultModType<T> = ModType<T, DefaultCartridge<T>>;
+    pub type DefaultModType<T> = ModType<T, DefaultCartridge<T, DefaultFeatures>>;
 
     /// A modular arithmetic integer type which modulus is **a `struct` field**.
     ///
@@ -1414,7 +1417,7 @@ pub mod field_param {
 
 /// A modular arithmetic integer type which modulus is **`thread_local`**.
 pub mod thread_local {
-    use crate::{Cartridge, DefaultCartridge, Features, True, UnsignedPrimitive};
+    use crate::{Cartridge, DefaultCartridge, DefaultFeatures, Features, True, UnsignedPrimitive};
 
     use std::marker::PhantomData;
 
@@ -1422,7 +1425,7 @@ pub mod thread_local {
     ///
     /// [`Cartridge`]: ../trait.Cartridge.html
     /// [`DefaultCartridge`]: ../enum.DefaultCartridge.html
-    pub type DefaultModType<T> = ModType<T, DefaultCartridge<T>>;
+    pub type DefaultModType<T> = ModType<T, DefaultCartridge<T, DefaultFeatures>>;
 
     /// A modular arithmetic integer type which modulus is **`thread_local`**.
     ///

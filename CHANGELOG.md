@@ -12,6 +12,7 @@
 - Rename `Features::{Addition, Subtraction, Multiplication, Division}` to `Partial{..}`.
 - Modify the implementation of divisions.
 - Hide `HasThreadLocalModulus`.
+- `DefaultCartridge` takes a `Features` argument.
 
 ## [0.6.0] - 2019-07-02Z
 
