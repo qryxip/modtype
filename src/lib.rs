@@ -114,6 +114,7 @@ pub trait UnsignedPrimitive:
     + Send
     + Sync
     + util::UnsignedPrimitiveUtil
+    + hidden::HasThreadLocalModulus
     + 'static
 {
 }
@@ -1415,9 +1416,7 @@ pub mod field_param {
 pub mod thread_local {
     use crate::{Cartridge, DefaultCartridge, Features, True, UnsignedPrimitive};
 
-    use std::cell::UnsafeCell;
     use std::marker::PhantomData;
-    use std::thread::LocalKey;
 
     /// A type alias which [`Cartridge`] is [`DefaultCartridge`]`<T>`.
     ///
@@ -1437,31 +1436,31 @@ pub mod thread_local {
     /// ```
     #[derive(crate::ModType)]
     #[modtype(
-        modulus = "unsafe { T::modulus() }",
+        modulus = "unsafe { T::thread_local_modulus() }",
         cartridge = "C",
         modtype = "crate"
     )]
-    pub struct ModType<T: HasThreadLocalModulus, C: Cartridge<Target = T>> {
+    pub struct ModType<T: UnsignedPrimitive, C: Cartridge<Target = T>> {
         #[modtype(value)]
         value: T,
         phantom: PhantomData<fn() -> C>,
     }
 
-    impl<T: HasThreadLocalModulus, C: Cartridge<Target = T>> ModType<T, C> {
+    impl<T: UnsignedPrimitive, C: Cartridge<Target = T>> ModType<T, C> {
         /// Sets `modulus` and run `f`.
         ///
         /// The modulus is set to `0` when `f` finished.
         pub fn with<O, F: FnOnce(fn(T) -> Self) -> O>(modulus: T, f: F) -> O {
-            unsafe { T::set_modulus(modulus) };
+            unsafe { T::set_thread_local_modulus(modulus) };
             let ret = f(Self::new);
-            unsafe { T::set_modulus(T::zero()) };
+            unsafe { T::set_thread_local_modulus(T::zero()) };
             ret
         }
 
         /// Gets the modulus.
         #[inline]
         pub fn modulus() -> T {
-            unsafe { T::modulus() }
+            unsafe { T::thread_local_modulus() }
         }
 
         /// Creates a new `ModType`.
@@ -1500,77 +1499,8 @@ pub mod thread_local {
         where
             C::Features: Features<PartialMultiplication = True>,
         {
-            C::sqrt(self.value, unsafe { T::modulus() }).map(Self::new_unchecked)
+            C::sqrt(self.value, unsafe { T::thread_local_modulus() }).map(Self::new_unchecked)
         }
-    }
-
-    /// A trait that represents an associated `LocalKey<UnsafeCell<Self>>`.
-    pub trait HasThreadLocalModulus: UnsignedPrimitive {
-        /// The `LocalKey<UnsafeCell<Self>>`.
-        fn local_key() -> &'static LocalKey<UnsafeCell<Self>>;
-
-        /// Gets the value of the `LocalKey<UnsafeCell<Self>>`.
-        ///
-        /// # Safety
-        ///
-        /// This function is safe as long as `Self::local_key().with` does not leak the raw pointer.
-        unsafe fn modulus() -> Self {
-            Self::local_key().with(|m| *m.get())
-        }
-
-        /// Sets `modulus`.
-        ///
-        /// # Safety
-        ///
-        /// This function is safe as long as `Self::local_key().with` does not leak the raw pointer.
-        unsafe fn set_modulus(modulus: Self) {
-            Self::local_key().with(|m| *m.get() = modulus)
-        }
-    }
-
-    impl HasThreadLocalModulus for u8 {
-        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            &MODULUS_U8
-        }
-    }
-
-    impl HasThreadLocalModulus for u16 {
-        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            &MODULUS_U16
-        }
-    }
-
-    impl HasThreadLocalModulus for u32 {
-        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            &MODULUS_U32
-        }
-    }
-
-    impl HasThreadLocalModulus for u64 {
-        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            &MODULUS_U64
-        }
-    }
-
-    impl HasThreadLocalModulus for u128 {
-        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            &MODULUS_U128
-        }
-    }
-
-    impl HasThreadLocalModulus for usize {
-        fn local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            &MODULUS_USIZE
-        }
-    }
-
-    thread_local! {
-        static MODULUS_U8: UnsafeCell<u8> = UnsafeCell::new(0);
-        static MODULUS_U16: UnsafeCell<u16> = UnsafeCell::new(0);
-        static MODULUS_U32: UnsafeCell<u32> = UnsafeCell::new(0);
-        static MODULUS_U64: UnsafeCell<u64> = UnsafeCell::new(0);
-        static MODULUS_U128: UnsafeCell<u128> = UnsafeCell::new(0);
-        static MODULUS_USIZE: UnsafeCell<usize> = UnsafeCell::new(0);
     }
 }
 
@@ -1874,6 +1804,9 @@ pub mod util {
 mod hidden {
     use crate::{False, True};
 
+    use std::cell::UnsafeCell;
+    use std::thread::LocalKey;
+
     pub trait Sealed {}
 
     impl Sealed for False {}
@@ -1892,4 +1825,64 @@ mod hidden {
     impl Sealed for isize {}
     impl Sealed for f32 {}
     impl Sealed for f64 {}
+
+    pub trait HasThreadLocalModulus: Copy + 'static {
+        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>>;
+
+        /// # Safety
+        ///
+        /// This function is safe as long as `Self::modulus_local_key().with` does not leak the raw pointer in this crate.
+        unsafe fn thread_local_modulus() -> Self {
+            Self::modulus_local_key().with(|m| *m.get())
+        }
+
+        /// # Safety
+        ///
+        /// This function is safe as long as `Self::modulus_local_key().with` does not leak the raw pointer in this crate.
+        unsafe fn set_thread_local_modulus(modulus: Self) {
+            Self::modulus_local_key().with(|m| *m.get() = modulus)
+        }
+    }
+
+    impl HasThreadLocalModulus for u8 {
+        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            thread_local!(static MODULUS: UnsafeCell<u8> = UnsafeCell::new(0));
+            &MODULUS
+        }
+    }
+
+    impl HasThreadLocalModulus for u16 {
+        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            thread_local!(static MODULUS: UnsafeCell<u16> = UnsafeCell::new(0));
+            &MODULUS
+        }
+    }
+
+    impl HasThreadLocalModulus for u32 {
+        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            thread_local!(static MODULUS: UnsafeCell<u32> = UnsafeCell::new(0));
+            &MODULUS
+        }
+    }
+
+    impl HasThreadLocalModulus for u64 {
+        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            thread_local!(static MODULUS: UnsafeCell<u64> = UnsafeCell::new(0));
+            &MODULUS
+        }
+    }
+
+    impl HasThreadLocalModulus for u128 {
+        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            thread_local!(static MODULUS: UnsafeCell<u128> = UnsafeCell::new(0));
+            &MODULUS
+        }
+    }
+
+    impl HasThreadLocalModulus for usize {
+        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
+            thread_local!(static MODULUS: UnsafeCell<usize> = UnsafeCell::new(0));
+            &MODULUS
+        }
+    }
 }
