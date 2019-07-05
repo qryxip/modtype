@@ -26,13 +26,13 @@ modtype::thread_local::DefaultModType::with(57u32, |Z| {
 });
 ```
 
-## [`modtype::field_param::ModType`]
+## [`modtype::non_static::ModType`]
 
 ```
 use num::CheckedDiv as _;
 
 #[allow(non_snake_case)]
-let Z = modtype::field_param::DefaultModType::factory(1000u32);
+let Z = modtype::non_static::DefaultModType::factory(1000u32);
 
 assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
 ```
@@ -57,5 +57,5 @@ impl modtype::Cartridge for Cartridge {
 
 [`modtype::ModType`]: https://docs.rs/modtype/0.6/modtype/struct.ModType.html
 [`modtype::thread_local::ModType`]: https://docs.rs/modtype/0.6/modtype/thread_local/struct.ModType.html
-[`modtype::field_param::ModType`]: https://docs.rs/modtype/0.6/modtype/field_param/struct.ModType.html
+[`modtype::non_static::ModType`]: https://docs.rs/modtype/0.7/modtype/non_static/struct.ModType.html
 [`modtype::Cartridge`]: https://docs.rs/modtype/0.6/modtype/trait.Cartridge.html

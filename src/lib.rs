@@ -20,13 +20,13 @@
 //! });
 //! ```
 //!
-//! ## [`modtype::field_param::ModType`]
+//! ## [`modtype::non_static::ModType`]
 //!
 //! ```
 //! use num::CheckedDiv as _;
 //!
 //! #[allow(non_snake_case)]
-//! let Z = modtype::field_param::DefaultModType::factory(1000u32);
+//! let Z = modtype::non_static::DefaultModType::factory(1000u32);
 //!
 //! assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
 //! ```
@@ -51,7 +51,7 @@
 //!
 //! [`modtype::ModType`]: ./struct.ModType.html
 //! [`modtype::thread_local::ModType`]: ./thread_local/struct.ModType.html
-//! [`modtype::field_param::ModType`]: ./field_param/struct.ModType.html
+//! [`modtype::non_static::ModType`]: ./non_static/struct.ModType.html
 //! [`modtype::Cartridge`]: ./trait.Cartridge.html
 
 macro_rules! expect_feature {
@@ -256,13 +256,13 @@ pub trait Cartridge {
         }
     }
 
-    /// Implementation for `modtype{, ::thread_local, ::field_param}::ModType::get`.
+    /// Implementation for `modtype{, ::thread_local, ::non_static}::ModType::get`.
     #[inline(always)]
     fn get(value: Self::Target, _modulus: Self::Target) -> Self::Target {
         value
     }
 
-    /// Implementation for `modtype{, ::thread_local, ::field_param}::ModType::sqrt`.
+    /// Implementation for `modtype{, ::thread_local, ::non_static}::ModType::sqrt`.
     ///
     /// The default implementation uses [Tonelli–Shanks algorithm].
     ///
@@ -1320,7 +1320,7 @@ impl<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> M
 }
 
 /// A modular arithmetic integer type which modulus is **a `struct` field**.
-pub mod field_param {
+pub mod non_static {
     use crate::{Cartridge, DefaultCartridge, DefaultFeatures, Features, True, UnsignedPrimitive};
 
     use std::marker::PhantomData;
@@ -1339,7 +1339,7 @@ pub mod field_param {
     /// use num::CheckedDiv as _;
     ///
     /// #[allow(non_snake_case)]
-    /// let Z = modtype::field_param::DefaultModType::factory(1000u32);
+    /// let Z = modtype::non_static::DefaultModType::factory(1000u32);
     ///
     /// assert_eq!(Z(1).checked_div(&Z(777)), Some(Z(713))); // 777 × 713 ≡ 1 (mod 1000)
     /// ```
