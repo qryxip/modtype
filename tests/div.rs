@@ -8,7 +8,7 @@ fn mod17() {
     type F = modtype::F<17u32>;
 
     #[modtype::use_modtype(constant(M_))]
-    type Z = modtype::ModType<u32, modtype::cartridges::Multiplicative<u32>, 17u32>;
+    type Z = modtype::ModType<modtype::cartridges::Multiplicative<u32>, 17u32>;
 
     for a in 0..=16 {
         for b in 1..=16 {
@@ -26,7 +26,7 @@ fn mod17() {
 #[test]
 fn mod57() {
     #[modtype::use_modtype]
-    type Z = modtype::ModType<u32, modtype::cartridges::Multiplicative<u32>, 57u32>;
+    type Z = modtype::ModType<modtype::cartridges::Multiplicative<u32>, 57u32>;
 
     for a in 0..=56 {
         let a_inv_checked = Z(1).checked_div(&Z(a));
@@ -44,7 +44,7 @@ fn mod1009() {
     type F = modtype::F<1009u32>;
 
     #[modtype::use_modtype(constant(M_))]
-    type Z = modtype::ModType<u32, modtype::cartridges::Multiplicative<u32>, 1009u32>;
+    type Z = modtype::ModType<modtype::cartridges::Multiplicative<u32>, 1009u32>;
 
     for x in 1..=1008 {
         assert_eq!(F(x).inv() * F(x), F(1));

@@ -26,7 +26,7 @@
 //! #[allow(non_snake_case)]
 //! let F = modtype::non_static::F::factory(1_000_000_007u64);
 //!
-//! assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
+//! // assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 //! ```
 //!
 //! # Customization
@@ -35,7 +35,7 @@
 //!
 //! ```
 //! #[modtype::use_modtype]
-//! type F = modtype::ModType<u64, Cartridge, 1_000_000_007u64>;
+//! type F = modtype::ModType<Cartridge, 1_000_000_007u64>;
 //!
 //! enum Cartridge {}
 //!
@@ -1644,7 +1644,7 @@ impl TypedBool for True {
 ///
 /// [`Cartridge`]: ./trait.Cartridge.html
 /// [`modtype::cartridges::Field`]: ./cartridges/type.Field.html
-pub type F<M> = ModType<<M as ConstValue>::Value, cartridges::Field<<M as ConstValue>::Value>, M>;
+pub type F<M> = ModType<cartridges::Field<<M as ConstValue>::Value>, M>;
 
 /// A modular arithmetic integer type which modulus is **a constant**.
 ///
@@ -1750,25 +1750,24 @@ pub type F<M> = ModType<<M as ConstValue>::Value, cartridges::Field<<M as ConstV
 /// assert_eq!(F(3).pow(-2i128), F(4));
 /// assert_eq!(F(3).pow(-2isize), F(4));
 /// ```
-#[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/3673
 #[derive(crate::ModType)]
 #[modtype(modulus = "M::VALUE", cartridge = "C", modtype = "crate")]
-pub struct ModType<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> {
+pub struct ModType<C: Cartridge, M: ConstValue<Value = C::Target>> {
     #[modtype(value)]
-    value: T,
-    phantom: PhantomData<fn() -> (C, M)>,
+    value: C::Target,
+    phantom: PhantomData<fn() -> M>,
 }
 
-impl<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> ModType<T, C, M> {
+impl<C: Cartridge, M: ConstValue<Value = C::Target>> ModType<C, M> {
     /// Gets the modulus.
     #[inline]
-    pub fn modulus() -> T {
+    pub fn modulus() -> C::Target {
         M::VALUE
     }
 
     /// Creates a new `ModType`.
     #[inline]
-    pub fn new(value: T) -> Self {
+    pub fn new(value: C::Target) -> Self {
         Self {
             value: C::new(value, M::VALUE),
             phantom: PhantomData,
@@ -1777,7 +1776,7 @@ impl<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> M
 
     /// Creates a new `ModType` without checking `value`.
     #[inline]
-    pub fn new_unchecked(value: T) -> Self {
+    pub fn new_unchecked(value: C::Target) -> Self {
         Self {
             value,
             phantom: PhantomData,
@@ -1786,7 +1785,7 @@ impl<T: UnsignedPrimitive, C: Cartridge<Target = T>, M: ConstValue<Value = T>> M
 
     /// Returns a mutable reference to the inner value.
     #[inline]
-    pub fn get_mut_unchecked(&mut self) -> &mut T {
+    pub fn get_mut_unchecked(&mut self) -> &mut C::Target {
         &mut self.value
     }
 
@@ -1855,7 +1854,7 @@ pub mod cartridges {
     /// use num::CheckedDiv as _;
     ///
     /// #[modtype::use_modtype]
-    /// type Z = modtype::ModType<u32, modtype::cartridges::Multiplicative<u32>, 57u32>;
+    /// type Z = modtype::ModType<modtype::cartridges::Multiplicative<u32>, 57u32>;
     ///
     /// assert_eq!(Z(1).checked_div(&Z(13)), Some(Z(22))); // 13・22 ≡ 1 (mod 57)
     /// ```
@@ -1900,7 +1899,7 @@ pub mod cartridges {
     /// use num::CheckedAdd as _;
     ///
     /// #[modtype::use_modtype]
-    /// type Z = modtype::ModType<u64, modtype::cartridges::Additive<u64>, 1_000_000_007u64>;
+    /// type Z = modtype::ModType<modtype::cartridges::Additive<u64>, 1_000_000_007u64>;
     ///
     /// assert_eq!(*(Z(1_000_000_007u64).get_mut_unchecked()), 1_000_000_007);
     /// ```
@@ -1956,7 +1955,7 @@ pub mod cartridges {
     /// use num::CheckedAdd as _;
     ///
     /// #[modtype::use_modtype]
-    /// type Z = modtype::ModType<u64, modtype::cartridges::ManuallyAdjust<u64>, 1_000_000_007u64>;
+    /// type Z = modtype::ModType<modtype::cartridges::ManuallyAdjust<u64>, 1_000_000_007u64>;
     ///
     /// assert!(Z(u64::max_value()).checked_add(&Z(1)).is_none());
     /// ```
@@ -2044,13 +2043,11 @@ pub mod cartridges {
 pub mod non_static {
     use crate::{cartridges, Cartridge, False, Features, True, UnsignedPrimitive};
 
-    use std::marker::PhantomData;
-
     /// A type alias which [`Cartridge`] is [`modtype::cartridges::Field`]`<T>`.
     ///
     /// [`Cartridge`]: ../trait.Cartridge.html
     /// [`modtype::cartridges::Field`]: ../cartridges/type.Field.html
-    pub type F<T> = ModType<T, cartridges::Field<T>>;
+    pub type F<T> = ModType<cartridges::Field<T>>;
 
     /// A modular arithmetic integer type which modulus is **a `struct` field**.
     ///
@@ -2069,32 +2066,26 @@ pub mod non_static {
         modtype = "crate",
         non_static_modulus
     )]
-    pub struct ModType<T: UnsignedPrimitive, C: Cartridge<Target = T>> {
+    pub struct ModType<C: Cartridge> {
         #[modtype(value)]
-        value: T,
-        modulus: T,
-        phantom: PhantomData<fn() -> C>,
+        value: C::Target,
+        modulus: C::Target,
     }
 
-    impl<T: UnsignedPrimitive, C: Cartridge<Target = T>> ModType<T, C> {
+    impl<T: UnsignedPrimitive, C: Cartridge<Target = T>> ModType<C> {
         /// Constructs a new `ModType`.
         #[inline]
         pub fn new(value: T, modulus: T) -> Self {
             Self {
                 value: C::new(value, modulus),
                 modulus,
-                phantom: PhantomData,
             }
         }
 
         /// Constructs a new `ModType` without checking the value.
         #[inline]
         pub fn new_unchecked(value: T, modulus: T) -> Self {
-            Self {
-                value,
-                modulus,
-                phantom: PhantomData,
-            }
+            Self { value, modulus }
         }
 
         /// Same as `move |n| Self::`[`new`]`(n, modulus)`.
@@ -2127,7 +2118,6 @@ pub mod non_static {
             Self {
                 value: C::adjusted(self.value, self.modulus),
                 modulus: self.modulus,
-                phantom: PhantomData,
             }
         }
 
@@ -2150,15 +2140,15 @@ pub mod non_static {
 
 /// A modular arithmetic integer type which modulus is **`thread_local`**.
 pub mod thread_local {
-    use crate::{cartridges, Cartridge, False, Features, True, UnsignedPrimitive};
+    use crate::{cartridges, Cartridge, False, Features, True, UnsignedPrimitive as _};
 
-    use std::marker::PhantomData;
+    use num::Zero as _;
 
     /// A type alias which [`Cartridge`] is [`modtype::cartridges::Field`]`<T>`.
     ///
     /// [`Cartridge`]: ../trait.Cartridge.html
     /// [`modtype::cartridges::Field`]: ../cartridges/type.Field.html
-    pub type F<T> = ModType<T, cartridges::Field<T>>;
+    pub type F<T> = ModType<cartridges::Field<T>>;
 
     /// A modular arithmetic integer type which modulus is **`thread_local`**.
     ///
@@ -2172,54 +2162,49 @@ pub mod thread_local {
     /// ```
     #[derive(crate::ModType)]
     #[modtype(
-        modulus = "unsafe { T::thread_local_modulus() }",
+        modulus = "unsafe { C::Target::thread_local_modulus() }",
         cartridge = "C",
         modtype = "crate"
     )]
-    pub struct ModType<T: UnsignedPrimitive, C: Cartridge<Target = T>> {
+    pub struct ModType<C: Cartridge> {
         #[modtype(value)]
-        value: T,
-        phantom: PhantomData<fn() -> C>,
+        value: C::Target,
     }
 
-    impl<T: UnsignedPrimitive, C: Cartridge<Target = T>> ModType<T, C> {
+    impl<C: Cartridge> ModType<C> {
         /// Sets `modulus` and run `f`.
         ///
         /// The modulus is set to `0` when `f` finished.
-        pub fn with<O, F: FnOnce(fn(T) -> Self) -> O>(modulus: T, f: F) -> O {
-            unsafe { T::set_thread_local_modulus(modulus) };
+        pub fn with<O, F: FnOnce(fn(C::Target) -> Self) -> O>(modulus: C::Target, f: F) -> O {
+            unsafe { C::Target::set_thread_local_modulus(modulus) };
             let ret = f(Self::new);
-            unsafe { T::set_thread_local_modulus(T::zero()) };
+            unsafe { C::Target::set_thread_local_modulus(C::Target::zero()) };
             ret
         }
 
         /// Gets the modulus.
         #[inline]
-        pub fn modulus() -> T {
-            unsafe { T::thread_local_modulus() }
+        pub fn modulus() -> C::Target {
+            unsafe { C::Target::thread_local_modulus() }
         }
 
         /// Creates a new `ModType`.
         #[inline]
-        pub fn new(value: T) -> Self {
+        pub fn new(value: C::Target) -> Self {
             Self {
                 value: C::new(value, Self::modulus()),
-                phantom: PhantomData,
             }
         }
 
         /// Creates a new `ModType` without checking `value`.
         #[inline]
-        pub fn new_unchecked(value: T) -> Self {
-            Self {
-                value,
-                phantom: PhantomData,
-            }
+        pub fn new_unchecked(value: C::Target) -> Self {
+            Self { value }
         }
 
         /// Returns a mutable reference to the inner value.
         #[inline]
-        pub fn get_mut_unchecked(&mut self) -> &mut T {
+        pub fn get_mut_unchecked(&mut self) -> &mut C::Target {
             &mut self.value
         }
 
@@ -2228,7 +2213,9 @@ pub mod thread_local {
         where
             C::Features: Features<AssumeAlwaysAdjusted = False>,
         {
-            C::adjust(&mut self.value, unsafe { T::thread_local_modulus() })
+            C::adjust(&mut self.value, unsafe {
+                C::Target::thread_local_modulus()
+            })
         }
 
         #[inline]
@@ -2237,8 +2224,7 @@ pub mod thread_local {
             C::Features: Features<AssumeAlwaysAdjusted = False>,
         {
             Self {
-                value: C::adjusted(self.value, unsafe { T::thread_local_modulus() }),
-                phantom: PhantomData,
+                value: C::adjusted(self.value, unsafe { C::Target::thread_local_modulus() }),
             }
         }
 
@@ -2248,7 +2234,8 @@ pub mod thread_local {
         where
             C::Features: Features<PartialMultiplication = True>,
         {
-            C::sqrt(self.value, unsafe { T::thread_local_modulus() }).map(Self::new_unchecked)
+            C::sqrt(self.value, unsafe { C::Target::thread_local_modulus() })
+                .map(|value| Self { value })
         }
     }
 }
