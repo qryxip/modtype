@@ -7,8 +7,12 @@
 - `sqrt` methods.
 - `adjust` methods.
 - `adjusted` methods.
-- `Cartridge::{sqrt, adjust, adjusted, eq, cmp}`
+- `Cartridge::{sqrt, adjust, adjusted, eq, cmp}`.
 - `modtype::cartridges::{Field, Multiplicative, Additive, ManuallyAdjust}`.
+
+### Removed
+
+- `modtype::util`.
 
 ### Changed
 

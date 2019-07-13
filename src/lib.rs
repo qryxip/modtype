@@ -97,27 +97,31 @@ macro_rules! expect_feature {
 
 pub use modtype_derive::{use_modtype, ConstValue, ModType};
 
-use crate::util::UnsignedPrimitiveUtil as _;
+use crate::sealed::Sealed;
 
 use num::integer::ExtendedGcd;
 use num::{
     integer, BigInt, BigUint, Float, FromPrimitive, Integer, Num, One as _, PrimInt, Signed,
     ToPrimitive as _, Unsigned, Zero as _,
 };
+use rand::Rng;
 
-use std::convert::Infallible;
+use std::cell::UnsafeCell;
+use std::convert::{Infallible, TryFrom as _, TryInto as _};
 use std::iter::{Product, Sum};
 use std::marker::PhantomData;
 use std::num::ParseIntError;
 use std::ops::{
-    AddAssign, BitAndAssign, BitOrAssign, BitXorAssign, DivAssign, MulAssign, RemAssign, SubAssign,
+    AddAssign, BitAndAssign, BitOrAssign, BitXorAssign, DivAssign, MulAssign, Range, RemAssign,
+    SubAssign,
 };
 use std::str::FromStr;
+use std::thread::LocalKey;
 use std::{cmp, fmt, mem};
 
 /// A trait for `u8`, `u16`, `u32`, `u64`, `u128`, and `usize`.
 pub trait UnsignedPrimitive:
-    hidden::Sealed
+    Sealed
     + Unsigned
     + PrimInt
     + Integer
@@ -143,22 +147,345 @@ pub trait UnsignedPrimitive:
     + BitXorAssign
     + Send
     + Sync
-    + util::UnsignedPrimitiveUtil
-    + hidden::HasThreadLocalModulus
     + 'static
 {
+    type Signed: SignedPrimitive;
+    type Range: DoubleEndedIterator<Item = Self>;
+
+    fn random<R: Rng>(rng: &mut R) -> Self;
+    fn try_from_biguint(biguint: BigUint) -> Option<Self>;
+    fn try_from_bigint(bigint: BigInt) -> Option<Self>;
+    fn try_from_signed(signed: Self::Signed) -> Option<Self>;
+    fn try_into_signed(self) -> Option<Self::Signed>;
+    fn rem_biguint(self, biguint: BigUint) -> BigUint;
+    fn rem_bigint(self, bigint: BigInt) -> BigInt;
+    fn range(self, end: Self) -> Self::Range;
+    fn thread_local_modulus_key() -> &'static LocalKey<UnsafeCell<Self>>;
+
+    /// # Safety
+    ///
+    /// This function is safe as long as `Self::thread_local_modulus_key().with` does not leak the raw pointer.
+    unsafe fn thread_local_modulus() -> Self {
+        Self::thread_local_modulus_key().with(|m| *m.get())
+    }
+
+    /// # Safety
+    ///
+    /// This function is safe as long as `Self::thread_local_modulus_key().with` does not leak the raw pointer.
+    unsafe fn set_thread_local_modulus(modulus: Self) {
+        Self::thread_local_modulus_key().with(|m| *m.get() = modulus)
+    }
 }
 
-impl UnsignedPrimitive for u8 {}
-impl UnsignedPrimitive for u16 {}
-impl UnsignedPrimitive for u32 {}
-impl UnsignedPrimitive for u64 {}
-impl UnsignedPrimitive for u128 {}
-impl UnsignedPrimitive for usize {}
+impl UnsignedPrimitive for u8 {
+    type Signed = i8;
+    type Range = Range<u8>;
+
+    #[inline]
+    fn random<R: Rng>(rng: &mut R) -> Self {
+        rng.gen()
+    }
+
+    #[inline]
+    fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+        biguint.to_u8()
+    }
+
+    #[inline]
+    fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+        bigint.to_u8()
+    }
+
+    #[inline]
+    fn try_from_signed(signed: i8) -> Option<Self> {
+        Self::try_from(signed).ok()
+    }
+
+    #[inline]
+    fn try_into_signed(self) -> Option<i8> {
+        self.try_into().ok()
+    }
+
+    #[inline]
+    fn rem_biguint(self, biguint: BigUint) -> BigUint {
+        biguint % self
+    }
+
+    #[inline]
+    fn rem_bigint(self, bigint: BigInt) -> BigInt {
+        bigint % self
+    }
+
+    #[inline]
+    fn range(self, end: Self) -> Range<Self> {
+        self..end
+    }
+
+    #[inline]
+    fn thread_local_modulus_key() -> &'static LocalKey<UnsafeCell<Self>> {
+        thread_local!(static MODULUS: UnsafeCell<u8> = UnsafeCell::new(0));
+        &MODULUS
+    }
+}
+
+impl UnsignedPrimitive for u16 {
+    type Signed = i16;
+    type Range = Range<u16>;
+
+    #[inline]
+    fn random<R: Rng>(rng: &mut R) -> Self {
+        rng.gen()
+    }
+
+    #[inline]
+    fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+        biguint.to_u16()
+    }
+
+    #[inline]
+    fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+        bigint.to_u16()
+    }
+
+    #[inline]
+    fn try_from_signed(signed: i16) -> Option<Self> {
+        Self::try_from(signed).ok()
+    }
+
+    #[inline]
+    fn try_into_signed(self) -> Option<i16> {
+        self.try_into().ok()
+    }
+
+    #[inline]
+    fn rem_biguint(self, biguint: BigUint) -> BigUint {
+        biguint % self
+    }
+
+    #[inline]
+    fn rem_bigint(self, bigint: BigInt) -> BigInt {
+        bigint % self
+    }
+
+    #[inline]
+    fn range(self, end: Self) -> Range<Self> {
+        self..end
+    }
+
+    #[inline]
+    fn thread_local_modulus_key() -> &'static LocalKey<UnsafeCell<Self>> {
+        thread_local!(static MODULUS: UnsafeCell<u16> = UnsafeCell::new(0));
+        &MODULUS
+    }
+}
+
+impl UnsignedPrimitive for u32 {
+    type Signed = i32;
+    type Range = Range<u32>;
+
+    #[inline]
+    fn random<R: Rng>(rng: &mut R) -> Self {
+        rng.gen()
+    }
+
+    #[inline]
+    fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+        biguint.to_u32()
+    }
+
+    #[inline]
+    fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+        bigint.to_u32()
+    }
+
+    #[inline]
+    fn try_from_signed(signed: i32) -> Option<Self> {
+        Self::try_from(signed).ok()
+    }
+
+    #[inline]
+    fn try_into_signed(self) -> Option<i32> {
+        self.try_into().ok()
+    }
+
+    #[inline]
+    fn rem_biguint(self, biguint: BigUint) -> BigUint {
+        biguint % self
+    }
+
+    #[inline]
+    fn rem_bigint(self, bigint: BigInt) -> BigInt {
+        bigint % self
+    }
+
+    #[inline]
+    fn range(self, end: Self) -> Range<Self> {
+        self..end
+    }
+
+    #[inline]
+    fn thread_local_modulus_key() -> &'static LocalKey<UnsafeCell<Self>> {
+        thread_local!(static MODULUS: UnsafeCell<u32> = UnsafeCell::new(0));
+        &MODULUS
+    }
+}
+
+impl UnsignedPrimitive for u64 {
+    type Signed = i64;
+    type Range = Range<u64>;
+
+    #[inline]
+    fn random<R: Rng>(rng: &mut R) -> Self {
+        rng.gen()
+    }
+
+    #[inline]
+    fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+        biguint.to_u64()
+    }
+
+    #[inline]
+    fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+        bigint.to_u64()
+    }
+
+    #[inline]
+    fn try_from_signed(signed: i64) -> Option<Self> {
+        Self::try_from(signed).ok()
+    }
+
+    #[inline]
+    fn try_into_signed(self) -> Option<i64> {
+        self.try_into().ok()
+    }
+
+    #[inline]
+    fn rem_biguint(self, biguint: BigUint) -> BigUint {
+        biguint % self
+    }
+
+    #[inline]
+    fn rem_bigint(self, bigint: BigInt) -> BigInt {
+        bigint % self
+    }
+
+    #[inline]
+    fn range(self, end: Self) -> Range<Self> {
+        self..end
+    }
+
+    #[inline]
+    fn thread_local_modulus_key() -> &'static LocalKey<UnsafeCell<Self>> {
+        thread_local!(static MODULUS: UnsafeCell<u64> = UnsafeCell::new(0));
+        &MODULUS
+    }
+}
+
+impl UnsignedPrimitive for u128 {
+    type Signed = i128;
+    type Range = Range<u128>;
+
+    #[inline]
+    fn random<R: Rng>(rng: &mut R) -> Self {
+        rng.gen()
+    }
+
+    #[inline]
+    fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+        biguint.to_u128()
+    }
+
+    #[inline]
+    fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+        bigint.to_u128()
+    }
+
+    #[inline]
+    fn try_from_signed(signed: i128) -> Option<Self> {
+        Self::try_from(signed).ok()
+    }
+
+    #[inline]
+    fn try_into_signed(self) -> Option<i128> {
+        self.try_into().ok()
+    }
+
+    #[inline]
+    fn rem_biguint(self, biguint: BigUint) -> BigUint {
+        biguint % self
+    }
+
+    #[inline]
+    fn rem_bigint(self, bigint: BigInt) -> BigInt {
+        bigint % self
+    }
+
+    #[inline]
+    fn range(self, end: Self) -> Range<Self> {
+        self..end
+    }
+
+    #[inline]
+    fn thread_local_modulus_key() -> &'static LocalKey<UnsafeCell<Self>> {
+        thread_local!(static MODULUS: UnsafeCell<u128> = UnsafeCell::new(0));
+        &MODULUS
+    }
+}
+
+impl UnsignedPrimitive for usize {
+    type Signed = isize;
+    type Range = Range<usize>;
+
+    #[inline]
+    fn random<R: Rng>(rng: &mut R) -> Self {
+        rng.gen()
+    }
+
+    #[inline]
+    fn try_from_biguint(biguint: BigUint) -> Option<Self> {
+        biguint.to_usize()
+    }
+
+    #[inline]
+    fn try_from_bigint(bigint: BigInt) -> Option<Self> {
+        bigint.to_usize()
+    }
+
+    #[inline]
+    fn try_from_signed(signed: isize) -> Option<Self> {
+        Self::try_from(signed).ok()
+    }
+
+    #[inline]
+    fn try_into_signed(self) -> Option<isize> {
+        self.try_into().ok()
+    }
+
+    #[inline]
+    fn rem_biguint(self, biguint: BigUint) -> BigUint {
+        biguint % self
+    }
+
+    #[inline]
+    fn rem_bigint(self, bigint: BigInt) -> BigInt {
+        bigint % self
+    }
+
+    #[inline]
+    fn range(self, end: Self) -> Range<Self> {
+        self..end
+    }
+
+    #[inline]
+    fn thread_local_modulus_key() -> &'static LocalKey<UnsafeCell<Self>> {
+        thread_local!(static MODULUS: UnsafeCell<usize> = UnsafeCell::new(0));
+        &MODULUS
+    }
+}
 
 /// A trait for `i8`, `i16`, `i32`, `i64`, `i128`, and `isize`.
 pub trait SignedPrimitive:
-    hidden::Sealed
+    Sealed
     + Signed
     + PrimInt
     + Integer
@@ -196,7 +523,7 @@ impl SignedPrimitive for isize {}
 
 /// A trait for `f32` and `f64`.
 pub trait FloatPrimitive:
-    hidden::Sealed
+    Sealed
     + Signed
     + Float
     + Num<FromStrRadixErr = num::traits::ParseFloatError>
@@ -578,8 +905,8 @@ pub trait Cartridge {
 
         let mut a = rhs;
         let mut b = modulus;
-        let mut u = <Self::Target as util::UnsignedPrimitiveUtil>::Signed::one();
-        let mut v = <Self::Target as util::UnsignedPrimitiveUtil>::Signed::zero();
+        let mut u = <Self::Target as UnsignedPrimitive>::Signed::one();
+        let mut v = <Self::Target as UnsignedPrimitive>::Signed::zero();
 
         while !b.is_zero() {
             let d = a / b;
@@ -1066,7 +1393,7 @@ pub trait Cartridge {
         let modulus_signed = modulus.try_into_signed()?;
         let ExtendedGcd { gcd, x, .. } = rhs_signed.extended_gcd(&modulus_signed);
 
-        if lhs_signed % gcd > <Self::Target as util::UnsignedPrimitiveUtil>::Signed::zero() {
+        if lhs_signed % gcd > <Self::Target as UnsignedPrimitive>::Signed::zero() {
             None
         } else {
             let acc = lhs_signed * (x + modulus_signed);
@@ -1201,7 +1528,7 @@ pub trait Features {
 }
 
 /// Type level boolean.
-pub trait TypedBool: hidden::Sealed {
+pub trait TypedBool: Sealed {
     const VALUE: bool;
 
     /// `panic!(msg)` if `Self` is [`False`].
@@ -1848,308 +2175,8 @@ pub mod thread_local {
     }
 }
 
-pub mod util {
-    use crate::SignedPrimitive;
-
-    use num::{BigInt, BigUint, ToPrimitive as _};
-    use rand::Rng;
-
-    use std::convert::{TryFrom as _, TryInto as _};
-    use std::ops::Range;
-
-    pub fn range<T: UnsignedPrimitiveUtil>(start: T, end: T) -> T::Range {
-        start.range(end)
-    }
-
-    pub trait UnsignedPrimitiveUtil: Sized {
-        type Signed: SignedPrimitive;
-        type Range: Iterator<Item = Self>;
-        fn random<R: Rng>(rng: &mut R) -> Self;
-        fn try_from_biguint(biguint: BigUint) -> Option<Self>;
-        fn try_from_bigint(bigint: BigInt) -> Option<Self>;
-        fn try_from_signed(signed: Self::Signed) -> Option<Self>;
-        fn try_into_signed(self) -> Option<Self::Signed>;
-        fn rem_biguint(self, biguint: BigUint) -> BigUint;
-        fn rem_bigint(self, bigint: BigInt) -> BigInt;
-        fn range(self, end: Self) -> Self::Range;
-    }
-
-    impl UnsignedPrimitiveUtil for u8 {
-        type Signed = i8;
-        type Range = Range<u8>;
-
-        #[inline]
-        fn random<R: Rng>(rng: &mut R) -> Self {
-            rng.gen()
-        }
-
-        #[inline]
-        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
-            biguint.to_u8()
-        }
-
-        #[inline]
-        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
-            bigint.to_u8()
-        }
-
-        #[inline]
-        fn try_from_signed(signed: i8) -> Option<Self> {
-            Self::try_from(signed).ok()
-        }
-
-        #[inline]
-        fn try_into_signed(self) -> Option<i8> {
-            self.try_into().ok()
-        }
-
-        #[inline]
-        fn rem_biguint(self, biguint: BigUint) -> BigUint {
-            biguint % self
-        }
-
-        #[inline]
-        fn rem_bigint(self, bigint: BigInt) -> BigInt {
-            bigint % self
-        }
-
-        #[inline]
-        fn range(self, end: Self) -> Range<Self> {
-            self..end
-        }
-    }
-
-    impl UnsignedPrimitiveUtil for u16 {
-        type Signed = i16;
-        type Range = Range<u16>;
-
-        #[inline]
-        fn random<R: Rng>(rng: &mut R) -> Self {
-            rng.gen()
-        }
-
-        #[inline]
-        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
-            biguint.to_u16()
-        }
-
-        #[inline]
-        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
-            bigint.to_u16()
-        }
-
-        #[inline]
-        fn try_from_signed(signed: i16) -> Option<Self> {
-            Self::try_from(signed).ok()
-        }
-
-        #[inline]
-        fn try_into_signed(self) -> Option<i16> {
-            self.try_into().ok()
-        }
-
-        #[inline]
-        fn rem_biguint(self, biguint: BigUint) -> BigUint {
-            biguint % self
-        }
-
-        #[inline]
-        fn rem_bigint(self, bigint: BigInt) -> BigInt {
-            bigint % self
-        }
-
-        #[inline]
-        fn range(self, end: Self) -> Range<Self> {
-            self..end
-        }
-    }
-
-    impl UnsignedPrimitiveUtil for u32 {
-        type Signed = i32;
-        type Range = Range<u32>;
-
-        #[inline]
-        fn random<R: Rng>(rng: &mut R) -> Self {
-            rng.gen()
-        }
-
-        #[inline]
-        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
-            biguint.to_u32()
-        }
-
-        #[inline]
-        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
-            bigint.to_u32()
-        }
-
-        #[inline]
-        fn try_from_signed(signed: i32) -> Option<Self> {
-            Self::try_from(signed).ok()
-        }
-
-        #[inline]
-        fn try_into_signed(self) -> Option<i32> {
-            self.try_into().ok()
-        }
-
-        #[inline]
-        fn rem_biguint(self, biguint: BigUint) -> BigUint {
-            biguint % self
-        }
-
-        #[inline]
-        fn rem_bigint(self, bigint: BigInt) -> BigInt {
-            bigint % self
-        }
-
-        #[inline]
-        fn range(self, end: Self) -> Range<Self> {
-            self..end
-        }
-    }
-
-    impl UnsignedPrimitiveUtil for u64 {
-        type Signed = i64;
-        type Range = Range<u64>;
-
-        #[inline]
-        fn random<R: Rng>(rng: &mut R) -> Self {
-            rng.gen()
-        }
-
-        #[inline]
-        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
-            biguint.to_u64()
-        }
-
-        #[inline]
-        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
-            bigint.to_u64()
-        }
-
-        #[inline]
-        fn try_from_signed(signed: i64) -> Option<Self> {
-            Self::try_from(signed).ok()
-        }
-
-        #[inline]
-        fn try_into_signed(self) -> Option<i64> {
-            self.try_into().ok()
-        }
-
-        #[inline]
-        fn rem_biguint(self, biguint: BigUint) -> BigUint {
-            biguint % self
-        }
-
-        #[inline]
-        fn rem_bigint(self, bigint: BigInt) -> BigInt {
-            bigint % self
-        }
-
-        #[inline]
-        fn range(self, end: Self) -> Range<Self> {
-            self..end
-        }
-    }
-
-    impl UnsignedPrimitiveUtil for u128 {
-        type Signed = i128;
-        type Range = Range<u128>;
-
-        #[inline]
-        fn random<R: Rng>(rng: &mut R) -> Self {
-            rng.gen()
-        }
-
-        #[inline]
-        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
-            biguint.to_u128()
-        }
-
-        #[inline]
-        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
-            bigint.to_u128()
-        }
-
-        #[inline]
-        fn try_from_signed(signed: i128) -> Option<Self> {
-            Self::try_from(signed).ok()
-        }
-
-        #[inline]
-        fn try_into_signed(self) -> Option<i128> {
-            self.try_into().ok()
-        }
-
-        #[inline]
-        fn rem_biguint(self, biguint: BigUint) -> BigUint {
-            biguint % self
-        }
-
-        #[inline]
-        fn rem_bigint(self, bigint: BigInt) -> BigInt {
-            bigint % self
-        }
-
-        #[inline]
-        fn range(self, end: Self) -> Range<Self> {
-            self..end
-        }
-    }
-
-    impl UnsignedPrimitiveUtil for usize {
-        type Signed = isize;
-        type Range = Range<usize>;
-
-        #[inline]
-        fn random<R: Rng>(rng: &mut R) -> Self {
-            rng.gen()
-        }
-
-        #[inline]
-        fn try_from_biguint(biguint: BigUint) -> Option<Self> {
-            biguint.to_usize()
-        }
-
-        #[inline]
-        fn try_from_bigint(bigint: BigInt) -> Option<Self> {
-            bigint.to_usize()
-        }
-
-        #[inline]
-        fn try_from_signed(signed: isize) -> Option<Self> {
-            Self::try_from(signed).ok()
-        }
-
-        #[inline]
-        fn try_into_signed(self) -> Option<isize> {
-            self.try_into().ok()
-        }
-
-        #[inline]
-        fn rem_biguint(self, biguint: BigUint) -> BigUint {
-            biguint % self
-        }
-
-        #[inline]
-        fn rem_bigint(self, bigint: BigInt) -> BigInt {
-            bigint % self
-        }
-
-        #[inline]
-        fn range(self, end: Self) -> Range<Self> {
-            self..end
-        }
-    }
-}
-
-mod hidden {
+mod sealed {
     use crate::{False, True};
-
-    use std::cell::UnsafeCell;
-    use std::thread::LocalKey;
 
     pub trait Sealed {}
 
@@ -2169,64 +2196,4 @@ mod hidden {
     impl Sealed for isize {}
     impl Sealed for f32 {}
     impl Sealed for f64 {}
-
-    pub trait HasThreadLocalModulus: Copy + 'static {
-        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>>;
-
-        /// # Safety
-        ///
-        /// This function is safe as long as `Self::modulus_local_key().with` does not leak the raw pointer in this crate.
-        unsafe fn thread_local_modulus() -> Self {
-            Self::modulus_local_key().with(|m| *m.get())
-        }
-
-        /// # Safety
-        ///
-        /// This function is safe as long as `Self::modulus_local_key().with` does not leak the raw pointer in this crate.
-        unsafe fn set_thread_local_modulus(modulus: Self) {
-            Self::modulus_local_key().with(|m| *m.get() = modulus)
-        }
-    }
-
-    impl HasThreadLocalModulus for u8 {
-        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            thread_local!(static MODULUS: UnsafeCell<u8> = UnsafeCell::new(0));
-            &MODULUS
-        }
-    }
-
-    impl HasThreadLocalModulus for u16 {
-        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            thread_local!(static MODULUS: UnsafeCell<u16> = UnsafeCell::new(0));
-            &MODULUS
-        }
-    }
-
-    impl HasThreadLocalModulus for u32 {
-        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            thread_local!(static MODULUS: UnsafeCell<u32> = UnsafeCell::new(0));
-            &MODULUS
-        }
-    }
-
-    impl HasThreadLocalModulus for u64 {
-        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            thread_local!(static MODULUS: UnsafeCell<u64> = UnsafeCell::new(0));
-            &MODULUS
-        }
-    }
-
-    impl HasThreadLocalModulus for u128 {
-        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            thread_local!(static MODULUS: UnsafeCell<u128> = UnsafeCell::new(0));
-            &MODULUS
-        }
-    }
-
-    impl HasThreadLocalModulus for usize {
-        fn modulus_local_key() -> &'static LocalKey<UnsafeCell<Self>> {
-            thread_local!(static MODULUS: UnsafeCell<usize> = UnsafeCell::new(0));
-            &MODULUS
-        }
-    }
 }
