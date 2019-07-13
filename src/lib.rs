@@ -101,8 +101,8 @@ use crate::sealed::Sealed;
 
 use num::integer::ExtendedGcd;
 use num::{
-    integer, BigInt, BigUint, Float, FromPrimitive, Integer, Num, One as _, PrimInt, Signed,
-    ToPrimitive as _, Unsigned, Zero as _,
+    integer, BigInt, BigUint, Bounded, Float, FromPrimitive, Integer, Num, One as _, PrimInt,
+    Signed, ToPrimitive as _, Unsigned, Zero as _,
 };
 use rand::Rng;
 
@@ -126,6 +126,7 @@ pub trait UnsignedPrimitive:
     + PrimInt
     + Integer
     + Num<FromStrRadixErr = ParseIntError>
+    + Bounded
     + FromStr<Err = ParseIntError>
     + FromPrimitive
     + Into<BigUint>
@@ -490,6 +491,7 @@ pub trait SignedPrimitive:
     + PrimInt
     + Integer
     + Num<FromStrRadixErr = ParseIntError>
+    + Bounded
     + FromStr<Err = ParseIntError>
     + FromPrimitive
     + Into<BigInt>
@@ -717,6 +719,324 @@ pub trait Cartridge {
             t = Self::mul(t, Self::mul(b, b, p), p);
             r = Self::mul(r, b, p);
         })
+    }
+
+    /// Implementation for [`From`]`::<`[`u8`]`>` and [`FromPrimitive`]`::`[`from_u8`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`u8`]: https://doc.rust-lang.org/nightly/std/primitive.u8.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_u8`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u8
+    #[inline(always)]
+    fn from_u8(value: u8, modulus: Self::Target) -> Self::Target {
+        if let Some(value) = Self::Target::from_u8(value) {
+            Self::new(value, modulus)
+        } else {
+            let modulus = modulus.to_u8().unwrap();
+            Self::Target::from_u8(Self::new(value, modulus)).unwrap()
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`u16`]`>` and [`FromPrimitive`]`::`[`from_u16`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`u16`]: https://doc.rust-lang.org/nightly/std/primitive.u16.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_u16`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u16
+    #[inline(always)]
+    fn from_u16(value: u16, modulus: Self::Target) -> Self::Target {
+        if let Some(value) = Self::Target::from_u16(value) {
+            Self::new(value, modulus)
+        } else {
+            let modulus = modulus.to_u16().unwrap();
+            Self::Target::from_u16(Self::new(value, modulus)).unwrap()
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`u32`]`>` and [`FromPrimitive`]`::`[`from_u32`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`u32`]: https://doc.rust-lang.org/nightly/std/primitive.u32.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_u32`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u32
+    #[inline(always)]
+    fn from_u32(value: u32, modulus: Self::Target) -> Self::Target {
+        if let Some(value) = Self::Target::from_u32(value) {
+            Self::new(value, modulus)
+        } else {
+            let modulus = modulus.to_u32().unwrap();
+            Self::Target::from_u32(Self::new(value, modulus)).unwrap()
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`u64`]`>` and [`FromPrimitive`]`::`[`from_u64`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`u64`]: https://doc.rust-lang.org/nightly/std/primitive.u64.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_u64`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#tymethod.from_u64
+    #[inline(always)]
+    fn from_u64(value: u64, modulus: Self::Target) -> Self::Target {
+        if let Some(value) = Self::Target::from_u64(value) {
+            Self::new(value, modulus)
+        } else {
+            let modulus = modulus.to_u64().unwrap();
+            Self::Target::from_u64(Self::new(value, modulus)).unwrap()
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`u128`]`>` and [`FromPrimitive`]`::`[`from_u128`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`u128`]: https://doc.rust-lang.org/nightly/std/primitive.u128.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_u128`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u128
+    #[inline(always)]
+    fn from_u128(value: u128, modulus: Self::Target) -> Self::Target {
+        if let Some(value) = Self::Target::from_u128(value) {
+            Self::new(value, modulus)
+        } else {
+            let modulus = modulus.to_u128().unwrap();
+            Self::Target::from_u128(Self::new(value, modulus)).unwrap()
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`usize`]`>` and [`FromPrimitive`]`::`[`from_usize`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`usize`]: https://doc.rust-lang.org/nightly/std/primitive.usize.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_usize`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_usize
+    #[inline(always)]
+    fn from_usize(value: usize, modulus: Self::Target) -> Self::Target {
+        if let Some(value) = Self::Target::from_usize(value) {
+            Self::new(value, modulus)
+        } else {
+            let modulus = modulus.to_usize().unwrap();
+            Self::Target::from_usize(Self::new(value, modulus)).unwrap()
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`i8`]`>` and [`FromPrimitive`]`::`[`from_i8`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`i8`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_i8`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_i8
+    #[inline(always)]
+    fn from_i8(value: i8, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<PartialSubtraction = True>,
+    {
+        let (value_abs, is_neg) = if value < 0 {
+            (-value, true)
+        } else {
+            (value, false)
+        };
+
+        let acc = if let Some(value_abs) = Self::Target::from_i8(value_abs) {
+            Self::new(value_abs, modulus)
+        } else {
+            let modulus = modulus.to_i8().unwrap();
+            Self::Target::from_i8(Self::new(value_abs, modulus)).unwrap()
+        };
+
+        if is_neg {
+            Self::neg(acc, modulus)
+        } else {
+            acc
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`i16`]`>` and [`FromPrimitive`]`::`[`from_i16`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`i16`]: https://doc.rust-lang.org/nightly/std/primitive.i16.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_i16`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_i16
+    #[inline(always)]
+    fn from_i16(value: i16, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<PartialSubtraction = True>,
+    {
+        let (value_abs, is_neg) = if value < 0 {
+            (-value, true)
+        } else {
+            (value, false)
+        };
+
+        let acc = if let Some(value_abs) = Self::Target::from_i16(value_abs) {
+            Self::new(value_abs, modulus)
+        } else {
+            let modulus = modulus.to_i16().unwrap();
+            Self::Target::from_i16(Self::new(value_abs, modulus)).unwrap()
+        };
+
+        if is_neg {
+            Self::neg(acc, modulus)
+        } else {
+            acc
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`i32`]`>` and [`FromPrimitive`]`::`[`from_i32`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`i32`]: https://doc.rust-lang.org/nightly/std/primitive.i32.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_i32`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_i32
+    #[inline(always)]
+    fn from_i32(value: i32, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<PartialSubtraction = True>,
+    {
+        let (value_abs, is_neg) = if value < 0 {
+            (-value, true)
+        } else {
+            (value, false)
+        };
+
+        let acc = if let Some(value_abs) = Self::Target::from_i32(value_abs) {
+            Self::new(value_abs, modulus)
+        } else {
+            let modulus = modulus.to_i32().unwrap();
+            Self::Target::from_i32(Self::new(value_abs, modulus)).unwrap()
+        };
+
+        if is_neg {
+            Self::neg(acc, modulus)
+        } else {
+            acc
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`i64`]`>` and [`FromPrimitive`]`::`[`from_i64`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`i64`]: https://doc.rust-lang.org/nightly/std/primitive.i64.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_i64`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#tymethod.from_i64
+    #[inline(always)]
+    fn from_i64(value: i64, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<PartialSubtraction = True>,
+    {
+        let (value_abs, is_neg) = if value < 0 {
+            (-value, true)
+        } else {
+            (value, false)
+        };
+
+        let acc = if let Some(value_abs) = Self::Target::from_i64(value_abs) {
+            Self::new(value_abs, modulus)
+        } else {
+            let modulus = modulus.to_i64().unwrap();
+            Self::Target::from_i64(Self::new(value_abs, modulus)).unwrap()
+        };
+
+        if is_neg {
+            Self::neg(acc, modulus)
+        } else {
+            acc
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`i128`]`>` and [`FromPrimitive`]`::`[`from_i128`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`i128`]: https://doc.rust-lang.org/nightly/std/primitive.i128.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_i128`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_i128
+    #[inline(always)]
+    fn from_i128(value: i128, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<PartialSubtraction = True>,
+    {
+        let (value_abs, is_neg) = if value < 0 {
+            (-value, true)
+        } else {
+            (value, false)
+        };
+
+        let acc = if let Some(value_abs) = Self::Target::from_i128(value_abs) {
+            Self::new(value_abs, modulus)
+        } else {
+            let modulus = modulus.to_i128().unwrap();
+            Self::Target::from_i128(Self::new(value_abs, modulus)).unwrap()
+        };
+
+        if is_neg {
+            Self::neg(acc, modulus)
+        } else {
+            acc
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`isize`]`>` and [`FromPrimitive`]`::`[`from_isize`].
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`isize`]: https://doc.rust-lang.org/nightly/std/primitive.isize.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_isize`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#tymethod.from_isize
+    #[inline(always)]
+    fn from_isize(value: isize, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<PartialSubtraction = True>,
+    {
+        let (value_abs, is_neg) = if value < 0 {
+            (-value, true)
+        } else {
+            (value, false)
+        };
+
+        let acc = if let Some(value_abs) = Self::Target::from_isize(value_abs) {
+            Self::new(value_abs, modulus)
+        } else {
+            let modulus = modulus.to_isize().unwrap();
+            Self::Target::from_isize(Self::new(value_abs, modulus)).unwrap()
+        };
+
+        if is_neg {
+            Self::neg(acc, modulus)
+        } else {
+            acc
+        }
+    }
+
+    /// Implementation for [`From`]`::<`[`f32`]`, `[`f64`]`>` and [`FromPrimitive`]`::{`[`from_f32`]`, `[`from_f64`]`}`.
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`f32`]: https://doc.rust-lang.org/nightly/std/primitive.f32.html
+    /// [`f64`]: https://doc.rust-lang.org/nightly/std/primitive.f64.html
+    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
+    /// [`from_f32`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_f32
+    /// [`from_f64`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_f64
+    #[inline(always)]
+    fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<
+            AssumePrimeModulus = True,
+            PartialSubtraction = True,
+            PartialMultiplication = True,
+            PartialDivision = True,
+        >,
+    {
+        macro_rules! id {
+            (2) => {
+                Self::Target::one() + Self::Target::one()
+            };
+        }
+
+        let (man, exp, sign) = value.integer_decode();
+        let acc = Self::mul(
+            Self::from_u64(man, modulus),
+            Self::pow_signed(id!(2), exp, modulus),
+            modulus,
+        );
+        match sign {
+            -1 => Self::neg(acc, modulus),
+            _ => acc,
+        }
     }
 
     /// Implementation for [`From`]`<`[`BigUint`]`>`.
@@ -1063,249 +1383,6 @@ pub trait Cartridge {
         value == Self::Target::one()
     }
 
-    /// Implementation for [`FromPrimitive`]`::`[`from_i64`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_i64`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#tymethod.from_i64
-    #[inline(always)]
-    fn from_i64(value: i64, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        Self::from_i128(value.to_i128()?, modulus)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_u64`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_u64`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#tymethod.from_u64
-    #[inline(always)]
-    fn from_u64(value: u64, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        Self::from_u128(value.to_u128()?, modulus)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_isize`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_isize`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#tymethod.from_isize
-    #[inline(always)]
-    fn from_isize(value: isize, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        Self::from_i128(value.to_i128()?, modulus)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_isize`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_isize`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_isize
-    #[inline(always)]
-    fn from_i8(value: i8, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        Self::from_i128(value.to_i128()?, modulus)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_i16`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_i16`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_i16
-    #[inline(always)]
-    fn from_i16(value: i16, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        Self::from_i128(value.to_i128()?, modulus)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_i32`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_i32`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_i32
-    #[inline(always)]
-    fn from_i32(value: i32, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        Self::from_i128(value.to_i128()?, modulus)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_i128`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_i128`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_i128
-    #[inline(always)]
-    fn from_i128(value: i128, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        if value < 0 {
-            Self::from_u128((-value).to_u128()?, modulus).map(|v| Self::neg(v, modulus))
-        } else {
-            Self::from_u128(value.to_u128()?, modulus)
-        }
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_usize`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_usize`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_usize
-    #[inline(always)]
-    fn from_usize(value: usize, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        Self::from_u128(value.to_u128()?, modulus)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_u8`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_u8`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u8
-    #[inline(always)]
-    fn from_u8(value: u8, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        Self::from_u128(value.to_u128()?, modulus)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_u16`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_u16`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u16
-    #[inline(always)]
-    fn from_u16(value: u16, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        Self::from_u128(value.to_u128()?, modulus)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_u32`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_u32`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u32
-    #[inline(always)]
-    fn from_u32(value: u32, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        Self::from_u128(value.to_u128()?, modulus)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::`[`from_u128`].
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_u128`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_u128
-    #[inline(always)]
-    fn from_u128(value: u128, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        let modulus = modulus.to_u128()?;
-        let value = Self::new(value, modulus);
-        Self::Target::from_u128(value)
-    }
-
-    /// Implementation for [`FromPrimitive`]`::{`[`from_f32`]`, `[`from_f64`]`}`.
-    ///
-    /// [`FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
-    /// [`from_f32`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_f32
-    /// [`from_f64`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html#method.from_f64
-    #[inline(always)]
-    fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Target) -> Option<Self::Target>
-    where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
-    {
-        macro_rules! id {
-            (2) => {
-                Self::Target::one() + Self::Target::one()
-            };
-        }
-
-        let (man, exp, sign) = value.integer_decode();
-        let acc = Self::mul(
-            Self::from_u64(man, modulus)?,
-            Self::pow_signed(id!(2), exp, modulus),
-            modulus,
-        );
-        Some(match sign {
-            -1 => Self::neg(acc, modulus),
-            _ => acc,
-        })
-    }
-
     /// Implementation for [`CheckedNeg`].
     ///
     /// [`CheckedNeg`]: https://docs.rs/num-traits/0.2/num_traits/ops/checked/trait.CheckedNeg.html
@@ -1594,8 +1671,10 @@ pub type F<M> = ModType<<M as ConstValue>::Value, cartridges::Field<<M as ConstV
 /// assert_eq!(*F(3).get_mut_unchecked(), 3u32);
 /// assert_eq!(F(2).sqrt(), Some(F(4)));
 ///
-/// // `From<{T, BigUint, BigInt}>`
-/// assert_eq!(F::from(3), F(3));
+/// // `From<{integer}>`, `From<{f32, f64, BigUint, BigInt}>`
+/// assert_eq!(F::from(3u64), F(3));
+/// assert_eq!(F::from(-3i64), F(4));
+/// assert_eq!(F::from(0.5), F(1) / F(2));
 /// assert_eq!(F::from(BigUint::new(vec![3])), F(3));
 /// assert_eq!(F::from(BigInt::new(Sign::Minus, vec![4])), F(3));
 ///
@@ -1636,8 +1715,7 @@ pub type F<M> = ModType<<M as ConstValue>::Value, cartridges::Field<<M as ConstV
 /// assert_eq!(F::one(), F(1));
 ///
 /// // `FromPrimitive`
-/// assert_eq!(F::from_i128(-1), Some(-F(1)));
-/// assert_eq!(F::from_f64(0.5), Some(F(1) / F(2)));
+/// assert_eq!(F::from_i64(-1), Some(F::from(-1i64)));
 ///
 /// // `Inv`
 /// assert_eq!(F(3).inv(), F(5));

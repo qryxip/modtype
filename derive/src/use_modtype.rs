@@ -159,7 +159,7 @@ pub(crate) fn use_modtype(
             #[allow(non_snake_case)]
             #[inline]
             fn #constructor(value: #int_ty) -> #ty_alias {
-                <#ty_alias as ::std::convert::From<#int_ty>>::from(value)
+                #ty_alias::new(value)
             }
         })
     };

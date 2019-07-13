@@ -9,6 +9,8 @@
 - `adjusted` methods.
 - `Cartridge::{sqrt, adjust, adjusted, eq, cmp}`.
 - `modtype::cartridges::{Field, Multiplicative, Additive, ManuallyAdjust}`.
+- `From<{integer}>`
+- `From<{f32, f64}>`
 
 ### Removed
 
@@ -23,6 +25,7 @@
 - `DefaultCartridge` takes a `Features` argument.
 - Rename `modytpe::field_param` to `modtype::non_static`.
 - Rename `{modtype, modtype::field_param, modtype::non_static}::DefaultModType` to `F` again.
+- `Cartridge::from_*` no longer return `Option`.
 
 ### Fixed
 

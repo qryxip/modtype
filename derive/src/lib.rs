@@ -62,7 +62,7 @@ use std::convert::TryFrom as _;
 /// #[allow(non_snake_case)]
 /// #[inline]
 /// fn F(value: u64) -> F {
-///     <F as ::std::convert::From<u64>>::from(value)
+///     F::new(value)
 /// }
 ///
 /// assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
