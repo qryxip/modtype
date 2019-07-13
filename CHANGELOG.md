@@ -9,7 +9,7 @@
 - `adjusted` methods.
 - `Cartridge::{sqrt, adjust, adjusted, eq, cmp}`.
 - `modtype::cartridges::{Field, Multiplicative, Additive, ManuallyAdjust}`.
-- `From<{integer}, {f32, f64}>`
+- `From<{integer}, {float}, Ratio<BigUint>, Ratio<BigInt>>`
 
 ### Removed
 

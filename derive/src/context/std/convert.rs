@@ -14,6 +14,7 @@ impl Context {
             cartridge,
             std,
             num_bigint,
+            num_rational,
             modtype,
             struct_ident,
             generics,
@@ -22,16 +23,29 @@ impl Context {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+        let generics = self.with_features(&[parse_quote!(PartialSubtraction)]);
+        let (_, _, where_clause_sub) = generics.split_for_impl();
+
+        let generics = self.with_features(&[
+            parse_quote!(AssumePrimeModulus),
+            parse_quote!(PartialDivision),
+        ]);
+        let (_, _, where_clause_div) = generics.split_for_impl();
+
+        let generics = self.with_features(&[
+            parse_quote!(AssumePrimeModulus),
+            parse_quote!(PartialSubtraction),
+            parse_quote!(PartialDivision),
+        ]);
+        let (_, _, where_clause_sub_div) = generics.split_for_impl();
+
         let generics = self.with_features(&[
             parse_quote!(AssumePrimeModulus),
             parse_quote!(PartialSubtraction),
             parse_quote!(PartialMultiplication),
             parse_quote!(PartialDivision),
         ]);
-        let (_, _, where_clause_div) = generics.split_for_impl();
-
-        let generics = self.with_features(&[parse_quote!(PartialSubtraction)]);
-        let (_, _, where_clause_sub) = generics.split_for_impl();
+        let (_, _, where_clause_sub_mul_div) = generics.split_for_impl();
 
         let mut acc = quote!();
 
@@ -48,8 +62,16 @@ impl Context {
             (quote!(i64), quote!(from_i64), where_clause_sub),
             (quote!(i128), quote!(from_i128), where_clause_sub),
             (quote!(isize), quote!(from_isize), where_clause_sub),
-            (quote!(f32), quote!(from_float_prim), where_clause_div),
-            (quote!(f64), quote!(from_float_prim), where_clause_div),
+            (
+                quote!(f32),
+                quote!(from_float_prim),
+                where_clause_sub_mul_div,
+            ),
+            (
+                quote!(f64),
+                quote!(from_float_prim),
+                where_clause_sub_mul_div,
+            ),
             (
                 quote!(#num_bigint::BigUint),
                 quote!(from_biguint),
@@ -59,6 +81,16 @@ impl Context {
                 quote!(#num_bigint::BigInt),
                 quote!(from_bigint),
                 where_clause_sub,
+            ),
+            (
+                quote!(#num_rational::Ratio<#num_bigint::BigUint>),
+                quote!(from_biguint_ratio),
+                where_clause_div,
+            ),
+            (
+                quote!(#num_rational::Ratio<#num_bigint::BigInt>),
+                quote!(from_bigint_ratio),
+                where_clause_sub_div,
             ),
         ] {
             let value_expr = parse_quote! {

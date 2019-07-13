@@ -100,6 +100,7 @@ pub use modtype_derive::{use_modtype, ConstValue, ModType};
 use crate::sealed::Sealed;
 
 use num::integer::ExtendedGcd;
+use num::rational::Ratio;
 use num::{
     integer, BigInt, BigUint, Bounded, Float, FromPrimitive, Integer, Num, One as _, PrimInt,
     Signed, ToPrimitive as _, Unsigned, Zero as _,
@@ -1061,7 +1062,62 @@ pub trait Cartridge {
         if is_neg {
             value = -value;
         }
+
         let acc = Self::Target::try_from_bigint(modulus.rem_bigint(value)).unwrap();
+
+        if is_neg {
+            Self::neg(acc, modulus)
+        } else {
+            acc
+        }
+    }
+
+    /// Implementation for [`From`]`<`[`Ratio`]`<`[`BigUint`]`>>`.
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`Ratio`]: https://docs.rs/num-rational/0.2/num_rational/struct.Ratio.html
+    /// [`BigUint`]: https://docs.rs/num-bigint/0.2/num_bigint/struct.BigUint.html
+    #[inline(always)]
+    fn from_biguint_ratio(value: Ratio<BigUint>, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features: Features<AssumePrimeModulus = True, PartialDivision = True>,
+    {
+        let numer = modulus.rem_biguint(value.numer().clone());
+        let numer = Self::Target::try_from_biguint(numer).unwrap();
+        let denom = modulus.rem_biguint(value.denom().clone());
+        let denom = Self::Target::try_from_biguint(denom).unwrap();
+
+        Self::div(numer, denom, modulus)
+    }
+
+    /// Implementation for [`From`]`<`[`Ratio`]`<`[`BigInt`]`>>`.
+    ///
+    /// [`From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+    /// [`Ratio`]: https://docs.rs/num-rational/0.2/num_rational/struct.Ratio.html
+    /// [`BigInt`]: https://docs.rs/num-bigint/0.2/num_bigint/struct.BigInt.html
+    #[inline(always)]
+    fn from_bigint_ratio(value: Ratio<BigInt>, modulus: Self::Target) -> Self::Target
+    where
+        Self::Features:
+            Features<AssumePrimeModulus = True, PartialSubtraction = True, PartialDivision = True>,
+    {
+        let (is_neg, numer, denom) = if value.numer().is_negative() && value.denom().is_negative() {
+            (false, -value.numer(), -value.denom())
+        } else if value.numer().is_negative() {
+            (true, -value.numer(), value.denom().clone())
+        } else if value.denom().is_negative() {
+            (true, value.numer().clone(), -value.denom())
+        } else {
+            (false, value.numer().clone(), value.denom().clone())
+        };
+
+        let numer = modulus.rem_bigint(numer);
+        let numer = Self::Target::try_from_bigint(numer).unwrap();
+        let denom = modulus.rem_bigint(denom);
+        let denom = Self::Target::try_from_bigint(denom).unwrap();
+
+        let acc = Self::div(numer, denom, modulus);
+
         if is_neg {
             Self::neg(acc, modulus)
         } else {
@@ -1119,10 +1175,12 @@ pub trait Cartridge {
     #[inline(always)]
     fn fmt_debug(
         value: Self::Target,
-        _modulus: Self::Target,
+        modulus: Self::Target,
         _ty: &'static str,
         fmt: &mut fmt::Formatter,
     ) -> fmt::Result {
+        let (value,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (value,), modulus);
+
         <Self::Target as fmt::Debug>::fmt(&value, fmt)
     }
 
@@ -1633,8 +1691,9 @@ pub type F<M> = ModType<cartridges::Field<<M as ConstValue>::Value>, M>;
 /// # Examples
 ///
 /// ```
-/// use num::bigint::{Sign, ToBigInt as _, ToBigUint as _};
+/// use num::bigint::{ToBigInt as _, ToBigUint as _};
 /// use num::pow::Pow as _;
+/// use num::rational::Ratio;
 /// use num::traits::{CheckedNeg as _, CheckedRem as _, Inv as _};
 /// use num::{
 ///     BigInt, BigUint, CheckedAdd as _, CheckedDiv as _, CheckedMul as _, CheckedSub as _,
@@ -1650,7 +1709,7 @@ pub type F<M> = ModType<cartridges::Field<<M as ConstValue>::Value>, M>;
 /// assert_eq!(*F(3).get_mut_unchecked(), 3u32);
 /// assert_eq!(F(2).sqrt(), Some(F(4)));
 ///
-/// // `From<{{integer}, f32, f64, BigUint, BigInt}>`
+/// // `From<{{integer}, {float}, BigUint, BigInt, Ratio<BigUint>, Ratio<BigInt>}>`
 /// assert_eq!(F::from(3u8), F(3));
 /// assert_eq!(F::from(3u16), F(3));
 /// assert_eq!(F::from(3u32), F(3));
@@ -1665,8 +1724,16 @@ pub type F<M> = ModType<cartridges::Field<<M as ConstValue>::Value>, M>;
 /// assert_eq!(F::from(-3isize), F(4));
 /// assert_eq!(F::from(0.5f32), F(1) / F(2));
 /// assert_eq!(F::from(0.5f64), F(1) / F(2));
-/// assert_eq!(F::from(BigUint::new(vec![3])), F(3));
-/// assert_eq!(F::from(BigInt::new(Sign::Minus, vec![4])), F(3));
+/// assert_eq!(F::from(BigUint::from(3u32)), F(3));
+/// assert_eq!(F::from(BigInt::from(-4i32)), F(3));
+/// assert_eq!(
+///     F::from(Ratio::new(BigUint::from(8u32), BigUint::from(3u32))),
+///     F(5),
+/// );
+/// assert_eq!(
+///     F::from(Ratio::new(BigInt::from(-1i32), BigInt::from(3u32))),
+///     F(2),
+/// );
 ///
 /// // `Display`, `Debug`
 /// assert_eq!(F(3).to_string(), "3");
@@ -1811,6 +1878,7 @@ pub mod cartridges {
     use num::PrimInt;
 
     use std::convert::Infallible;
+    use std::fmt;
     use std::marker::PhantomData;
 
     /// A [`Cartridge`] which assumes moduluses are primes.
@@ -1904,6 +1972,24 @@ pub mod cartridges {
         }
 
         #[inline(always)]
+        fn fmt_debug(
+            value: Self::Target,
+            modulus: Self::Target,
+            _ty: &'static str,
+            fmt: &mut fmt::Formatter,
+        ) -> fmt::Result {
+            fmt.debug_tuple("")
+                .field(&format_args!(
+                    "{} * {} + {} = {}",
+                    value / modulus,
+                    modulus,
+                    value % modulus,
+                    value,
+                ))
+                .finish()
+        }
+
+        #[inline(always)]
         fn add(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
             // does not check overflowing
             Self::new(lhs + rhs, modulus)
@@ -1958,8 +2044,27 @@ pub mod cartridges {
             false
         }
 
+        #[inline(always)]
         fn sqrt(_: T, _: T) -> Option<T> {
             panic!("`sqrt` for non-prime moduluses is not implemented");
+        }
+
+        #[inline(always)]
+        fn fmt_debug(
+            value: Self::Target,
+            modulus: Self::Target,
+            _ty: &'static str,
+            fmt: &mut fmt::Formatter,
+        ) -> fmt::Result {
+            fmt.debug_tuple("")
+                .field(&format_args!(
+                    "{} * {} + {} = {}",
+                    value / modulus,
+                    modulus,
+                    value % modulus,
+                    value,
+                ))
+                .finish()
         }
 
         #[inline(always)]

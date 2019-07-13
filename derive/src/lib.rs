@@ -159,16 +159,17 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// ## Struct
 ///
-/// | Name                 | Format                                                                     | Optional                         |
-/// | :------------------- | :------------------------------------------------------------------------- | :------------------------------- |
-/// | `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`]   | No                               |
-/// | `cartridge`          | `cartridge = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]      | No                               |
-/// | `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]            | Yes (default = `::std`)          |
-/// | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]     | Yes (default = `::num::traits`)  |
-/// | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]    | Yes (default = `::num::integer`) |
-/// | `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]     | Yes (default = `::num::bigint`)  |
-/// | `modtype`            | `modtype = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]        | Yes (default = `::modtype`)      |
-/// | `non_static_modulus` | `non_static_modulus`                                                       | Yes                              |
+/// | Name                 | Format                                                                   | Optional                          |
+/// | :------------------- | :----------------------------------------------------------------------- | :-------------------------------- |
+/// | `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`] | No                                |
+/// | `cartridge`          | `cartridge = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]    | No                                |
+/// | `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]          | Yes (default = `::std`)           |
+/// | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)   |
+/// | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`)  |
+/// | `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)   |
+/// | `num_rational`       | `num_rational = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`] | Yes (default = `::num::rational`) |
+/// | `modtype`            | `modtype = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]      | Yes (default = `::modtype`)       |
+/// | `non_static_modulus` | `non_static_modulus`                                                     | Yes                               |
 ///
 /// ## Field
 ///

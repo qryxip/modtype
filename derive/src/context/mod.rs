@@ -22,6 +22,7 @@ pub(crate) struct Context {
     std: Path,
     num_traits: Path,
     num_bigint: Path,
+    num_rational: Path,
     modtype: Path,
     non_static_modulus: bool,
     struct_ident: Ident,
@@ -57,7 +58,7 @@ impl Context {
             .get_or_insert_with(|| parse_quote!(where))
             .predicates
             .push(parse_quote! {
-                <#cartridge as #modtype::Cartridge>::Features: #modtype::Features<#bindings>
+                #cartridge::Features: #modtype::Features<#bindings>
             });
 
         generics
@@ -230,6 +231,7 @@ impl TryFrom<DeriveInput> for Context {
         let mut num_traits = None;
         let mut num_integer = None;
         let mut num_bigint = None;
+        let mut num_rational = None;
         let mut modtype = None;
         let mut non_static_modulus = false;
 
@@ -241,6 +243,7 @@ impl TryFrom<DeriveInput> for Context {
                 "num_traits" => ident.to_error("expected `num_traits = $LitStr`"),
                 "num_integer" => ident.to_error("expected `num_integer = $LitStr`"),
                 "num_bigint" => ident.to_error("expected `num_bigint = $LitStr`"),
+                "num_rational" => ident.to_error("expected `num_rational = $LitStr`"),
                 "modtype" => ident.to_error("expected `modtype = $LitStr`"),
                 "non_static_modulus" => ident.to_error("expected `non_static_modulus`"),
                 _ => ident.to_error("unknown identifier"),
@@ -267,6 +270,7 @@ impl TryFrom<DeriveInput> for Context {
                 "num_traits" => put_path(ident.span(), lit, &mut num_traits),
                 "num_integer" => put_path(ident.span(), lit, &mut num_integer),
                 "num_bigint" => put_path(ident.span(), lit, &mut num_bigint),
+                "num_rational" => put_path(ident.span(), lit, &mut num_rational),
                 "modtype" => put_path(ident.span(), lit, &mut modtype),
                 _ => Err(error_on_ident(ident)),
             }
@@ -303,6 +307,7 @@ impl TryFrom<DeriveInput> for Context {
         let std = std.unwrap_or_else(|| parse_quote!(::std));
         let num_traits = num_traits.unwrap_or_else(|| parse_quote!(::num::traits));
         let num_bigint = num_bigint.unwrap_or_else(|| parse_quote!(::num::bigint));
+        let num_rational = num_rational.unwrap_or_else(|| parse_quote!(::num::rational));
         let modtype = modtype.unwrap_or_else(|| parse_quote!(::modtype));
 
         let fields = match data {
@@ -362,6 +367,7 @@ impl TryFrom<DeriveInput> for Context {
             std,
             num_traits,
             num_bigint,
+            num_rational,
             modtype,
             non_static_modulus,
             struct_ident,
