@@ -1313,24 +1313,6 @@ pub trait Cartridge {
         Self::Target::from_str_radix(str, radix).map(|v| Self::new(v, modulus))
     }
 
-    /// Implementation for [`Bounded`]`::`[`min_value`].
-    ///
-    /// [`Bounded`]: https://docs.rs/num-traits/0.2/num_traits/bounds/trait.Bounded.html
-    /// [`min_value`]: https://docs.rs/num-traits/0.2/num_traits/bounds/trait.Bounded.html#method.min_value
-    #[inline(always)]
-    fn min_value(_modulus: Self::Target) -> Self::Target {
-        Self::Target::zero()
-    }
-
-    /// Implementation for [`Bounded`]`::`[`max_value`].
-    ///
-    /// [`Bounded`]: https://docs.rs/num-traits/0.2/num_traits/bounds/trait.Bounded.html
-    /// [`max_value`]: https://docs.rs/num-traits/0.2/num_traits/bounds/trait.Bounded.html#method.max_value
-    #[inline(always)]
-    fn max_value(modulus: Self::Target) -> Self::Target {
-        modulus - Self::Target::one()
-    }
-
     /// Implementation for [`Zero`]`::`[`zero`].
     ///
     /// [`Zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html
@@ -1655,15 +1637,12 @@ pub type F<M> = ModType<cartridges::Field<<M as ConstValue>::Value>, M>;
 /// use num::pow::Pow as _;
 /// use num::traits::{CheckedNeg as _, CheckedRem as _, Inv as _};
 /// use num::{
-///     BigInt, BigUint, Bounded as _, CheckedAdd as _, CheckedDiv as _, CheckedMul as _,
-///     CheckedSub as _, FromPrimitive as _, Num as _, One as _, ToPrimitive as _, Unsigned,
-///     Zero as _,
+///     BigInt, BigUint, CheckedAdd as _, CheckedDiv as _, CheckedMul as _, CheckedSub as _,
+///     FromPrimitive as _, Num as _, One as _, ToPrimitive as _, Zero as _,
 /// };
 ///
 /// #[modtype::use_modtype]
 /// type F = modtype::F<7u32>;
-///
-/// fn static_assert_unsigned<T: Unsigned>() {}
 ///
 /// // Constructor, `new`, `new_unchecked`, `get_mut_unchecked`, `sqrt`
 /// assert_eq!(F::new(8), F(1));
@@ -1671,10 +1650,21 @@ pub type F<M> = ModType<cartridges::Field<<M as ConstValue>::Value>, M>;
 /// assert_eq!(*F(3).get_mut_unchecked(), 3u32);
 /// assert_eq!(F(2).sqrt(), Some(F(4)));
 ///
-/// // `From<{integer}>`, `From<{f32, f64, BigUint, BigInt}>`
+/// // `From<{{integer}, f32, f64, BigUint, BigInt}>`
+/// assert_eq!(F::from(3u8), F(3));
+/// assert_eq!(F::from(3u16), F(3));
+/// assert_eq!(F::from(3u32), F(3));
 /// assert_eq!(F::from(3u64), F(3));
+/// assert_eq!(F::from(3u128), F(3));
+/// assert_eq!(F::from(3usize), F(3));
+/// assert_eq!(F::from(-3i8), F(4));
+/// assert_eq!(F::from(-3i16), F(4));
+/// assert_eq!(F::from(-3i32), F(4));
 /// assert_eq!(F::from(-3i64), F(4));
-/// assert_eq!(F::from(0.5), F(1) / F(2));
+/// assert_eq!(F::from(-3i128), F(4));
+/// assert_eq!(F::from(-3isize), F(4));
+/// assert_eq!(F::from(0.5f32), F(1) / F(2));
+/// assert_eq!(F::from(0.5f64), F(1) / F(2));
 /// assert_eq!(F::from(BigUint::new(vec![3])), F(3));
 /// assert_eq!(F::from(BigInt::new(Sign::Minus, vec![4])), F(3));
 ///
@@ -1703,12 +1693,6 @@ pub type F<M> = ModType<cartridges::Field<<M as ConstValue>::Value>, M>;
 ///
 /// // `Num`
 /// assert_eq!(F::from_str_radix("111", 2), Ok(F(0)));
-///
-/// // `Unsigned`
-/// static_assert_unsigned::<F>();
-///
-/// // `Bounded`
-/// assert_eq!((F::min_value(), F::max_value()), (F(0), F(6)));
 ///
 /// // `Zero`, `One`
 /// assert_eq!(F::zero(), F(0));
