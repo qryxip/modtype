@@ -273,26 +273,28 @@ impl TryFrom<DeriveInput> for Context {
         };
 
         attrs.iter().try_for_each::<_, syn::Result<_>>(|attr| {
-            let meta = attr
-                .parse_meta()
-                .map_err(|e| syn::Error::new(e.span(), format!("invalid meta: {}", e)))?;
-            if_chain! {
-                if let Meta::List(MetaList { ident, nested, .. }) = &meta;
-                if ident == "modtype";
-                then {
-                    for nested in nested {
-                        match nested {
-                            NestedMeta::Meta(Meta::Word(word)) => on_word(word)?,
-                            NestedMeta::Meta(Meta::List(list)) => on_list(list)?,
-                            NestedMeta::Meta(Meta::NameValue(kv)) => on_name_value(kv)?,
-                            NestedMeta::Literal(_) => bail!(nested.span(), "expected meta. not literal"),
+            if let Ok(meta) = attr.parse_meta() {
+                if_chain! {
+                    if let Ok(meta) = attr.parse_meta();
+                    if let Meta::List(MetaList { ident, nested, .. }) = &meta;
+                    if ident == "modtype";
+                    then {
+                        for nested in nested {
+                            match nested {
+                                NestedMeta::Meta(Meta::Word(word)) => on_word(word)?,
+                                NestedMeta::Meta(Meta::List(list)) => on_list(list)?,
+                                NestedMeta::Meta(Meta::NameValue(kv)) => on_name_value(kv)?,
+                                NestedMeta::Literal(_) => {
+                                    bail!(nested.span(), "expected meta. not literal");
+                                },
+                            }
                         }
+                    } else {
+                        error_on_target_attr(&meta)?;
                     }
-                    Ok(())
-                } else {
-                    error_on_target_attr(&meta)
                 }
             }
+            Ok(())
         })?;
 
         let modulus = modulus.ok_or_else(|| struct_ident.to_error("`modulus` required"))?;

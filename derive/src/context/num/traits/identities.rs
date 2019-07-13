@@ -55,7 +55,8 @@ impl Context {
             field_ident,
             ..
         } = self;
-        let generics = self.with_features(&[parse_quote!(PartialMultiplication)]);
+        let generics =
+            self.with_features(&[parse_quote!(Equality), parse_quote!(PartialMultiplication)]);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let one = parse_quote!(<#cartridge as #modtype::Cartridge>::one(#modulus));

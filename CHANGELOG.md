@@ -5,15 +5,24 @@
 ### Added
 
 - `sqrt` methods.
+- `adjust` methods.
+- `adjusted` methods.
+- `Cartridge::{sqrt, adjust, adjusted, eq, cmp}`
+- `modtype::cartridges::{Field, Multiplicative, Additive, ManuallyAdjust}`.
 
 ### Changed
 
-- Add `Features::{AssumePrimeModulus, Deref}`.
+- Add `Features::{AssumePrimeModulus, AssumeAlwaysAdjusted, Equality, Order, Deref}`.
 - Rename `Features::{Addition, Subtraction, Multiplication, Division}` to `Partial{..}`.
 - Modify the implementation of divisions.
 - Hide `HasThreadLocalModulus`.
 - `DefaultCartridge` takes a `Features` argument.
 - Rename `modytpe::field_param` to `modtype::non_static`.
+- Rename `{modtype, modtype::field_param, modtype::non_static}::DefaultModType` to `F` again.
+
+### Fixed
+
+- `#[derive(ModType)]` no longer fails when the target has a non meta attribute such as `#[rustfmt::skip]`.
 
 ## [0.6.0] - 2019-07-02Z
 

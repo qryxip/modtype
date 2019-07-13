@@ -27,3 +27,4 @@ rand = "=0.6.5"
 
 [dev-dependencies]
 once_cell = "0.2.1"
+rayon = "1.1.0"

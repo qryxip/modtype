@@ -1,9 +1,7 @@
-use modtype::{use_modtype, DefaultModType};
-
 #[test]
 fn cmp() {
-    #[use_modtype]
-    type F = DefaultModType<5u32>;
+    #[modtype::use_modtype]
+    type F = modtype::F<5u32>;
 
     for a in 0..=4 {
         for b in 0..=4 {

@@ -20,9 +20,14 @@ impl Context {
             field_ty,
             ..
         } = self;
-        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let value_expr = parse_quote!(<#cartridge as #modtype::Cartridge>::new(from, #modulus));
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+        let generics = self.with_features(&[parse_quote!(PartialSubtraction)]);
+        let (_, _, where_clause_bigint) = generics.split_for_impl();
+
+        let value_expr = parse_quote! {
+            <#cartridge as #modtype::Cartridge>::new::<#field_ty>(from, #modulus)
+        };
         let struct_expr = self.struct_expr(true, Some(value_expr));
 
         let mut acc = quote! {
@@ -59,7 +64,7 @@ impl Context {
         acc.extend(quote! {
             impl #impl_generics
                 #std::convert::From<#num_bigint::BigInt> for #struct_ident#ty_generics
-            #where_clause
+            #where_clause_bigint
             {
                 #[inline]
                 fn from(from: #num_bigint::BigInt) -> Self {

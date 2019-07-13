@@ -40,11 +40,9 @@ use std::convert::TryFrom as _;
 /// # Usage
 ///
 /// ```
-/// use modtype::{use_modtype, DefaultModType};
-///
-/// // #[use_modtype(constant(_1000000007U64), constructor(F))]
-/// #[use_modtype]
-/// type F = DefaultModType<1_000_000_007u64>;
+/// // #[modtype::use_modtype(constant(_1000000007U64), constructor(F))]
+/// #[modtype::use_modtype]
+/// type F = modtype::F<1_000_000_007u64>;
 ///
 /// assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 /// ```
@@ -52,9 +50,7 @@ use std::convert::TryFrom as _;
 /// ↓
 ///
 /// ```
-/// use modtype::DefaultModType;
-///
-/// type F = DefaultModType<_1000000007U64>;
+/// type F = modtype::F<_1000000007U64>;
 ///
 /// enum _1000000007U64 {}
 ///
