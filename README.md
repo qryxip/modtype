@@ -107,10 +107,10 @@ x.adjust();
 assert_eq!(*x.get_mut_unchecked(), u64::max_value() % 1_000_000_007);
 ```
 
-[`modtype::ModType`]: https://docs.rs/modtype/0.6/modtype/struct.ModType.html
-[`modtype::thread_local::ModType`]: https://docs.rs/modtype/0.6/modtype/thread_local/struct.ModType.html
+[`modtype::ModType`]: https://docs.rs/modtype/0.7/modtype/struct.ModType.html
+[`modtype::thread_local::ModType`]: https://docs.rs/modtype/0.7/modtype/thread_local/struct.ModType.html
 [`modtype::non_static::ModType`]: https://docs.rs/modtype/0.7/modtype/non_static/struct.ModType.html
-[`modtype::Cartridge`]: https://docs.rs/modtype/0.6/modtype/trait.Cartridge.html
+[`modtype::Cartridge`]: https://docs.rs/modtype/0.7/modtype/trait.Cartridge.html
 [`modtype::cartridges::AllowFlexibleRhs`]: https://docs.rs/modtype/0.7/modtype/cartridges/enum.AllowFlexibleRhs.html
 [`modtype::cartridges::Multiplicative`]: https://docs.rs/modtype/0.7/modtype/cartridges/enum.Multiplicative.html
 [`modtype::cartridges::Additive`]: https://docs.rs/modtype/0.7/modtype/cartridges/enum.Additive.html

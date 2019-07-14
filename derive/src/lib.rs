@@ -75,7 +75,7 @@ use std::convert::TryFrom as _;
 /// | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $value, $type_pascal_case)`) |
 /// | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                          |
 ///
-/// [`ConstValue`]: https://docs.rs/modtype/0.6/modtype/trait.ConstValue.html
+/// [`ConstValue`]: https://docs.rs/modtype/0.7/modtype/trait.ConstValue.html
 /// [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
 #[proc_macro_attribute]
 pub fn use_modtype(
@@ -95,7 +95,7 @@ pub fn use_modtype(
 /// | :------------------- | :----------------------------------------------------------- | :-------- |
 /// | `const_value`        | `const_value = #`[`LitInt`] where `#`[`LitInt`] has a suffix | No        |
 ///
-/// [`ConstValue`]: https://docs.rs/modtype/0.6/modtype/trait.ConstValue.html
+/// [`ConstValue`]: https://docs.rs/modtype/0.7/modtype/trait.ConstValue.html
 /// [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
 #[proc_macro_derive(ConstValue, attributes(modtype))]
 pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -242,7 +242,7 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
 /// [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
 /// [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
-/// [`UnsignedPrimitive`]: https://docs.rs/modtype/0.6/modtype/trait.UnsignedPrimitive.html
+/// [`UnsignedPrimitive`]: https://docs.rs/modtype/0.7/modtype/trait.UnsignedPrimitive.html
 #[proc_macro_derive(ModType, attributes(modtype))]
 pub fn mod_type(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ctx = try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)));

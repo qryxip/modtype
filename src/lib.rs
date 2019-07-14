@@ -611,8 +611,8 @@ impl FloatPrimitive for f64 {}
 /// assert_eq!(Const17U32::VALUE, 17u32);
 /// ```
 ///
-/// [`use_modtype`]: https://docs.rs/modtype_derive/0.6/modtype_derive/attr.use_modtype.html
-/// [the derive macro]: https://docs.rs/modtype_derive/0.6/modtype_derive/derive.ConstValue.html
+/// [`use_modtype`]: https://docs.rs/modtype_derive/0.7/modtype_derive/attr.use_modtype.html
+/// [the derive macro]: https://docs.rs/modtype_derive/0.7/modtype_derive/derive.ConstValue.html
 pub trait ConstValue {
     type Value: Copy;
     const VALUE: Self::Value;

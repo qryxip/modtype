@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.7.0] - 2019-07-14Z
 
 ### Added
 
@@ -23,8 +23,6 @@
 - Add `Features::{AssumePrimeModulus, AssumeAlwaysAdjusted, Equality, Order, Deref, FlexibleRhs}`.
 - Rename `Features::{Addition, Subtraction, Multiplication, Division}` to `Partial{..}`.
 - Modify the implementation of divisions.
-- Hide `HasThreadLocalModulus`.
-- `DefaultCartridge` takes a `Features` argument.
 - Rename `modytpe::field_param` to `modtype::non_static`.
 - Rename `{modtype, modtype::field_param, modtype::non_static}::DefaultModType` to `F` again.
 - `Cartridge::from_*` no longer return `Option`.
