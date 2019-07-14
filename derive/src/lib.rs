@@ -40,11 +40,9 @@ use std::convert::TryFrom as _;
 /// # Usage
 ///
 /// ```
-/// use modtype::{use_modtype, DefaultModType};
-///
-/// // #[use_modtype(constant(_1000000007U64), constructor(F))]
-/// #[use_modtype]
-/// type F = DefaultModType<1_000_000_007u64>;
+/// // #[modtype::use_modtype(constant(_1000000007U64), constructor(F))]
+/// #[modtype::use_modtype]
+/// type F = modtype::F<1_000_000_007u64>;
 ///
 /// assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 /// ```
@@ -52,9 +50,7 @@ use std::convert::TryFrom as _;
 /// ↓
 ///
 /// ```
-/// use modtype::DefaultModType;
-///
-/// type F = DefaultModType<_1000000007U64>;
+/// type F = modtype::F<_1000000007U64>;
 ///
 /// enum _1000000007U64 {}
 ///
@@ -66,7 +62,7 @@ use std::convert::TryFrom as _;
 /// #[allow(non_snake_case)]
 /// #[inline]
 /// fn F(value: u64) -> F {
-///     <F as ::std::convert::From<u64>>::from(value)
+///     F::new(value)
 /// }
 ///
 /// assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
@@ -79,7 +75,7 @@ use std::convert::TryFrom as _;
 /// | `constant`    | `constant($`[`Ident`]`)`       | Yes (default = `concat!(_, $value, $type_pascal_case)`) |
 /// | `constructor` | `constructor($`[`Ident`]`)`    | Yes (default = the type alias)                          |
 ///
-/// [`ConstValue`]: https://docs.rs/modtype/0.6/modtype/trait.ConstValue.html
+/// [`ConstValue`]: https://docs.rs/modtype/0.7/modtype/trait.ConstValue.html
 /// [`Ident`]: https://docs.rs/syn/0.15/syn/struct.Ident.html
 #[proc_macro_attribute]
 pub fn use_modtype(
@@ -99,7 +95,7 @@ pub fn use_modtype(
 /// | :------------------- | :----------------------------------------------------------- | :-------- |
 /// | `const_value`        | `const_value = #`[`LitInt`] where `#`[`LitInt`] has a suffix | No        |
 ///
-/// [`ConstValue`]: https://docs.rs/modtype/0.6/modtype/trait.ConstValue.html
+/// [`ConstValue`]: https://docs.rs/modtype/0.7/modtype/trait.ConstValue.html
 /// [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
 #[proc_macro_derive(ConstValue, attributes(modtype))]
 pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -108,7 +104,20 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 /// Derives following traits.
 ///
-/// - [`std::convert::From`]`<#InnerValue>`
+/// - [`std::convert::From`]`<`[`u8`]`>`
+/// - [`std::convert::From`]`<`[`u16`]`>`
+/// - [`std::convert::From`]`<`[`u32`]`>`
+/// - [`std::convert::From`]`<`[`u64`]`>`
+/// - [`std::convert::From`]`<`[`u128`]`>`
+/// - [`std::convert::From`]`<`[`usize`]`>`
+/// - [`std::convert::From`]`<`[`i8`]`>`
+/// - [`std::convert::From`]`<`[`i16`]`>`
+/// - [`std::convert::From`]`<`[`i32`]`>`
+/// - [`std::convert::From`]`<`[`i64`]`>`
+/// - [`std::convert::From`]`<`[`i128`]`>`
+/// - [`std::convert::From`]`<`[`isize`]`>`
+/// - [`std::convert::From`]`<`[`f32`]`>`
+/// - [`std::convert::From`]`<`[`f64`]`>`
 /// - [`std::convert::From`]`<`[`num::bigint::BigUint`]`>`
 /// - [`std::convert::From`]`<`[`num::bigint::BigInt`]`>`
 /// - [`std::clone::Clone`]
@@ -134,8 +143,6 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// - [`std::ops::Rem`]
 /// - [`std::ops::RemAssign`]
 /// - [`num::traits::Num`]
-/// - [`num::traits::Unsigned`]
-/// - [`num::traits::Bounded`]
 /// - [`num::traits::Zero`]
 /// - [`num::traits::One`]
 /// - [`num::traits::FromPrimitive`]
@@ -152,16 +159,17 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// ## Struct
 ///
-/// | Name                 | Format                                                                     | Optional                         |
-/// | :------------------- | :------------------------------------------------------------------------- | :------------------------------- |
-/// | `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`]   | No                               |
-/// | `cartridge`          | `cartridge = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]      | No                               |
-/// | `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]            | Yes (default = `::std`)          |
-/// | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]     | Yes (default = `::num::traits`)  |
-/// | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]    | Yes (default = `::num::integer`) |
-/// | `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]     | Yes (default = `::num::bigint`)  |
-/// | `modtype`            | `modtype = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]        | Yes (default = `::modtype`)      |
-/// | `non_static_modulus` | `non_static_modulus`                                                       | Yes                              |
+/// | Name                 | Format                                                                   | Optional                          |
+/// | :------------------- | :----------------------------------------------------------------------- | :-------------------------------- |
+/// | `modulus`            | `modulus = $`[`Lit`] where `$`[`Lit`] is converted/parsed to an [`Expr`] | No                                |
+/// | `cartridge`          | `cartridge = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]    | No                                |
+/// | `std`                | `std = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]          | Yes (default = `::std`)           |
+/// | `num_traits`         | `num_traits = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::traits`)   |
+/// | `num_integer`        | `num_integer = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]  | Yes (default = `::num::integer`)  |
+/// | `num_bigint`         | `num_bigint = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]   | Yes (default = `::num::bigint`)   |
+/// | `num_rational`       | `num_rational = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`] | Yes (default = `::num::rational`) |
+/// | `modtype`            | `modtype = $`[`LitStr`] where `$`[`LitStr`] is parsed to a [`Path`]      | Yes (default = `::modtype`)       |
+/// | `non_static_modulus` | `non_static_modulus`                                                     | Yes                               |
 ///
 /// ## Field
 ///
@@ -178,6 +186,20 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// - All fields are [`Ord`][`std::cmp::Ord`].
 ///
 /// [`std::convert::From`]: https://doc.rust-lang.org/nightly/core/convert/trait.From.html
+/// [`u8`]: https://doc.rust-lang.org/nightly/std/primitive.u8.html
+/// [`u16`]: https://doc.rust-lang.org/nightly/std/primitive.u16.html
+/// [`u32`]: https://doc.rust-lang.org/nightly/std/primitive.u32.html
+/// [`u64`]: https://doc.rust-lang.org/nightly/std/primitive.u64.html
+/// [`u128`]: https://doc.rust-lang.org/nightly/std/primitive.u128.html
+/// [`usize`]: https://doc.rust-lang.org/nightly/std/primitive.usize.html
+/// [`i8`]: https://doc.rust-lang.org/nightly/std/primitive.i8.html
+/// [`i16`]: https://doc.rust-lang.org/nightly/std/primitive.i16.html
+/// [`i32`]: https://doc.rust-lang.org/nightly/std/primitive.i32.html
+/// [`i64`]: https://doc.rust-lang.org/nightly/std/primitive.i64.html
+/// [`i128`]: https://doc.rust-lang.org/nightly/std/primitive.i128.html
+/// [`isize`]: https://doc.rust-lang.org/nightly/std/primitive.isize.html
+/// [`f32`]: https://doc.rust-lang.org/nightly/std/primitive.f32.html
+/// [`f64`]: https://doc.rust-lang.org/nightly/std/primitive.f64.html
 /// [`num::bigint::BigUint`]: https://docs.rs/num-bigint/0.2/num_bigint/struct.BigUint.html
 /// [`num::bigint::BigInt`]: https://docs.rs/num-bigint/0.2/num_bigint/struct.BigInt.html
 /// [`std::default::Default`]: https://doc.rust-lang.org/nightly/core/default/trait.Default.html
@@ -203,8 +225,6 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`std::ops::Rem`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.Rem.html
 /// [`std::ops::RemAssign`]: https://doc.rust-lang.org/nightly/core/ops/arith/trait.RemAssign.html
 /// [`num::traits::Num`]: https://docs.rs/num-traits/0.2/num_traits/trait.Num.html
-/// [`num::traits::Unsigned`]: https://docs.rs/num-traits/0.2/num_traits/sign/trait.Unsigned.html
-/// [`num::traits::Bounded`]: https://docs.rs/num-traits/0.2/num_traits/bounds/trait.Bounded.html
 /// [`num::traits::Zero`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.Zero.html
 /// [`num::traits::One`]: https://docs.rs/num-traits/0.2/num_traits/identities/trait.One.html
 /// [`num::traits::FromPrimitive`]: https://docs.rs/num-traits/0.2/num_traits/cast/trait.FromPrimitive.html
@@ -222,7 +242,7 @@ pub fn const_value(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`LitInt`]: https://docs.rs/syn/0.15/syn/struct.LitInt.html
 /// [`Expr`]: https://docs.rs/syn/0.15/syn/struct.Expr.html
 /// [`Path`]: https://docs.rs/syn/0.15/syn/struct.Path.html
-/// [`UnsignedPrimitive`]: https://docs.rs/modtype/0.6/modtype/trait.UnsignedPrimitive.html
+/// [`UnsignedPrimitive`]: https://docs.rs/modtype/0.7/modtype/trait.UnsignedPrimitive.html
 #[proc_macro_derive(ModType, attributes(modtype))]
 pub fn mod_type(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ctx = try_syn!(Context::try_from(parse_macro_input!(input as DeriveInput)));
@@ -251,8 +271,6 @@ pub fn mod_type(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     acc.extend(ctx.derive_rem());
     acc.extend(ctx.derive_rem_assign());
     acc.extend(ctx.derive_num());
-    acc.extend(ctx.derive_unsigned());
-    acc.extend(ctx.derive_bounded());
     acc.extend(ctx.derive_zero());
     acc.extend(ctx.derive_one());
     acc.extend(ctx.derive_from_primitive());

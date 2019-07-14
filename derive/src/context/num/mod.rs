@@ -18,19 +18,18 @@ impl Context {
             modtype,
             num_traits,
             struct_ident,
-            generics,
             field_ident,
             ..
         } = self;
-        let generics = self.with_features(
-            &[
-                parse_quote!(Addition),
-                parse_quote!(Subtraction),
-                parse_quote!(Multiplication),
-                parse_quote!(Division),
-            ],
-            &generics,
-        );
+        let generics = self.with_features(&[
+            parse_quote!(AssumePrimeModulus),
+            parse_quote!(Equality),
+            parse_quote!(Order),
+            parse_quote!(PartialAddition),
+            parse_quote!(PartialSubtraction),
+            parse_quote!(PartialMultiplication),
+            parse_quote!(PartialDivision),
+        ]);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let struct_expr = self.struct_expr(true, None);

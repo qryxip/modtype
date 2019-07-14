@@ -2,6 +2,7 @@ mod num;
 mod std;
 
 use if_chain::if_chain;
+use maplit::hashset;
 use proc_macro2::Span;
 use quote::quote;
 use syn::spanned::Spanned;
@@ -22,6 +23,7 @@ pub(crate) struct Context {
     std: Path,
     num_traits: Path,
     num_bigint: Path,
+    num_rational: Path,
     modtype: Path,
     non_static_modulus: bool,
     struct_ident: Ident,
@@ -32,18 +34,26 @@ pub(crate) struct Context {
 }
 
 impl Context {
-    fn with_features(&self, features: &[Ident], generics: &Generics) -> Generics {
+    fn with_features(&self, features: &[Ident]) -> Generics {
         let Self {
-            cartridge, modtype, ..
+            cartridge,
+            modtype,
+            generics,
+            ..
         } = self;
 
         let bindings = {
             let mut bindings = quote!();
+            let mut names = hashset!();
             for feature in features {
-                if !bindings.is_empty() {
-                    bindings.extend(quote!(,));
+                let name = feature.to_string();
+                if !names.contains(&name) {
+                    names.insert(name);
+                    if !bindings.is_empty() {
+                        bindings.extend(quote!(,));
+                    }
+                    bindings.extend(quote!(#feature = #modtype::True));
                 }
-                bindings.extend(quote!(#feature = #modtype::True));
             }
             bindings
         };
@@ -54,7 +64,7 @@ impl Context {
             .get_or_insert_with(|| parse_quote!(where))
             .predicates
             .push(parse_quote! {
-                <#cartridge as #modtype::Cartridge>::Features: #modtype::Features<#bindings>
+                #cartridge: #modtype::Cartridge<#bindings>
             });
 
         generics
@@ -227,6 +237,7 @@ impl TryFrom<DeriveInput> for Context {
         let mut num_traits = None;
         let mut num_integer = None;
         let mut num_bigint = None;
+        let mut num_rational = None;
         let mut modtype = None;
         let mut non_static_modulus = false;
 
@@ -238,6 +249,7 @@ impl TryFrom<DeriveInput> for Context {
                 "num_traits" => ident.to_error("expected `num_traits = $LitStr`"),
                 "num_integer" => ident.to_error("expected `num_integer = $LitStr`"),
                 "num_bigint" => ident.to_error("expected `num_bigint = $LitStr`"),
+                "num_rational" => ident.to_error("expected `num_rational = $LitStr`"),
                 "modtype" => ident.to_error("expected `modtype = $LitStr`"),
                 "non_static_modulus" => ident.to_error("expected `non_static_modulus`"),
                 _ => ident.to_error("unknown identifier"),
@@ -264,32 +276,35 @@ impl TryFrom<DeriveInput> for Context {
                 "num_traits" => put_path(ident.span(), lit, &mut num_traits),
                 "num_integer" => put_path(ident.span(), lit, &mut num_integer),
                 "num_bigint" => put_path(ident.span(), lit, &mut num_bigint),
+                "num_rational" => put_path(ident.span(), lit, &mut num_rational),
                 "modtype" => put_path(ident.span(), lit, &mut modtype),
                 _ => Err(error_on_ident(ident)),
             }
         };
 
         attrs.iter().try_for_each::<_, syn::Result<_>>(|attr| {
-            let meta = attr
-                .parse_meta()
-                .map_err(|e| syn::Error::new(e.span(), format!("invalid meta: {}", e)))?;
-            if_chain! {
-                if let Meta::List(MetaList { ident, nested, .. }) = &meta;
-                if ident == "modtype";
-                then {
-                    for nested in nested {
-                        match nested {
-                            NestedMeta::Meta(Meta::Word(word)) => on_word(word)?,
-                            NestedMeta::Meta(Meta::List(list)) => on_list(list)?,
-                            NestedMeta::Meta(Meta::NameValue(kv)) => on_name_value(kv)?,
-                            NestedMeta::Literal(_) => bail!(nested.span(), "expected meta. not literal"),
+            if let Ok(meta) = attr.parse_meta() {
+                if_chain! {
+                    if let Ok(meta) = attr.parse_meta();
+                    if let Meta::List(MetaList { ident, nested, .. }) = &meta;
+                    if ident == "modtype";
+                    then {
+                        for nested in nested {
+                            match nested {
+                                NestedMeta::Meta(Meta::Word(word)) => on_word(word)?,
+                                NestedMeta::Meta(Meta::List(list)) => on_list(list)?,
+                                NestedMeta::Meta(Meta::NameValue(kv)) => on_name_value(kv)?,
+                                NestedMeta::Literal(_) => {
+                                    bail!(nested.span(), "expected meta. not literal");
+                                },
+                            }
                         }
+                    } else {
+                        error_on_target_attr(&meta)?;
                     }
-                    Ok(())
-                } else {
-                    error_on_target_attr(&meta)
                 }
             }
+            Ok(())
         })?;
 
         let modulus = modulus.ok_or_else(|| struct_ident.to_error("`modulus` required"))?;
@@ -298,6 +313,7 @@ impl TryFrom<DeriveInput> for Context {
         let std = std.unwrap_or_else(|| parse_quote!(::std));
         let num_traits = num_traits.unwrap_or_else(|| parse_quote!(::num::traits));
         let num_bigint = num_bigint.unwrap_or_else(|| parse_quote!(::num::bigint));
+        let num_rational = num_rational.unwrap_or_else(|| parse_quote!(::num::rational));
         let modtype = modtype.unwrap_or_else(|| parse_quote!(::modtype));
 
         let fields = match data {
@@ -357,6 +373,7 @@ impl TryFrom<DeriveInput> for Context {
             std,
             num_traits,
             num_bigint,
+            num_rational,
             modtype,
             non_static_modulus,
             struct_ident,

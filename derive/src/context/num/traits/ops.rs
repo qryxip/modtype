@@ -9,11 +9,10 @@ impl Context {
             modulus,
             num_traits,
             struct_ident,
-            generics,
             field_ident,
             ..
         } = self;
-        let generics = self.with_features(&[parse_quote!(Division)], &generics);
+        let generics = self.with_features(&[parse_quote!(PartialDivision)]);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let (struct_update, struct_update_deref) = self.struct_update(
@@ -52,11 +51,10 @@ impl Context {
             std,
             num_traits,
             struct_ident,
-            generics,
             field_ident,
             ..
         } = self;
-        let generics = self.with_features(&[parse_quote!(Subtraction)], &generics);
+        let generics = self.with_features(&[parse_quote!(PartialSubtraction)]);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let (_, update) = self.struct_update_option(
@@ -78,7 +76,7 @@ impl Context {
         self.derive_checked_bin(
             parse_quote!(CheckedAdd),
             parse_quote!(checked_add),
-            parse_quote!(Addition),
+            parse_quote!(PartialAddition),
         )
     }
 
@@ -86,7 +84,7 @@ impl Context {
         self.derive_checked_bin(
             parse_quote!(CheckedSub),
             parse_quote!(checked_sub),
-            parse_quote!(Subtraction),
+            parse_quote!(PartialSubtraction),
         )
     }
 
@@ -94,7 +92,7 @@ impl Context {
         self.derive_checked_bin(
             parse_quote!(CheckedMul),
             parse_quote!(checked_mul),
-            parse_quote!(Multiplication),
+            parse_quote!(PartialMultiplication),
         )
     }
 
@@ -102,7 +100,7 @@ impl Context {
         self.derive_checked_bin(
             parse_quote!(CheckedDiv),
             parse_quote!(checked_div),
-            parse_quote!(Division),
+            parse_quote!(PartialDivision),
         )
     }
 
@@ -110,7 +108,7 @@ impl Context {
         self.derive_checked_bin(
             parse_quote!(CheckedRem),
             parse_quote!(checked_rem),
-            parse_quote!(Division),
+            parse_quote!(PartialDivision),
         )
     }
 
@@ -125,11 +123,10 @@ impl Context {
             std,
             num_traits,
             struct_ident,
-            generics,
             field_ident,
             ..
         } = self;
-        let generics = self.with_features(&[feature], &generics);
+        let generics = self.with_features(&[feature]);
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         let (_, update) = self.struct_update_option(

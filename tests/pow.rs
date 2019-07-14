@@ -1,11 +1,9 @@
-use modtype::use_modtype;
-
 use num::pow::Pow as _;
 use num::BigUint;
 use once_cell::sync::Lazy;
 
-#[use_modtype]
-type F = modtype::DefaultModType<1_000_000_007u64>;
+#[modtype::use_modtype]
+type F = modtype::F<1_000_000_007u64>;
 
 #[test]
 fn unsigned() {

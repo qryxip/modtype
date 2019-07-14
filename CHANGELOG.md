@@ -1,6 +1,39 @@
 # Changelog
 
-## [Unreleased]
+## [0.7.0] - 2019-07-14Z
+
+### Added
+
+- `sqrt` methods.
+- `adjust` methods.
+- `adjusted` methods.
+- `Cartridge::{sqrt, adjust, adjusted, eq, cmp}`.
+- `modtype::cartridges::{AllowFlexibleRhs, Field, Multiplicative, Additive, ManuallyAdjust}`.
+- `From<{integer}, {float}, Ratio<BigUint>, Ratio<BigInt>>`
+
+### Removed
+
+- `modtype::util`.
+- `Bounded` implementation.
+- `Unsigned` implementation.
+- `modtype::DefaultCartridge`.
+
+### Changed
+
+- Add `Features::{AssumePrimeModulus, AssumeAlwaysAdjusted, Equality, Order, Deref, FlexibleRhs}`.
+- Rename `Features::{Addition, Subtraction, Multiplication, Division}` to `Partial{..}`.
+- Modify the implementation of divisions.
+- Rename `modytpe::field_param` to `modtype::non_static`.
+- Rename `{modtype, modtype::field_param, modtype::non_static}::DefaultModType` to `F` again.
+- `Cartridge::from_*` no longer return `Option`.
+- Remove type arguments from `ModType`s.
+- Unify `Features` and `Cartridges`.
+
+### Fixed
+
+- `#[derive(ModType)]` no longer fails when the target has a non meta attribute such as `#[rustfmt::skip]`.
+
+## [0.6.0] - 2019-07-02Z
 
 ### Added
 
