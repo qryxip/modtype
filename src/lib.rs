@@ -26,55 +26,79 @@
 //! #[allow(non_snake_case)]
 //! let F = modtype::non_static::F::factory(1_000_000_007u64);
 //!
-//! // assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
+//! assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 //! ```
 //!
 //! # Customization
 //!
 //! `ModType`s can be customized via [`modtype::Cartridge`].
 //!
+//! ## [`modtype::cartridges::Multiplicative`]
+//!
 //! ```
+//! use num::CheckedDiv as _;
+//!
 //! #[modtype::use_modtype]
-//! type F = modtype::ModType<Cartridge, 1_000_000_007u64>;
+//! type Z = modtype::ModType<modtype::cartridges::Multiplicative<u32>, 57u32>;
 //!
-//! enum Cartridge {}
+//! assert_eq!(Z(56) * Z(56), Z(1));
+//! assert_eq!(Z(1).checked_div(&Z(13)), Some(Z(22))); // 13・22 ≡ 1 (mod 57)
+//! ```
 //!
-//! impl modtype::Cartridge for Cartridge {
-//!     type Target = u64;
-//!     type Features = Features;
+//! ## [`modtype::cartridges::Additive`]
 //!
-//!     // your implementation here
-//! }
+//! ```
+//! use num::CheckedAdd as _;
 //!
-//! pub enum Features {}
+//! #[modtype::use_modtype]
+//! type Z = modtype::ModType<modtype::cartridges::Additive<u64>, 1_000_000_007u64>;
 //!
-//! impl modtype::Features for Features {
-//!     type AssumePrimeModulus = modtype::True;
-//!     type AssumeAlwaysAdjusted = modtype::True;
-//!     type Equality = modtype::True;
-//!     type Order = modtype::True;
-//!     type Deref = modtype::True;
-//!     type PartialAddition = modtype::True;
-//!     type PartialSubtraction = modtype::True;
-//!     type PartialMultiplication = modtype::True;
-//!     type PartialDivision = modtype::True;
-//! }
+//! let mut x = Z(1_000_000_006);
+//!
+//! x += Z(1);
+//! assert_eq!(*x.get_mut_unchecked(), 1_000_000_007);
+//!
+//! x += Z(u64::max_value() / 2 - 1_000_000_007);
+//! assert_eq!(*x.get_mut_unchecked(), u64::max_value() / 2);
+//!
+//! x += Z(1);
+//! assert_eq!(*x.get_mut_unchecked(), (u64::max_value() / 2 + 1) % 1_000_000_007);
+//! ```
+//!
+//! ## [`modtype::cartridges::ManuallyAdjust`]
+//!
+//! ```
+//! use num::CheckedAdd as _;
+//!
+//! #[modtype::use_modtype]
+//! type Z = modtype::ModType<modtype::cartridges::ManuallyAdjust<u64>, 1_000_000_007u64>;
+//!
+//! let mut x = Z(1_000_000_006);
+//!
+//! x += Z(u64::max_value() - 1_000_000_006);
+//! assert_eq!(*x.get_mut_unchecked(), u64::max_value());
+//!
+//! x.adjust();
+//! assert_eq!(*x.get_mut_unchecked(), u64::max_value() % 1_000_000_007);
 //! ```
 //!
 //! [`modtype::ModType`]: ./struct.ModType.html
 //! [`modtype::thread_local::ModType`]: ./thread_local/struct.ModType.html
 //! [`modtype::non_static::ModType`]: ./non_static/struct.ModType.html
 //! [`modtype::Cartridge`]: ./trait.Cartridge.html
+//! [`modtype::cartridges::Multiplicative`]: ./cartridges/enum.Multiplicative.html
+//! [`modtype::cartridges::Additive`]: ./cartridges/enum.Additive.html
+//! [`modtype::cartridges::ManuallyAdjust`]: ./cartridges/enum.ManuallyAdjust.html
 
 macro_rules! feature_p {
-    (Self::Features::$feature:ident $(,)?) => {
-        <Self::Features as Features>::$feature::VALUE
+    (Self::$feature:ident $(,)?) => {
+        Self::$feature::VALUE
     };
 }
 
 macro_rules! adjust_unless {
-    (Self::Features::AssumeAlwaysAdjusted, ($x:ident, $($y:ident)?), $modulus:ident $(,)?) => {
-        if <Self::Features as Features>::AssumeAlwaysAdjusted::VALUE {
+    (Self::AssumeAlwaysAdjusted, ($x:ident, $($y:ident)?), $modulus:ident $(,)?) => {
+        if Self::AssumeAlwaysAdjusted::VALUE {
             ($x, $($y)*)
         } else {
             (
@@ -86,9 +110,9 @@ macro_rules! adjust_unless {
 }
 
 macro_rules! expect_feature {
-    (Self::Features::$feature:ident $(,)?) => {
-        <Self::Features as Features>::$feature::expect(concat!(
-            "this implementation always panics since `Self::Features::",
+    (Self::$feature:ident $(,)?) => {
+        Self::$feature::expect(concat!(
+            "this implementation always panics since `Self::",
             stringify!($feature),
             " = False`.",
         ))
@@ -108,7 +132,7 @@ use num::{
 use rand::Rng;
 
 use std::cell::UnsafeCell;
-use std::convert::{Infallible, TryFrom as _, TryInto as _};
+use std::convert::{TryFrom as _, TryInto as _};
 use std::iter::{Product, Sum};
 use std::marker::PhantomData;
 use std::num::ParseIntError;
@@ -582,7 +606,15 @@ pub trait ConstValue {
 /// - `(modulus - 1) * (modulus - 1)` does not overflow.
 pub trait Cartridge {
     type Target: UnsignedPrimitive;
-    type Features: Features;
+    type AssumePrimeModulus: TypedBool;
+    type AssumeAlwaysAdjusted: TypedBool;
+    type Equality: TypedBool;
+    type Order: TypedBool;
+    type Deref: TypedBool;
+    type PartialAddition: TypedBool;
+    type PartialSubtraction: TypedBool;
+    type PartialMultiplication: TypedBool;
+    type PartialDivision: TypedBool;
 
     /// Implementation for [`From`]`<Self::Target>` and `modtype{, ::thread_local}::ModType::new`.
     ///
@@ -600,9 +632,9 @@ pub trait Cartridge {
     /// Whether to call `Self::`[`adjust`].
     ///
     /// The default implementation returns `raw >= modulus`.
-    /// If `Self::Features::`[`AssumeAlwaysAdjusted`], this method should not be overridden.
+    /// If `Self::`[`AssumeAlwaysAdjusted`], this method should not be overridden.
     ///
-    /// [`AssumeAlwaysAdjusted`]: ./trait.Features.html#associatedtype.AssumeAlwaysAdjusted
+    /// [`AssumeAlwaysAdjusted`]: ./trait.Cartridge.html#associatedtype.AssumeAlwaysAdjusted
     /// [`adjust`]: ./trait.Cartridge.html#method.adjust
     #[inline(always)]
     fn should_adjust<T: PrimInt>(raw: T, modulus: T) -> bool {
@@ -634,18 +666,18 @@ pub trait Cartridge {
     ///
     /// # Panics
     ///
-    /// The default implementation always panics if `Self::Features::`[`AssumePrimeModulus`] is [`False`].
+    /// The default implementation always panics if `Self::`[`AssumePrimeModulus`] is [`False`].
     ///
     /// [Tonelli–Shanks algorithm]: https://en.wikipedia.org/wiki/Tonelli%E2%80%93Shanks_algorithm
-    /// [`AssumePrimeModulus`]: ./trait.Features.html#associatedtype.AssumePrimeModulus
+    /// [`AssumePrimeModulus`]: ./trait.Cartridge.html#associatedtype.AssumePrimeModulus
     /// [`False`]: ./enum.False.html
     #[inline(always)]
     fn sqrt(value: Self::Target, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<PartialMultiplication = True>,
+        Self::PartialMultiplication: IsTrue,
     {
-        expect_feature!(Self::Features::AssumePrimeModulus);
-        let (value,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (value,), modulus);
+        expect_feature!(Self::AssumePrimeModulus);
+        let (value,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (value,), modulus);
 
         macro_rules! id {
             (0) => {
@@ -827,7 +859,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_i8(value: i8, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
         let (value_abs, is_neg) = if value < 0 {
             (-value, true)
@@ -858,7 +890,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_i16(value: i16, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
         let (value_abs, is_neg) = if value < 0 {
             (-value, true)
@@ -889,7 +921,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_i32(value: i32, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
         let (value_abs, is_neg) = if value < 0 {
             (-value, true)
@@ -920,7 +952,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_i64(value: i64, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
         let (value_abs, is_neg) = if value < 0 {
             (-value, true)
@@ -951,7 +983,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_i128(value: i128, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
         let (value_abs, is_neg) = if value < 0 {
             (-value, true)
@@ -982,7 +1014,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_isize(value: isize, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
         let (value_abs, is_neg) = if value < 0 {
             (-value, true)
@@ -1015,12 +1047,10 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_float_prim<F: FloatPrimitive>(value: F, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
+        Self::AssumePrimeModulus: IsTrue,
+        Self::PartialSubtraction: IsTrue,
+        Self::PartialMultiplication: IsTrue,
+        Self::PartialDivision: IsTrue,
     {
         macro_rules! id {
             (2) => {
@@ -1056,7 +1086,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_bigint(mut value: BigInt, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
         let is_neg = value.is_negative();
         if is_neg {
@@ -1080,7 +1110,8 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_biguint_ratio(value: Ratio<BigUint>, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<AssumePrimeModulus = True, PartialDivision = True>,
+        Self::AssumePrimeModulus: IsTrue,
+        Self::PartialDivision: IsTrue,
     {
         let numer = modulus.rem_biguint(value.numer().clone());
         let numer = Self::Target::try_from_biguint(numer).unwrap();
@@ -1098,8 +1129,9 @@ pub trait Cartridge {
     #[inline(always)]
     fn from_bigint_ratio(value: Ratio<BigInt>, modulus: Self::Target) -> Self::Target
     where
-        Self::Features:
-            Features<AssumePrimeModulus = True, PartialSubtraction = True, PartialDivision = True>,
+        Self::AssumePrimeModulus: IsTrue,
+        Self::PartialSubtraction: IsTrue,
+        Self::PartialDivision: IsTrue,
     {
         let (is_neg, numer, denom) = if value.numer().is_negative() && value.denom().is_negative() {
             (false, -value.numer(), -value.denom())
@@ -1132,9 +1164,9 @@ pub trait Cartridge {
     #[inline(always)]
     fn eq(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> bool
     where
-        Self::Features: Features<Equality = True>,
+        Self::Equality: IsTrue,
     {
-        let (lhs, rhs) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
+        let (lhs, rhs) = adjust_unless!(Self::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
 
         lhs == rhs
     }
@@ -1148,9 +1180,10 @@ pub trait Cartridge {
     #[inline(always)]
     fn cmp(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> cmp::Ordering
     where
-        Self::Features: Features<Equality = True, Order = True>,
+        Self::Equality: IsTrue,
+        Self::Order: IsTrue,
     {
-        let (lhs, rhs) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
+        let (lhs, rhs) = adjust_unless!(Self::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
 
         lhs.cmp(&rhs)
     }
@@ -1164,7 +1197,7 @@ pub trait Cartridge {
         modulus: Self::Target,
         fmt: &mut fmt::Formatter,
     ) -> fmt::Result {
-        let (value,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (value,), modulus);
+        let (value,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (value,), modulus);
 
         <Self::Target as fmt::Display>::fmt(&value, fmt)
     }
@@ -1179,7 +1212,7 @@ pub trait Cartridge {
         _ty: &'static str,
         fmt: &mut fmt::Formatter,
     ) -> fmt::Result {
-        let (value,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (value,), modulus);
+        let (value,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (value,), modulus);
 
         <Self::Target as fmt::Debug>::fmt(&value, fmt)
     }
@@ -1198,9 +1231,9 @@ pub trait Cartridge {
     #[inline(always)]
     fn neg(value: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
-        let (value,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (value,), modulus);
+        let (value,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (value,), modulus);
 
         modulus - value
     }
@@ -1211,9 +1244,9 @@ pub trait Cartridge {
     #[inline(always)]
     fn add(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialAddition = True>,
+        Self::PartialAddition: IsTrue,
     {
-        let (lhs, rhs) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
+        let (lhs, rhs) = adjust_unless!(Self::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
 
         Self::new(lhs + rhs, modulus)
     }
@@ -1224,9 +1257,9 @@ pub trait Cartridge {
     #[inline(always)]
     fn sub(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
-        let (lhs, rhs) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
+        let (lhs, rhs) = adjust_unless!(Self::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
 
         let acc = if lhs < rhs {
             modulus + lhs - rhs
@@ -1242,9 +1275,9 @@ pub trait Cartridge {
     #[inline(always)]
     fn mul(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialMultiplication = True>,
+        Self::PartialMultiplication: IsTrue,
     {
-        let (lhs, rhs) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
+        let (lhs, rhs) = adjust_unless!(Self::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
 
         Self::new(lhs * rhs, modulus)
     }
@@ -1263,9 +1296,9 @@ pub trait Cartridge {
     #[inline(always)]
     fn div(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialDivision = True>,
+        Self::PartialDivision: IsTrue,
     {
-        let (lhs, rhs) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
+        let (lhs, rhs) = adjust_unless!(Self::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
 
         if rhs == Self::Target::zero() {
             panic!("attempt to divide by zero");
@@ -1318,12 +1351,12 @@ pub trait Cartridge {
     #[inline(always)]
     fn rem(_lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialDivision = True>,
+        Self::PartialDivision: IsTrue,
     {
         if rhs == Self::Target::zero() {
             panic!("attempt to calculate the remainder with a divisor of zero");
         }
-        if !feature_p!(Self::Features::AssumePrimeModulus)
+        if !feature_p!(Self::AssumePrimeModulus)
             && integer::gcd(rhs, modulus) != Self::Target::one()
         {
             panic!("cannot divide");
@@ -1341,9 +1374,9 @@ pub trait Cartridge {
     #[inline(always)]
     fn inv(value: Self::Target, modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialDivision = True>,
+        Self::PartialDivision: IsTrue,
     {
-        let (value,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (value,), modulus);
+        let (value,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (value,), modulus);
 
         Self::div(Self::Target::one(), value, modulus)
     }
@@ -1358,15 +1391,13 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Result<Self::Target, ParseIntError>
     where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            Equality = True,
-            Order = True,
-            PartialAddition = True,
-            PartialSubtraction = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
+        Self::AssumePrimeModulus: IsTrue,
+        Self::Equality: IsTrue,
+        Self::Order: IsTrue,
+        Self::PartialAddition: IsTrue,
+        Self::PartialSubtraction: IsTrue,
+        Self::PartialMultiplication: IsTrue,
+        Self::PartialDivision: IsTrue,
     {
         Self::Target::from_str_radix(str, radix).map(|v| Self::new(v, modulus))
     }
@@ -1378,7 +1409,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn zero(_modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialAddition = True>,
+        Self::PartialAddition: IsTrue,
     {
         Self::Target::zero()
     }
@@ -1390,9 +1421,9 @@ pub trait Cartridge {
     #[inline(always)]
     fn is_zero(value: Self::Target, modulus: Self::Target) -> bool
     where
-        Self::Features: Features<PartialAddition = True>,
+        Self::PartialAddition: IsTrue,
     {
-        let (value,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (value,), modulus);
+        let (value,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (value,), modulus);
 
         value == Self::Target::zero()
     }
@@ -1404,7 +1435,7 @@ pub trait Cartridge {
     #[inline(always)]
     fn one(_modulus: Self::Target) -> Self::Target
     where
-        Self::Features: Features<PartialMultiplication = True>,
+        Self::PartialMultiplication: IsTrue,
     {
         Self::Target::one()
     }
@@ -1416,9 +1447,10 @@ pub trait Cartridge {
     #[inline(always)]
     fn is_one(value: Self::Target, modulus: Self::Target) -> bool
     where
-        Self::Features: Features<Equality = True, PartialMultiplication = True>,
+        Self::Equality: IsTrue,
+        Self::PartialMultiplication: IsTrue,
     {
-        let (value,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (value,), modulus);
+        let (value,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (value,), modulus);
 
         value == Self::Target::one()
     }
@@ -1429,9 +1461,9 @@ pub trait Cartridge {
     #[inline(always)]
     fn checked_neg(value: Self::Target, modulus: Self::Target) -> Option<Self::Target>
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
-        let (value,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (value,), modulus);
+        let (value,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (value,), modulus);
 
         Some(Self::neg(value, modulus))
     }
@@ -1446,9 +1478,9 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Option<Self::Target>
     where
-        Self::Features: Features<PartialAddition = True>,
+        Self::PartialAddition: IsTrue,
     {
-        let (lhs, rhs) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
+        let (lhs, rhs) = adjust_unless!(Self::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
 
         Some(Self::add(lhs, rhs, modulus))
     }
@@ -1463,9 +1495,9 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Option<Self::Target>
     where
-        Self::Features: Features<PartialSubtraction = True>,
+        Self::PartialSubtraction: IsTrue,
     {
-        let (lhs, rhs) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
+        let (lhs, rhs) = adjust_unless!(Self::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
 
         Some(Self::sub(lhs, rhs, modulus))
     }
@@ -1480,9 +1512,9 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Option<Self::Target>
     where
-        Self::Features: Features<PartialMultiplication = True>,
+        Self::PartialMultiplication: IsTrue,
     {
-        let (lhs, rhs) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
+        let (lhs, rhs) = adjust_unless!(Self::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
 
         Some(Self::mul(lhs, rhs, modulus))
     }
@@ -1497,9 +1529,9 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Option<Self::Target>
     where
-        Self::Features: Features<PartialDivision = True>,
+        Self::PartialDivision: IsTrue,
     {
-        let (lhs, rhs) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
+        let (lhs, rhs) = adjust_unless!(Self::AssumeAlwaysAdjusted, (lhs, rhs), modulus);
 
         if rhs.is_zero() {
             return None;
@@ -1529,9 +1561,9 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Option<Self::Target>
     where
-        Self::Features: Features<PartialDivision = True>,
+        Self::PartialDivision: IsTrue,
     {
-        let (rhs,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (rhs,), modulus);
+        let (rhs,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (rhs,), modulus);
 
         if integer::gcd(rhs, modulus) == Self::Target::one() {
             Some(Self::Target::zero())
@@ -1556,9 +1588,9 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Self::Target
     where
-        Self::Features: Features<PartialMultiplication = True>,
+        Self::PartialMultiplication: IsTrue,
     {
-        let (base,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (base,), modulus);
+        let (base,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (base,), modulus);
 
         let (mut base, mut exp, mut acc) = (base, exp, Self::Target::one());
 
@@ -1589,13 +1621,11 @@ pub trait Cartridge {
         modulus: Self::Target,
     ) -> Self::Target
     where
-        Self::Features: Features<
-            AssumePrimeModulus = True,
-            PartialMultiplication = True,
-            PartialDivision = True,
-        >,
+        Self::AssumePrimeModulus: IsTrue,
+        Self::PartialMultiplication: IsTrue,
+        Self::PartialDivision: IsTrue,
     {
-        let (base,) = adjust_unless!(Self::Features::AssumeAlwaysAdjusted, (base,), modulus);
+        let (base,) = adjust_unless!(Self::AssumeAlwaysAdjusted, (base,), modulus);
 
         let (mut base, mut exp, mut acc) = (base, exp, Self::Target::one());
 
@@ -1620,30 +1650,6 @@ pub trait Cartridge {
     }
 }
 
-/// The default implementation.
-#[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/3673
-pub enum DefaultCartridge<T: UnsignedPrimitive, F: Features> {
-    Infallible(Infallible, PhantomData<fn() -> (T, F)>),
-}
-
-impl<T: UnsignedPrimitive, F: Features> Cartridge for DefaultCartridge<T, F> {
-    type Target = T;
-    type Features = F;
-}
-
-/// Features.
-pub trait Features {
-    type AssumePrimeModulus: TypedBool;
-    type AssumeAlwaysAdjusted: TypedBool;
-    type Equality: TypedBool;
-    type Order: TypedBool;
-    type Deref: TypedBool;
-    type PartialAddition: TypedBool;
-    type PartialSubtraction: TypedBool;
-    type PartialMultiplication: TypedBool;
-    type PartialDivision: TypedBool;
-}
-
 /// Type level boolean.
 pub trait TypedBool: Sealed {
     const VALUE: bool;
@@ -1653,6 +1659,11 @@ pub trait TypedBool: Sealed {
     /// [`False`]: ./enum.False.html
     fn expect(msg: &'static str);
 }
+
+/// A trait for [`True`].
+///
+/// [`True`]: ./enum.True.html
+pub trait IsTrue: TypedBool {}
 
 /// A [`TypedBool`] which represents "false".
 ///
@@ -1679,6 +1690,8 @@ impl TypedBool for True {
     #[inline(always)]
     fn expect(_: &'static str) {}
 }
+
+impl IsTrue for True {}
 
 /// A type alias which [`Cartridge`] is [`modtype::cartridges::Field`]`<M::Value>`.
 ///
@@ -1843,7 +1856,7 @@ impl<C: Cartridge, M: ConstValue<Value = C::Target>> ModType<C, M> {
     #[inline]
     pub fn adjust(&mut self)
     where
-        C::Features: Features<AssumeAlwaysAdjusted = False>,
+        C: Cartridge<AssumeAlwaysAdjusted = False>,
     {
         C::adjust(&mut self.value, M::VALUE)
     }
@@ -1851,7 +1864,7 @@ impl<C: Cartridge, M: ConstValue<Value = C::Target>> ModType<C, M> {
     #[inline]
     pub fn adjusted(self) -> Self
     where
-        C::Features: Features<AssumeAlwaysAdjusted = False>,
+        C: Cartridge<AssumeAlwaysAdjusted = False>,
     {
         Self {
             value: C::adjusted(self.value, M::VALUE),
@@ -1863,7 +1876,7 @@ impl<C: Cartridge, M: ConstValue<Value = C::Target>> ModType<C, M> {
     #[inline]
     pub fn sqrt(self) -> Option<Self>
     where
-        C::Features: Features<PartialMultiplication = True>,
+        C: Cartridge<PartialMultiplication = True>,
     {
         C::sqrt(self.value, M::VALUE).map(Self::new_unchecked)
     }
@@ -1873,7 +1886,7 @@ impl<C: Cartridge, M: ConstValue<Value = C::Target>> ModType<C, M> {
 ///
 /// [`Cartridge`]: ./trait.Cartridge.html
 pub mod cartridges {
-    use crate::{Cartridge, DefaultCartridge, False, Features, True, UnsignedPrimitive};
+    use crate::{Cartridge, False, True, UnsignedPrimitive};
 
     use num::PrimInt;
 
@@ -1884,11 +1897,12 @@ pub mod cartridges {
     /// A [`Cartridge`] which assumes moduluses are primes.
     ///
     /// [`Cartridge`]: ../trait.Cartridge.html
-    pub type Field<T> = DefaultCartridge<T, FieldFeatures>;
+    pub enum Field<T: UnsignedPrimitive> {
+        Infallible(Infallible, PhantomData<fn() -> T>),
+    }
 
-    pub enum FieldFeatures {}
-
-    impl Features for FieldFeatures {
+    impl<T: UnsignedPrimitive> Cartridge for Field<T> {
+        type Target = T;
         type AssumePrimeModulus = True;
         type AssumeAlwaysAdjusted = True;
         type Equality = True;
@@ -1908,6 +1922,7 @@ pub mod cartridges {
     /// #[modtype::use_modtype]
     /// type Z = modtype::ModType<modtype::cartridges::Multiplicative<u32>, 57u32>;
     ///
+    /// assert_eq!(Z(56) * Z(56), Z(1));
     /// assert_eq!(Z(1).checked_div(&Z(13)), Some(Z(22))); // 13・22 ≡ 1 (mod 57)
     /// ```
     ///
@@ -1918,7 +1933,15 @@ pub mod cartridges {
 
     impl<T: UnsignedPrimitive> Cartridge for Multiplicative<T> {
         type Target = T;
-        type Features = MultiplicativeFeatures;
+        type AssumePrimeModulus = False;
+        type AssumeAlwaysAdjusted = True;
+        type Equality = True;
+        type Order = True;
+        type Deref = True;
+        type PartialAddition = True;
+        type PartialSubtraction = True;
+        type PartialMultiplication = True;
+        type PartialDivision = True;
 
         fn sqrt(_: T, _: T) -> Option<T> {
             panic!("`sqrt` for non-prime moduluses is not implemented");
@@ -1931,21 +1954,7 @@ pub mod cartridges {
         }
     }
 
-    pub enum MultiplicativeFeatures {}
-
-    impl Features for MultiplicativeFeatures {
-        type AssumePrimeModulus = False;
-        type AssumeAlwaysAdjusted = True;
-        type Equality = True;
-        type Order = True;
-        type Deref = True;
-        type PartialAddition = True;
-        type PartialSubtraction = True;
-        type PartialMultiplication = True;
-        type PartialDivision = True;
-    }
-
-    /// A [`Cartridge`] which does not automatically adjust the inner value when it is less than `T::`[`max_value`]` / 2`.
+    /// A [`Cartridge`] which does not automatically adjust the inner value until it gets greater than `T::`[`max_value`]` / 2`.
     ///
     /// ```
     /// use num::CheckedAdd as _;
@@ -1953,7 +1962,16 @@ pub mod cartridges {
     /// #[modtype::use_modtype]
     /// type Z = modtype::ModType<modtype::cartridges::Additive<u64>, 1_000_000_007u64>;
     ///
-    /// assert_eq!(*(Z(1_000_000_007u64).get_mut_unchecked()), 1_000_000_007);
+    /// let mut x = Z(1_000_000_006);
+    ///
+    /// x += Z(1);
+    /// assert_eq!(*x.get_mut_unchecked(), 1_000_000_007);
+    ///
+    /// x += Z(u64::max_value() / 2 - 1_000_000_007);
+    /// assert_eq!(*x.get_mut_unchecked(), u64::max_value() / 2);
+    ///
+    /// x += Z(1);
+    /// assert_eq!(*x.get_mut_unchecked(), (u64::max_value() / 2 + 1) % 1_000_000_007);
     /// ```
     ///
     /// [`Cartridge`]: ../trait.Cartridge.html
@@ -1964,7 +1982,15 @@ pub mod cartridges {
 
     impl<T: UnsignedPrimitive> Cartridge for Additive<T> {
         type Target = T;
-        type Features = AdditiveFeatures;
+        type AssumePrimeModulus = False;
+        type AssumeAlwaysAdjusted = False;
+        type Equality = False;
+        type Order = False;
+        type Deref = False;
+        type PartialAddition = True;
+        type PartialSubtraction = False;
+        type PartialMultiplication = False;
+        type PartialDivision = False;
 
         #[inline(always)]
         fn should_adjust<S: PrimInt>(value: S, _: S) -> bool {
@@ -1973,8 +1999,8 @@ pub mod cartridges {
 
         #[inline(always)]
         fn fmt_debug(
-            value: Self::Target,
-            modulus: Self::Target,
+            value: T,
+            modulus: T,
             _ty: &'static str,
             fmt: &mut fmt::Formatter,
         ) -> fmt::Result {
@@ -1990,33 +2016,15 @@ pub mod cartridges {
         }
 
         #[inline(always)]
-        fn add(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+        fn add(lhs: T, rhs: T, modulus: T) -> T {
             // does not check overflowing
             Self::new(lhs + rhs, modulus)
         }
 
         #[inline(always)]
-        fn checked_add(
-            lhs: Self::Target,
-            rhs: Self::Target,
-            modulus: Self::Target,
-        ) -> Option<Self::Target> {
+        fn checked_add(lhs: T, rhs: T, modulus: T) -> Option<T> {
             lhs.checked_add(&rhs).map(|r| Self::new(r, modulus))
         }
-    }
-
-    pub enum AdditiveFeatures {}
-
-    impl Features for AdditiveFeatures {
-        type AssumePrimeModulus = False;
-        type AssumeAlwaysAdjusted = False;
-        type Equality = False;
-        type Order = False;
-        type Deref = False;
-        type PartialAddition = True;
-        type PartialSubtraction = False;
-        type PartialMultiplication = False;
-        type PartialDivision = False;
     }
 
     /// A [`Cartridge`] which does not automatically adjust the inner value.
@@ -2027,7 +2035,13 @@ pub mod cartridges {
     /// #[modtype::use_modtype]
     /// type Z = modtype::ModType<modtype::cartridges::ManuallyAdjust<u64>, 1_000_000_007u64>;
     ///
-    /// assert!(Z(u64::max_value()).checked_add(&Z(1)).is_none());
+    /// let mut x = Z(1_000_000_006);
+    ///
+    /// x += Z(u64::max_value() - 1_000_000_006);
+    /// assert_eq!(*x.get_mut_unchecked(), u64::max_value());
+    ///
+    /// x.adjust();
+    /// assert_eq!(*x.get_mut_unchecked(), u64::max_value() % 1_000_000_007);
     /// ```
     ///
     /// [`Cartridge`]: ../trait.Cartridge.html
@@ -2037,7 +2051,15 @@ pub mod cartridges {
 
     impl<T: UnsignedPrimitive> Cartridge for ManuallyAdjust<T> {
         type Target = T;
-        type Features = ManuallyAdjustFeatures;
+        type AssumePrimeModulus = False;
+        type AssumeAlwaysAdjusted = False;
+        type Equality = False;
+        type Order = False;
+        type Deref = False;
+        type PartialAddition = True;
+        type PartialSubtraction = True;
+        type PartialMultiplication = True;
+        type PartialDivision = False;
 
         #[inline(always)]
         fn should_adjust<S: PrimInt>(_: S, _: S) -> bool {
@@ -2051,8 +2073,8 @@ pub mod cartridges {
 
         #[inline(always)]
         fn fmt_debug(
-            value: Self::Target,
-            modulus: Self::Target,
+            value: T,
+            modulus: T,
             _ty: &'static str,
             fmt: &mut fmt::Formatter,
         ) -> fmt::Result {
@@ -2068,69 +2090,43 @@ pub mod cartridges {
         }
 
         #[inline(always)]
-        fn add(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+        fn add(lhs: T, rhs: T, modulus: T) -> T {
             // does not check overflowing
             Self::new(lhs + rhs, modulus)
         }
 
         #[inline(always)]
-        fn sub(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+        fn sub(lhs: T, rhs: T, modulus: T) -> T {
             Self::add(lhs, Self::neg(rhs, modulus), modulus)
         }
 
         #[inline(always)]
-        fn mul(lhs: Self::Target, rhs: Self::Target, modulus: Self::Target) -> Self::Target {
+        fn mul(lhs: T, rhs: T, modulus: T) -> T {
             // does not check overflowing
             Self::new(lhs * rhs, modulus)
         }
 
         #[inline(always)]
-        fn checked_add(
-            lhs: Self::Target,
-            rhs: Self::Target,
-            modulus: Self::Target,
-        ) -> Option<Self::Target> {
+        fn checked_add(lhs: T, rhs: T, modulus: T) -> Option<T> {
             lhs.checked_add(&rhs).map(|r| Self::new(r, modulus))
         }
 
         #[inline(always)]
-        fn checked_sub(
-            lhs: Self::Target,
-            rhs: Self::Target,
-            modulus: Self::Target,
-        ) -> Option<Self::Target> {
+        fn checked_sub(lhs: T, rhs: T, modulus: T) -> Option<T> {
             lhs.checked_add(&Self::neg(rhs, modulus))
                 .map(|r| Self::new(r, modulus))
         }
 
         #[inline(always)]
-        fn checked_mul(
-            lhs: Self::Target,
-            rhs: Self::Target,
-            modulus: Self::Target,
-        ) -> Option<Self::Target> {
+        fn checked_mul(lhs: T, rhs: T, modulus: T) -> Option<T> {
             lhs.checked_mul(&rhs).map(|r| Self::new(r, modulus))
         }
-    }
-
-    pub enum ManuallyAdjustFeatures {}
-
-    impl Features for ManuallyAdjustFeatures {
-        type AssumePrimeModulus = False;
-        type AssumeAlwaysAdjusted = False;
-        type Equality = False;
-        type Order = False;
-        type Deref = False;
-        type PartialAddition = True;
-        type PartialSubtraction = True;
-        type PartialMultiplication = True;
-        type PartialDivision = False;
     }
 }
 
 /// A modular arithmetic integer type which modulus is **a `struct` field**.
 pub mod non_static {
-    use crate::{cartridges, Cartridge, False, Features, True, UnsignedPrimitive};
+    use crate::{cartridges, Cartridge, False, True, UnsignedPrimitive};
 
     /// A type alias which [`Cartridge`] is [`modtype::cartridges::Field`]`<T>`.
     ///
@@ -2194,7 +2190,7 @@ pub mod non_static {
         #[inline]
         pub fn adjust(&mut self)
         where
-            C::Features: Features<AssumeAlwaysAdjusted = False>,
+            C: Cartridge<AssumeAlwaysAdjusted = False>,
         {
             C::adjust(&mut self.value, self.modulus)
         }
@@ -2202,7 +2198,7 @@ pub mod non_static {
         #[inline]
         pub fn adjusted(self) -> Self
         where
-            C::Features: Features<AssumeAlwaysAdjusted = False>,
+            C: Cartridge<AssumeAlwaysAdjusted = False>,
         {
             Self {
                 value: C::adjusted(self.value, self.modulus),
@@ -2220,7 +2216,7 @@ pub mod non_static {
         #[inline]
         pub fn sqrt(self) -> Option<Self>
         where
-            C::Features: Features<PartialMultiplication = True>,
+            C: Cartridge<PartialMultiplication = True>,
         {
             C::sqrt(self.value, self.modulus).map(|v| Self::new_unchecked(v, self.modulus))
         }
@@ -2229,7 +2225,7 @@ pub mod non_static {
 
 /// A modular arithmetic integer type which modulus is **`thread_local`**.
 pub mod thread_local {
-    use crate::{cartridges, Cartridge, False, Features, True, UnsignedPrimitive as _};
+    use crate::{cartridges, Cartridge, False, True, UnsignedPrimitive as _};
 
     use num::Zero as _;
 
@@ -2300,7 +2296,7 @@ pub mod thread_local {
         #[inline]
         pub fn adjust(&mut self)
         where
-            C::Features: Features<AssumeAlwaysAdjusted = False>,
+            C: Cartridge<AssumeAlwaysAdjusted = False>,
         {
             C::adjust(&mut self.value, unsafe {
                 C::Target::thread_local_modulus()
@@ -2310,7 +2306,7 @@ pub mod thread_local {
         #[inline]
         pub fn adjusted(self) -> Self
         where
-            C::Features: Features<AssumeAlwaysAdjusted = False>,
+            C: Cartridge<AssumeAlwaysAdjusted = False>,
         {
             Self {
                 value: C::adjusted(self.value, unsafe { C::Target::thread_local_modulus() }),
@@ -2321,7 +2317,7 @@ pub mod thread_local {
         #[inline]
         pub fn sqrt(self) -> Option<Self>
         where
-            C::Features: Features<PartialMultiplication = True>,
+            C: Cartridge<PartialMultiplication = True>,
         {
             C::sqrt(self.value, unsafe { C::Target::thread_local_modulus() })
                 .map(|value| Self { value })

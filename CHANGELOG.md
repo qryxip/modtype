@@ -16,6 +16,7 @@
 - `modtype::util`.
 - `Bounded` implementation.
 - `Unsigned` implementation.
+- `modtype::DefaultCartridge`.
 
 ### Changed
 
@@ -28,6 +29,7 @@
 - Rename `{modtype, modtype::field_param, modtype::non_static}::DefaultModType` to `F` again.
 - `Cartridge::from_*` no longer return `Option`.
 - Remove type arguments from `ModType`s.
+- Unify `Features` and `Cartridges`.
 
 ### Fixed
 

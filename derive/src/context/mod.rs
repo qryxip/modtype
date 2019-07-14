@@ -58,7 +58,7 @@ impl Context {
             .get_or_insert_with(|| parse_quote!(where))
             .predicates
             .push(parse_quote! {
-                #cartridge::Features: #modtype::Features<#bindings>
+                #cartridge: #modtype::Cartridge<#bindings>
             });
 
         generics
