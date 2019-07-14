@@ -33,6 +33,25 @@
 //!
 //! `ModType`s can be customized via [`modtype::Cartridge`].
 //!
+//! ## [`modtype::cartridges::AllowFlexibleRhs`]
+//!
+//! ```
+//! use modtype::cartridges::{AllowFlexibleRhs, Field};
+//! use num::{BigInt, BigRational};
+//!
+//! #[modtype::use_modtype]
+//! type F = modtype::ModType<AllowFlexibleRhs<Field<u64>>, 1_000_000_007u64>;
+//!
+//! let mut x = F(1);
+//! x += F(1);
+//! x += 1u64;
+//! x += 1i32;
+//! x += 1f64;
+//! x += BigInt::from(1u32);
+//! x += BigRational::new(BigInt::from(1u32), BigInt::from(1u32));
+//! assert_eq!(x, F(7));
+//! ```
+//!
 //! ## [`modtype::cartridges::Multiplicative`]
 //!
 //! ```
@@ -86,6 +105,7 @@
 //! [`modtype::thread_local::ModType`]: ./thread_local/struct.ModType.html
 //! [`modtype::non_static::ModType`]: ./non_static/struct.ModType.html
 //! [`modtype::Cartridge`]: ./trait.Cartridge.html
+//! [`modtype::cartridges::AllowFlexibleRhs`]: ./cartridges/enum.AllowFlexibleRhs.html
 //! [`modtype::cartridges::Multiplicative`]: ./cartridges/enum.Multiplicative.html
 //! [`modtype::cartridges::Additive`]: ./cartridges/enum.Additive.html
 //! [`modtype::cartridges::ManuallyAdjust`]: ./cartridges/enum.ManuallyAdjust.html
@@ -615,6 +635,7 @@ pub trait Cartridge {
     type PartialSubtraction: TypedBool;
     type PartialMultiplication: TypedBool;
     type PartialDivision: TypedBool;
+    type FlexibleRhs: TypedBool;
 
     /// Implementation for [`From`]`<Self::Target>` and `modtype{, ::thread_local}::ModType::new`.
     ///
@@ -1886,13 +1907,421 @@ impl<C: Cartridge, M: ConstValue<Value = C::Target>> ModType<C, M> {
 ///
 /// [`Cartridge`]: ./trait.Cartridge.html
 pub mod cartridges {
-    use crate::{Cartridge, False, True, UnsignedPrimitive};
+    use crate::{
+        Cartridge, False, FloatPrimitive, IsTrue, SignedPrimitive, True, UnsignedPrimitive,
+    };
 
-    use num::PrimInt;
+    use num::rational::Ratio;
+    use num::{BigInt, BigUint, PrimInt};
 
     use std::convert::Infallible;
-    use std::fmt;
     use std::marker::PhantomData;
+    use std::num::ParseIntError;
+    use std::{cmp, fmt};
+
+    /// Allows flexible RHSes.
+    ///
+    /// ```
+    /// use modtype::cartridges::{AllowFlexibleRhs, Field};
+    /// use num::{BigInt, BigRational};
+    ///
+    /// #[modtype::use_modtype]
+    /// type F = modtype::ModType<AllowFlexibleRhs<Field<u64>>, 1_000_000_007u64>;
+    ///
+    /// let mut x = F(1);
+    /// x += F(1);
+    /// x += 1u64;
+    /// x += 1i32;
+    /// x += 1f64;
+    /// x += BigInt::from(1u32);
+    /// x += BigRational::new(BigInt::from(1u32), BigInt::from(1u32));
+    /// assert_eq!(x, F(7));
+    /// ```
+    pub enum AllowFlexibleRhs<C: Cartridge> {
+        Infallible(Infallible, PhantomData<fn() -> C>),
+    }
+
+    impl<C: Cartridge> Cartridge for AllowFlexibleRhs<C> {
+        type Target = C::Target;
+        type AssumePrimeModulus = C::AssumePrimeModulus;
+        type AssumeAlwaysAdjusted = C::AssumeAlwaysAdjusted;
+        type Equality = C::Equality;
+        type Order = C::Order;
+        type Deref = C::Deref;
+        type PartialAddition = C::PartialAddition;
+        type PartialSubtraction = C::PartialSubtraction;
+        type PartialMultiplication = C::PartialMultiplication;
+        type PartialDivision = C::PartialDivision;
+        type FlexibleRhs = True;
+
+        #[allow(clippy::new_ret_no_self)]
+        #[inline(always)]
+        fn new<T: PrimInt>(raw: T, modulus: T) -> T {
+            C::new(raw, modulus)
+        }
+
+        #[inline(always)]
+        fn should_adjust<T: PrimInt>(raw: T, modulus: T) -> bool {
+            C::should_adjust(raw, modulus)
+        }
+
+        #[inline(always)]
+        fn adjust<T: PrimInt>(raw: &mut T, modulus: T) {
+            C::adjust(raw, modulus)
+        }
+
+        #[inline(always)]
+        fn adjusted<T: PrimInt>(raw: T, modulus: T) -> T {
+            C::adjusted(raw, modulus)
+        }
+
+        #[inline(always)]
+        fn sqrt(value: C::Target, modulus: C::Target) -> Option<C::Target>
+        where
+            C::PartialMultiplication: IsTrue,
+        {
+            C::sqrt(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_u8(value: u8, modulus: C::Target) -> C::Target {
+            C::from_u8(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_u16(value: u16, modulus: C::Target) -> C::Target {
+            C::from_u16(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_u32(value: u32, modulus: C::Target) -> C::Target {
+            C::from_u32(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_u64(value: u64, modulus: C::Target) -> C::Target {
+            C::from_u64(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_u128(value: u128, modulus: C::Target) -> C::Target {
+            C::from_u128(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_usize(value: usize, modulus: C::Target) -> C::Target {
+            C::from_usize(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_i8(value: i8, modulus: C::Target) -> C::Target
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::from_i8(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_i16(value: i16, modulus: C::Target) -> C::Target
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::from_i16(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_i32(value: i32, modulus: C::Target) -> C::Target
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::from_i32(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_i64(value: i64, modulus: C::Target) -> C::Target
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::from_i64(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_i128(value: i128, modulus: C::Target) -> C::Target
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::from_i128(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_isize(value: isize, modulus: C::Target) -> C::Target
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::from_isize(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_float_prim<F: FloatPrimitive>(value: F, modulus: C::Target) -> C::Target
+        where
+            C::AssumePrimeModulus: IsTrue,
+            C::PartialSubtraction: IsTrue,
+            C::PartialMultiplication: IsTrue,
+            C::PartialDivision: IsTrue,
+        {
+            C::from_float_prim(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_biguint(value: BigUint, modulus: C::Target) -> C::Target {
+            C::from_biguint(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_bigint(value: BigInt, modulus: C::Target) -> C::Target
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::from_bigint(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_biguint_ratio(value: Ratio<BigUint>, modulus: C::Target) -> C::Target
+        where
+            C::AssumePrimeModulus: IsTrue,
+            C::PartialDivision: IsTrue,
+        {
+            C::from_biguint_ratio(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_bigint_ratio(value: Ratio<BigInt>, modulus: C::Target) -> C::Target
+        where
+            C::AssumePrimeModulus: IsTrue,
+            C::PartialSubtraction: IsTrue,
+            C::PartialDivision: IsTrue,
+        {
+            C::from_bigint_ratio(value, modulus)
+        }
+
+        #[inline(always)]
+        fn eq(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> bool
+        where
+            C::Equality: IsTrue,
+        {
+            C::eq(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn cmp(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> cmp::Ordering
+        where
+            C::Equality: IsTrue,
+            C::Order: IsTrue,
+        {
+            C::cmp(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn fmt_display(
+            value: C::Target,
+            modulus: C::Target,
+            fmt: &mut fmt::Formatter,
+        ) -> fmt::Result {
+            C::fmt_display(value, modulus, fmt)
+        }
+
+        #[inline(always)]
+        fn fmt_debug(
+            value: C::Target,
+            modulus: C::Target,
+            ty: &'static str,
+            fmt: &mut fmt::Formatter,
+        ) -> fmt::Result {
+            C::fmt_debug(value, modulus, ty, fmt)
+        }
+
+        #[inline(always)]
+        fn from_str(str: &str, modulus: C::Target) -> Result<C::Target, ParseIntError> {
+            C::from_str(str, modulus)
+        }
+
+        #[inline(always)]
+        fn neg(value: C::Target, modulus: C::Target) -> C::Target
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::neg(value, modulus)
+        }
+
+        #[inline(always)]
+        fn add(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> C::Target
+        where
+            C::PartialAddition: IsTrue,
+        {
+            C::add(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn sub(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> C::Target
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::sub(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn mul(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> C::Target
+        where
+            C::PartialMultiplication: IsTrue,
+        {
+            C::mul(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn div(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> C::Target
+        where
+            C::PartialDivision: IsTrue,
+        {
+            C::div(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn rem(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> C::Target
+        where
+            C::PartialDivision: IsTrue,
+        {
+            C::rem(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn inv(value: C::Target, modulus: C::Target) -> C::Target
+        where
+            C::PartialDivision: IsTrue,
+        {
+            C::inv(value, modulus)
+        }
+
+        #[inline(always)]
+        fn from_str_radix(
+            str: &str,
+            radix: u32,
+            modulus: C::Target,
+        ) -> Result<C::Target, ParseIntError>
+        where
+            C::AssumePrimeModulus: IsTrue,
+            C::Equality: IsTrue,
+            C::Order: IsTrue,
+            C::PartialAddition: IsTrue,
+            C::PartialSubtraction: IsTrue,
+            C::PartialMultiplication: IsTrue,
+            C::PartialDivision: IsTrue,
+        {
+            C::from_str_radix(str, radix, modulus)
+        }
+
+        #[inline(always)]
+        fn zero(modulus: C::Target) -> C::Target
+        where
+            C::PartialAddition: IsTrue,
+        {
+            C::zero(modulus)
+        }
+
+        #[inline(always)]
+        fn is_zero(value: C::Target, modulus: C::Target) -> bool
+        where
+            C::PartialAddition: IsTrue,
+        {
+            C::is_zero(value, modulus)
+        }
+
+        #[inline(always)]
+        fn one(modulus: C::Target) -> C::Target
+        where
+            C::PartialMultiplication: IsTrue,
+        {
+            C::one(modulus)
+        }
+
+        #[inline(always)]
+        fn is_one(value: C::Target, modulus: C::Target) -> bool
+        where
+            C::Equality: IsTrue,
+            C::PartialMultiplication: IsTrue,
+        {
+            C::is_one(value, modulus)
+        }
+
+        #[inline(always)]
+        fn checked_neg(value: C::Target, modulus: C::Target) -> Option<C::Target>
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::checked_neg(value, modulus)
+        }
+
+        #[inline(always)]
+        fn checked_add(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> Option<C::Target>
+        where
+            C::PartialAddition: IsTrue,
+        {
+            C::checked_add(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn checked_sub(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> Option<C::Target>
+        where
+            C::PartialSubtraction: IsTrue,
+        {
+            C::checked_sub(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn checked_mul(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> Option<C::Target>
+        where
+            C::PartialMultiplication: IsTrue,
+        {
+            C::checked_mul(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn checked_div(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> Option<C::Target>
+        where
+            C::PartialDivision: IsTrue,
+        {
+            C::checked_div(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn checked_rem(lhs: C::Target, rhs: C::Target, modulus: C::Target) -> Option<C::Target>
+        where
+            C::PartialDivision: IsTrue,
+        {
+            C::checked_rem(lhs, rhs, modulus)
+        }
+
+        #[inline(always)]
+        fn pow_unsigned<E: UnsignedPrimitive>(
+            base: C::Target,
+            exp: E,
+            modulus: C::Target,
+        ) -> C::Target
+        where
+            C::PartialMultiplication: IsTrue,
+        {
+            C::pow_unsigned(base, exp, modulus)
+        }
+
+        #[inline(always)]
+        fn pow_signed<E: SignedPrimitive>(base: C::Target, exp: E, modulus: C::Target) -> C::Target
+        where
+            C::AssumePrimeModulus: IsTrue,
+            C::PartialMultiplication: IsTrue,
+            C::PartialDivision: IsTrue,
+        {
+            C::pow_signed(base, exp, modulus)
+        }
+    }
 
     /// A [`Cartridge`] which assumes moduluses are primes.
     ///
@@ -1912,6 +2341,7 @@ pub mod cartridges {
         type PartialSubtraction = True;
         type PartialMultiplication = True;
         type PartialDivision = True;
+        type FlexibleRhs = False;
     }
 
     /// A [`Cartridge`] which does not assume moduluses are primes.
@@ -1942,6 +2372,7 @@ pub mod cartridges {
         type PartialSubtraction = True;
         type PartialMultiplication = True;
         type PartialDivision = True;
+        type FlexibleRhs = False;
 
         fn sqrt(_: T, _: T) -> Option<T> {
             panic!("`sqrt` for non-prime moduluses is not implemented");
@@ -1991,6 +2422,7 @@ pub mod cartridges {
         type PartialSubtraction = False;
         type PartialMultiplication = False;
         type PartialDivision = False;
+        type FlexibleRhs = False;
 
         #[inline(always)]
         fn should_adjust<S: PrimInt>(value: S, _: S) -> bool {
@@ -2060,6 +2492,7 @@ pub mod cartridges {
         type PartialSubtraction = True;
         type PartialMultiplication = True;
         type PartialDivision = False;
+        type FlexibleRhs = False;
 
         #[inline(always)]
         fn should_adjust<S: PrimInt>(_: S, _: S) -> bool {

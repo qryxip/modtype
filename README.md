@@ -39,6 +39,25 @@ assert_eq!((F(1_000_000_006) + F(2)).to_string(), "1");
 
 `ModType`s can be customized via [`modtype::Cartridge`].
 
+### [`modtype::cartridges::AllowFlexibleRhs`]
+
+```
+use modtype::cartridges::{AllowFlexibleRhs, Field};
+use num::{BigInt, BigRational};
+
+#[modtype::use_modtype]
+type F = modtype::ModType<AllowFlexibleRhs<Field<u64>>, 1_000_000_007u64>;
+
+let mut x = F(1);
+x += F(1);
+x += 1u64;
+x += 1i32;
+x += 1f64;
+x += BigInt::from(1u32);
+x += BigRational::new(BigInt::from(1u32), BigInt::from(1u32));
+assert_eq!(x, F(7));
+```
+
 ### [`modtype::cartridges::Multiplicative`]
 
 ```
@@ -92,6 +111,7 @@ assert_eq!(*x.get_mut_unchecked(), u64::max_value() % 1_000_000_007);
 [`modtype::thread_local::ModType`]: https://docs.rs/modtype/0.6/modtype/thread_local/struct.ModType.html
 [`modtype::non_static::ModType`]: https://docs.rs/modtype/0.7/modtype/non_static/struct.ModType.html
 [`modtype::Cartridge`]: https://docs.rs/modtype/0.6/modtype/trait.Cartridge.html
+[`modtype::cartridges::AllowFlexibleRhs`]: https://docs.rs/modtype/0.7/modtype/cartridges/enum.AllowFlexibleRhs.html
 [`modtype::cartridges::Multiplicative`]: https://docs.rs/modtype/0.7/modtype/cartridges/enum.Multiplicative.html
 [`modtype::cartridges::Additive`]: https://docs.rs/modtype/0.7/modtype/cartridges/enum.Additive.html
 [`modtype::cartridges::ManuallyAdjust`]: https://docs.rs/modtype/0.7/modtype/cartridges/enum.ManuallyAdjust.html

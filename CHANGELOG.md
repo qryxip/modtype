@@ -8,7 +8,7 @@
 - `adjust` methods.
 - `adjusted` methods.
 - `Cartridge::{sqrt, adjust, adjusted, eq, cmp}`.
-- `modtype::cartridges::{Field, Multiplicative, Additive, ManuallyAdjust}`.
+- `modtype::cartridges::{AllowFlexibleRhs, Field, Multiplicative, Additive, ManuallyAdjust}`.
 - `From<{integer}, {float}, Ratio<BigUint>, Ratio<BigInt>>`
 
 ### Removed
@@ -20,7 +20,7 @@
 
 ### Changed
 
-- Add `Features::{AssumePrimeModulus, AssumeAlwaysAdjusted, Equality, Order, Deref}`.
+- Add `Features::{AssumePrimeModulus, AssumeAlwaysAdjusted, Equality, Order, Deref, FlexibleRhs}`.
 - Rename `Features::{Addition, Subtraction, Multiplication, Division}` to `Partial{..}`.
 - Modify the implementation of divisions.
 - Hide `HasThreadLocalModulus`.

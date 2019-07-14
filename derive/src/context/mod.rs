@@ -2,6 +2,7 @@ mod num;
 mod std;
 
 use if_chain::if_chain;
+use maplit::hashset;
 use proc_macro2::Span;
 use quote::quote;
 use syn::spanned::Spanned;
@@ -43,11 +44,16 @@ impl Context {
 
         let bindings = {
             let mut bindings = quote!();
+            let mut names = hashset!();
             for feature in features {
-                if !bindings.is_empty() {
-                    bindings.extend(quote!(,));
+                let name = feature.to_string();
+                if !names.contains(&name) {
+                    names.insert(name);
+                    if !bindings.is_empty() {
+                        bindings.extend(quote!(,));
+                    }
+                    bindings.extend(quote!(#feature = #modtype::True));
                 }
-                bindings.extend(quote!(#feature = #modtype::True));
             }
             bindings
         };
